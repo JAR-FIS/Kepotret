@@ -25,7 +25,7 @@ export default function UiReferencePage() {
         <Container>
           <header className="flex items-center justify-between gap-4">
             <Link href="/" aria-label="Kepotret home" className="inline-flex items-center gap-3">
-              <Image src="/brand/icon.svg" alt="" width={36} height={36} className="h-9 w-9" priority />
+              <Image src="/brand/icon.svg" alt="" width={36} height={36} className="h-9 w-9 dark:invert" priority />
               <span className="font-[var(--font-display)] text-xl font-bold tracking-tight">Kepotret</span>
             </Link>
             <div className="flex items-center gap-2">
