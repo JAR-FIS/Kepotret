@@ -1,0 +1,15 @@
+{
+  "reference": {
+    "eyebrow": "Interface foundation",
+    "title": "Kepotret, made for real moments.",
+    "description": "An internal reference page for checking visual language, accessibility, themes, and localization.",
+    "theme": "Theme",
+    "language": "Language",
+    "primaryAction": "Primary button",
+    "secondaryAction": "Secondary button",
+    "disabledAction": "Disabled button",
+    "motion": "Calm motion",
+    "motionDescription": "Animation respects the device reduced-motion preference.",
+    "status": "All UI foundations are active."
+  }
+}

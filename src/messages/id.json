@@ -1,0 +1,15 @@
+{
+  "reference": {
+    "eyebrow": "Fondasi antarmuka",
+    "title": "Kepotret, dibuat untuk momen yang nyata.",
+    "description": "Halaman referensi internal untuk memeriksa bahasa visual, aksesibilitas, tema, dan lokalisasi.",
+    "theme": "Tema",
+    "language": "Bahasa",
+    "primaryAction": "Tombol utama",
+    "secondaryAction": "Tombol sekunder",
+    "disabledAction": "Tombol nonaktif",
+    "motion": "Gerak yang tenang",
+    "motionDescription": "Animasi menghormati preferensi reduced motion perangkat.",
+    "status": "Semua fondasi UI aktif."
+  }
+}
