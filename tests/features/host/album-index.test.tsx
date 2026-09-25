@@ -2,13 +2,14 @@ import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { listAlbums, getAlbum, getCsrf, patchSettings, getInvitations, createInvitation } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation }));
+const { listAlbums, getAlbum, getCsrf, patchSettings, getInvitations, createInvitation, setPin } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn(), setPin: vi.fn() }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin }));
 
 import { AlbumIndex } from '@/features/host/components/album-index';
 import { AlbumOverview } from '@/features/host/components/album-overview';
 import { GuestLimitForm } from '@/features/host/components/guest-limit-form';
 import { CollaboratorSetup } from '@/features/host/components/collaborator-setup';
+import { AccessPinForm } from '@/features/host/components/access-pin-form';
 import idMessages from '@/messages/id.json';
 import type { AlbumDetail, AlbumSummary, InvitationSummary } from '@/lib/api/generated/index.schemas';
 
@@ -25,7 +26,7 @@ function renderHost(node: React.ReactNode) {
 }
 
 describe('FE-3 Host album surfaces', () => {
-  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); });
+  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); });
 
   it('shows an actionable empty dashboard state', async () => {
     listAlbums.mockResolvedValue({ status: 200, data: { data: [], meta: {} } });
@@ -84,5 +85,18 @@ describe('FE-3 Host album surfaces', () => {
     await waitFor(() => expect(createInvitation).toHaveBeenCalledWith(draft.album_id, { email: invitation.email, can_setup: true, can_moderate: false, can_export_zip: true }, { headers: { 'X-CSRF-Token': 'csrf' } }));
     expect(await screen.findByText(invitation.email)).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /billing|payment|pembayaran/i })).not.toBeInTheDocument();
+  });
+
+  it('sets an optional album PIN through the generated endpoint and clears the sensitive input after success', async () => {
+    getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
+    setPin.mockResolvedValue({ status: 200, data: { data: {} } });
+    renderHost(<AccessPinForm albumId={draft.album_id} />);
+    const input = screen.getByLabelText('PIN album');
+    expect(input).toHaveAttribute('type', 'password');
+    fireEvent.change(input, { target: { value: 'host-secret-pin' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan PIN' }));
+    await waitFor(() => expect(setPin).toHaveBeenCalledWith(draft.album_id, { pin: 'host-secret-pin' }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+    expect(await screen.findByText('PIN album berhasil disimpan.')).toBeInTheDocument();
+    expect(input).toHaveValue('');
   });
 });
