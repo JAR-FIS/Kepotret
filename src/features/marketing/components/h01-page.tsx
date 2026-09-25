@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowDown, Camera, Check, CircleUserRound, Download, Image as ImageIcon, LockKeyhole, QrCode, ShieldCheck, UsersRound, Clock3, Building2, Trophy, Cake, MapPinned, Heart } from 'lucide-react';
+import { ArrowDown, Camera, Check, CircleUserRound, Download, Image as ImageIcon, LockKeyhole, QrCode, ShieldCheck, UsersRound, Clock3, Building2 } from 'lucide-react';
 import Image from 'next/image';
 
 import { Disclosure } from '@/components/ui/disclosure';
@@ -11,11 +11,11 @@ export function H01Page({ locale }: { locale: Locale }) {
   const copy = getContent(locale);
   return <PublicPageFrame locale={locale} assistant>
     <main>
-      <Hero copy={copy} />
+      <Hero locale={locale} copy={copy} />
       <HowSection copy={copy} />
       <BenefitsSection copy={copy} />
       <DifferentiationSection copy={copy} />
-      <UseCasesSection copy={copy} />
+      <UseCasesSection locale={locale} copy={copy} />
       <GuestSection copy={copy} />
       <PricingSection locale={locale} copy={copy} />
       <TrustSection copy={copy} />
@@ -27,7 +27,55 @@ export function H01Page({ locale }: { locale: Locale }) {
 
 type Copy = ReturnType<typeof getContent>;
 
-function Hero({ copy }: { copy: Copy }) {
+type MarketingImage = {
+  src: string;
+  alt: { id: string; en: string };
+  objectPosition?: string;
+};
+
+const eventImage = (filename: string, idAlt: string, enAlt: string, objectPosition?: string): MarketingImage => ({
+  src: `/media/marketing/events/${filename}`,
+  alt: { id: idAlt, en: enAlt },
+  objectPosition,
+});
+
+const heroPhotos = [
+  {
+    ...eventImage('event-02.jpg', 'Peserta acara berfoto bersama setelah kegiatan', 'Event attendees take a group photo after a gathering'),
+    frameClass: 'left-[0%] top-[9%] z-0 w-[54%] aspect-[4/3] -rotate-2',
+    sizes: '(max-width: 639px) 52vw, (max-width: 1023px) min(54vw, 335px), 330px',
+    preload: true,
+  },
+  {
+    ...eventImage('event-01.jpg', 'Peserta menari dalam perayaan bersama', 'Attendees dance during a community celebration'),
+    frameClass: 'right-[1%] top-[3%] z-0 hidden w-[29%] aspect-[3/4] rotate-2 sm:block',
+    sizes: '180px',
+    preload: false,
+  },
+  {
+    ...eventImage('sport-01.jpg', 'Pesepeda mengikuti kegiatan bersepeda bersama', 'Cyclists take part in a group ride'),
+    frameClass: 'bottom-[6%] left-[4%] z-0 w-[38%] aspect-[4/3] rotate-1',
+    sizes: '(max-width: 639px) 40vw, (max-width: 1023px) 24vw, 235px',
+    preload: false,
+  },
+  {
+    ...eventImage('komunitas-02.jpg', 'Anggota komunitas berfoto bersama di dalam ruangan', 'Community members pose together indoors'),
+    frameClass: 'bottom-[10%] right-[1%] z-0 hidden w-[43%] aspect-[4/3] -rotate-1 sm:block',
+    sizes: '(max-width: 1023px) 26vw, 265px',
+    preload: false,
+  },
+];
+
+const useCasePhotos: MarketingImage[] = [
+  eventImage('wedding-01.jpg', 'Pasangan dan keluarga merayakan pernikahan di luar ruangan', 'A couple and family celebrate a wedding outdoors'),
+  eventImage('birthday-01.jpg', 'Seorang tamu merayakan ulang tahun bersama teman-teman', 'A guest celebrates a birthday with friends', '50% 24%'),
+  eventImage('komunitas-02.jpg', 'Anggota komunitas berfoto bersama di dalam ruangan', 'Community members pose together indoors'),
+  eventImage('sport-01.jpg', 'Pesepeda mengikuti kegiatan bersepeda bersama', 'Cyclists take part in a group ride'),
+  eventImage('corporate-gathering-02.jpg', 'Peserta menyimak acara organisasi di ruang pertemuan', 'Attendees listen during an organization gathering'),
+  eventImage('travel-01.jpg', 'Pelancong menjelajahi jalur pegunungan', 'A traveler explores a mountain trail', '50% 35%'),
+];
+
+function Hero({ locale, copy }: { locale: Locale; copy: Copy }) {
   return <section className="mx-auto grid max-w-[1240px] items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[0.94fr_1.06fr] lg:gap-8 lg:py-20">
     <div className="relative z-10">
       <p className="mb-5 inline-flex rounded-full border border-[var(--color-border)] px-3 py-2 text-[11px] font-bold tracking-[0.08em]">{copy.hero.eyebrow}</p>
@@ -42,15 +90,16 @@ function Hero({ copy }: { copy: Copy }) {
       </div>
       <p className="mt-3 text-xs text-[var(--color-muted-foreground)]">{copy.hero.microcopy}</p>
     </div>
-    <HeroVisual copy={copy} />
+    <HeroVisual locale={locale} copy={copy} />
   </section>;
 }
 
-function HeroVisual({ copy }: { copy: Copy }) {
-  return <div className="relative mx-auto w-full max-w-[620px]" aria-label={copy.hero.visualLabel}>
-    <div className="absolute inset-x-[8%] top-[6%] h-[72%] rotate-[-4deg] rounded-[24px] border border-[var(--color-border)] bg-[linear-gradient(145deg,#e7e9d8_0%,#fafaf7_48%,#cbd2c4_100%)]" aria-hidden="true" />
-    <div className="absolute inset-x-[16%] top-[16%] h-[67%] rotate-[4deg] rounded-[24px] border border-[var(--color-border)] bg-[linear-gradient(130deg,#bbc9c5_0%,#e6e7dc_50%,#acb6ad_100%)]" aria-hidden="true" />
-    <div className="relative mx-auto w-[75%] rounded-[30px] border-[7px] border-[#0a0a0a] bg-white p-3 shadow-[0_20px_42px_rgb(10_10_10_/_20%)] sm:w-[68%]">
+function HeroVisual({ locale, copy }: { locale: Locale; copy: Copy }) {
+  return <div className="hero-visual relative mx-auto aspect-[0.58/1] w-full max-w-[620px] sm:aspect-[1.16/1]">
+    {heroPhotos.map((photo) => <div key={photo.src} className={`absolute overflow-hidden rounded-[18px] border-4 border-white bg-[var(--color-surface-muted)] shadow-[0_8px_24px_rgb(10_10_10_/_12%)] sm:rounded-[22px] ${photo.frameClass}`}>
+      <Image src={photo.src} alt={photo.alt[locale]} fill sizes={photo.sizes} className="object-cover" style={photo.objectPosition ? { objectPosition: photo.objectPosition } : undefined} preload={photo.preload ?? false} />
+    </div>)}
+    <div className="absolute left-[27%] top-[4%] z-10 w-[58%] origin-top scale-[0.8] rounded-[30px] border-[7px] border-[#0a0a0a] bg-white p-3 shadow-[0_20px_42px_rgb(10_10_10_/_20%)] sm:left-[31%] sm:top-[15%] sm:w-[43%] sm:scale-100">
       <div className="rounded-[20px] border border-[#d9d9d9] bg-[#f7f7f5] p-4 text-[#0a0a0a] sm:p-5">
         <div className="flex items-center justify-between text-xs font-semibold"><Image src="/brand/icon.svg" alt="" width={18} height={18} /><CircleUserRound size={17} aria-hidden="true" /></div>
         <div className="mt-6 rounded-xl bg-white p-4 text-center shadow-sm">
@@ -62,8 +111,8 @@ function HeroVisual({ copy }: { copy: Copy }) {
       </div>
       <span aria-hidden="true" className="absolute -right-2 top-[18%] h-5 w-5 rounded-full bg-[var(--color-primary)] ring-4 ring-[var(--color-background)]" />
     </div>
-    <div className="absolute -bottom-4 left-[3%] hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-xs font-semibold shadow-[var(--shadow-soft)] sm:block"><span className="block text-[var(--color-muted-foreground)]">QR</span><span>{copy.how.steps[1].title}</span></div>
-    <div className="absolute -right-2 bottom-[10%] hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-xs font-semibold shadow-[var(--shadow-soft)] sm:block"><span className="block text-[var(--color-muted-foreground)]">{copy.hero.microcopy}</span><span>{copy.hero.proof[0]}</span></div>
+    <div className="absolute -bottom-1 left-[3%] z-20 hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-xs font-semibold shadow-[var(--shadow-soft)] sm:block"><span className="block text-[var(--color-muted-foreground)]">QR</span><span>{copy.how.steps[1].title}</span></div>
+    <div className="absolute right-0 bottom-[10%] z-20 hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-xs font-semibold shadow-[var(--shadow-soft)] sm:block"><span className="block text-[var(--color-muted-foreground)]">{copy.hero.microcopy}</span><span>{copy.hero.proof[0]}</span></div>
   </div>;
 }
 
@@ -119,18 +168,13 @@ function DifferentiationSection({ copy }: { copy: Copy }) {
   </section>;
 }
 
-const useCaseIcons = [Heart, Cake, UsersRound, Trophy, Building2, MapPinned];
-const placeholderTones = ['#e6c3b3', '#e9d6a9', '#c6d5c0', '#ccd4e7', '#c2ccce', '#c5d4d9'];
-
-function UseCasesSection({ copy }: { copy: Copy }) {
+function UseCasesSection({ locale, copy }: { locale: Locale; copy: Copy }) {
   return <section className="mx-auto max-w-[1240px] px-4 py-16 sm:px-6 sm:py-20">
     <div className="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-end"><SectionIntro eyebrow={copy.useCases.eyebrow} title={copy.useCases.title} /><p className="max-w-lg text-sm leading-6 text-[var(--color-muted-foreground)] md:justify-self-end">{copy.useCases.description}</p></div>
     <ul className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {copy.useCases.items.map((item, index) => { const Icon = useCaseIcons[index]!; return <li key={item.title} className="overflow-hidden rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)]">
-        <div aria-hidden="true" className="relative flex aspect-[1.45/1] items-center justify-center overflow-hidden" style={{ backgroundColor: placeholderTones[index] }}>
-          <span className="absolute left-4 top-4 h-9 w-9 rounded-full border border-white/80" />
-          <span className="absolute bottom-4 right-4 h-14 w-14 rounded-full border border-white/70" />
-          <Icon size={38} strokeWidth={1.25} className="text-[#0a0a0a]/75" />
+      {copy.useCases.items.map((item, index) => { const photo = useCasePhotos[index]!; return <li key={item.title} className="overflow-hidden rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="relative aspect-[4/3] overflow-hidden bg-[var(--color-surface-muted)]">
+          <Image src={photo.src} alt={photo.alt[locale]} fill sizes="(max-width: 639px) calc(100vw - 2rem), (max-width: 1023px) calc(50vw - 2rem), (max-width: 1279px) calc(33vw - 2rem), 380px" className="object-cover" style={photo.objectPosition ? { objectPosition: photo.objectPosition } : undefined} />
         </div>
         <div className="p-4"><h3 className="font-[var(--font-display)] font-bold">{item.title}</h3><p className="mt-1 text-xs leading-5 text-[var(--color-muted-foreground)]">{item.description}</p></div>
       </li>; })}

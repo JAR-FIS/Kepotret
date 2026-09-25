@@ -1,17 +1,32 @@
 import { expect, test } from '@playwright/test';
 
 test('H01 renders and stays usable across FE-2 viewport and preference states', async ({ page }) => {
+  const widths = [320, 375, 390, 430, 768, 1024, 1280];
+  const expectNoHorizontalOverflow = async (width: number) => {
+    await page.setViewportSize({ width, height: 900 });
+    const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
+    expect(dimensions.content, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport);
+  };
+
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: /Satu momen\. Banyak sudut\./ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Pilih kapasitas sesuai kebutuhan acaramu\./ })).toBeVisible();
   await expect(page.locator('input[type="file"]')).toHaveCount(0);
-
-  for (const width of [320, 375, 390, 430, 768, 1024, 1280]) {
-    await page.setViewportSize({ width, height: 900 });
-    const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
-    expect(dimensions.content, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport);
+  await expect(page.locator('.hero-visual img[alt]:not([alt=""])')).toHaveCount(4);
+  const useCaseSection = page.locator('section').filter({ has: page.getByRole('heading', { name: /Setiap acara/ }) });
+  for (const alt of [
+    'Pasangan dan keluarga merayakan pernikahan di luar ruangan',
+    'Seorang tamu merayakan ulang tahun bersama teman-teman',
+    'Anggota komunitas berfoto bersama di dalam ruangan',
+    'Pesepeda mengikuti kegiatan bersepeda bersama',
+    'Peserta menyimak acara organisasi di ruang pertemuan',
+    'Pelancong menjelajahi jalur pegunungan',
+  ]) {
+    await expect(useCaseSection.getByRole('img', { name: alt })).toHaveCount(1);
   }
+
+  for (const width of widths) await expectNoHorizontalOverflow(width);
 
   await page.getByRole('radio', { name: '10K' }).click();
   await expect(page.getByText('Rp1.100.000')).toBeVisible();
@@ -28,6 +43,21 @@ test('H01 renders and stays usable across FE-2 viewport and preference states', 
   await expect(page.getByRole('heading', { level: 1, name: /One moment\. Many perspectives\./ })).toBeVisible();
   await page.getByRole('button', { name: 'Switch to dark theme' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(page.locator('.hero-visual img[alt]:not([alt=""])')).toHaveCount(4);
+  const heroPhotoFilters = await page.locator('.hero-visual img[alt]:not([alt=""])').evaluateAll((images) => images.map((image) => getComputedStyle(image).filter));
+  expect(heroPhotoFilters.every((filter) => filter === 'none')).toBe(true);
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
+  await page.getByRole('button', { name: 'Close navigation menu' }).click();
+  for (const width of widths) await expectNoHorizontalOverflow(width);
+
+  await expectNoHorizontalOverflow(320);
+  await page.getByRole('button', { name: 'Open navigation menu' }).click();
+  await page.getByRole('combobox', { name: 'Language' }).selectOption('id');
+  await expect(page.getByRole('heading', { level: 1, name: /Satu momen\. Banyak sudut\./ })).toBeVisible();
+  await page.getByRole('button', { name: 'Ganti ke tema gelap' }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'Tutup menu navigasi' }).click();
+  for (const width of widths) await expectNoHorizontalOverflow(width);
 });
 
 test('ordinary auth and system routes use their defined recovery surfaces', async ({ page }) => {
