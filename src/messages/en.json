@@ -1,4 +1,17 @@
 {
+  "host": {
+    "workspaceLabel": "WORKSPACE",
+    "albumWorkspace": "Album workspace",
+    "create": "Create album",
+    "nav": { "label": "Workspace navigation", "albumLabel": "Album navigation", "account": "Account", "home": "Home", "albums": "Albums", "language": "Language", "indonesian": "Indonesian", "english": "English", "indonesianShort": "ID", "englishShort": "EN", "switchToLight": "Switch to light theme", "switchToDark": "Switch to dark theme" },
+    "dashboard": { "title": "Home", "description": "Check album status and continue preparing your event.", "newAlbum": "Create your first album", "newAlbumDescription": "Start by creating a new event album.", "albums": "My albums", "drafts": "Drafts", "ready": "Ready", "ended": "Ended", "continue": "Continue setup", "open": "Open album" },
+    "albums": { "title": "My albums", "description": "Event albums you own or manage.", "empty": "No albums yet", "emptyDescription": "Albums you create or manage will appear here.", "id": "Album ID", "status": "Status", "draft": "Draft", "ready": "Ready", "paymentPending": "Payment pending", "ended": "Ended", "open": "Open album" },
+    "createPage": { "title": "Create an album", "description": "Create a draft album first. Continue event setup after the album is created.", "timezone": "Event time zone", "submit": "Create draft and continue", "validation": "Enter a valid time zone.", "conflict": "The draft could not be created because of another change. Reload and try again.", "error": "The album could not be created. Check your connection and try again.", "denied": "You do not have permission to create an album.", "reauth": "Your session expired. Sign in again to continue.", "signIn": "Sign in again" },
+    "detail": { "title": "Album overview", "id": "Album ID", "guestCount": "Final participant count", "guestCountUnavailable": "The participant count is finalized after the event ends.", "setup": "Continue album setup", "draft": "Album draft", "ready": "Album ready", "captureOpen": "Photo capture is open", "captureClosed": "Photo capture has ended", "notStarted": "Photo capture has not started", "schedule": "Schedule unavailable" },
+    "readyPage": { "title": "Activation status", "complete": "Album is ready", "completeDescription": "Setup confirmation succeeded and the album is now ready.", "pending": "Album is not ready yet", "pendingDescription": "The server must confirm setup and return the activation result before this album can be marked ready.", "dashboard": "Back to my albums" },
+    "steps": { "acara": "Event", "jadwal": "Schedule & reveal", "akses": "Access & privacy", "moderasi": "Limits & moderation", "desain": "Design", "paket": "Package", "kolaborator": "Collaborators", "review": "Setup review", "title": "Album setup", "unavailable": "This setup information is not available in the current API contract." },
+    "retry": "Try again", "loading": "Loading albums…", "errorTitle": "Albums could not be loaded", "errorDescription": "Check your connection and try again.", "reauthTitle": "Your session needs refreshing", "reauthDescription": "Sign in again to continue.", "forbiddenTitle": "Access unavailable", "forbiddenDescription": "This account does not have permission to view that album."
+  },
   "reference": {
     "eyebrow": "Interface foundation",
     "title": "Kepotret, made for real moments.",
