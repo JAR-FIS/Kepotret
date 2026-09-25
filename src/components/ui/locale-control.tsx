@@ -2,7 +2,15 @@
 
 import { useAppLocale } from '@/providers/locale-provider';
 
-export function LocaleControl({ label }: { label: string }) {
+export function LocaleControl({
+  label,
+  indonesianLabel,
+  englishLabel,
+}: {
+  label: string;
+  indonesianLabel: string;
+  englishLabel: string;
+}) {
   const { locale, setLocale } = useAppLocale();
   return (
     <label className="inline-flex items-center gap-2 text-sm font-semibold">
@@ -13,8 +21,8 @@ export function LocaleControl({ label }: { label: string }) {
         value={locale}
         onChange={(event) => setLocale(event.target.value as 'id' | 'en')}
       >
-        <option value="id">ID</option>
-        <option value="en">EN</option>
+        <option value="id">{indonesianLabel}</option>
+        <option value="en">{englishLabel}</option>
       </select>
     </label>
   );

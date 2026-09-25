@@ -1,7 +1,7 @@
 'use client';
 
 import { NextIntlClientProvider } from 'next-intl';
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 import en from '@/messages/en.json';
 import id from '@/messages/id.json';
@@ -11,6 +11,10 @@ export type Locale = 'id' | 'en';
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocale] = useState<Locale>('id');
   const messages = locale === 'id' ? id : en;
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

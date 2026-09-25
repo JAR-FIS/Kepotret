@@ -14,7 +14,7 @@
   --color-muted: #f2f2f2;
   --color-muted-foreground: #6b6b6b;
   --color-destructive: #b42318;
-  --color-focus: #d8ff3d;
+  --color-focus: #0a0a0a;
   --font-display: 'Space Grotesk', 'Arial Narrow', sans-serif;
   --font-body: 'Plus Jakarta Sans', Arial, sans-serif;
   --radius-sm: 0.5rem;
@@ -41,6 +41,46 @@
   --shadow-soft: 0 12px 32px rgb(0 0 0 / 22%);
 }
 
+[data-state='success'] {
+  --state-accent: #287a42;
+  --state-soft: #edf7ef;
+}
+
+[data-state='info'] {
+  --state-accent: #2355a4;
+  --state-soft: #eef3fc;
+}
+
+[data-state='warning'] {
+  --state-accent: #805300;
+  --state-soft: #fff6df;
+}
+
+[data-state='error'] {
+  --state-accent: var(--color-destructive);
+  --state-soft: #fff0ef;
+}
+
+.dark [data-state='success'] {
+  --state-accent: #9be6a8;
+  --state-soft: #17311e;
+}
+
+.dark [data-state='info'] {
+  --state-accent: #aac6ff;
+  --state-soft: #182745;
+}
+
+.dark [data-state='warning'] {
+  --state-accent: #ffda82;
+  --state-soft: #3a2c13;
+}
+
+.dark [data-state='error'] {
+  --state-accent: #ffaaa4;
+  --state-soft: #401e1b;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -59,13 +99,21 @@ body {
 }
 
 button,
+input,
+select,
+textarea,
 a {
+  font: inherit;
   -webkit-tap-highlight-color: transparent;
 }
 
 :focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 3px;
+}
+
+.dark :focus-visible {
+  outline-color: var(--color-focus);
 }
 
 ::selection {

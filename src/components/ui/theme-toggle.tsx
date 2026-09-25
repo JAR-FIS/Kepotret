@@ -6,7 +6,13 @@ import { useSyncExternalStore } from 'react';
 
 import { IconButton } from './icon-button';
 
-export function ThemeToggle({ label }: { label: string }) {
+export function ThemeToggle({
+  lightLabel,
+  darkLabel,
+}: {
+  lightLabel: string;
+  darkLabel: string;
+}) {
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
     () => () => undefined,
@@ -17,7 +23,8 @@ export function ThemeToggle({ label }: { label: string }) {
 
   return (
     <IconButton
-      label={label}
+      label={isDark ? lightLabel : darkLabel}
+      aria-pressed={isDark}
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       type="button"
     >
