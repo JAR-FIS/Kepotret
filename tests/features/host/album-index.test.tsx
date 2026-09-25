@@ -2,13 +2,15 @@ import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { listAlbums, getAlbum } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum }));
+const { listAlbums, getAlbum, getCsrf, patchSettings, getInvitations, createInvitation } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn() }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation }));
 
 import { AlbumIndex } from '@/features/host/components/album-index';
 import { AlbumOverview } from '@/features/host/components/album-overview';
+import { GuestLimitForm } from '@/features/host/components/guest-limit-form';
+import { CollaboratorSetup } from '@/features/host/components/collaborator-setup';
 import idMessages from '@/messages/id.json';
-import type { AlbumDetail, AlbumSummary } from '@/lib/api/generated/index.schemas';
+import type { AlbumDetail, AlbumSummary, InvitationSummary } from '@/lib/api/generated/index.schemas';
 
 const draft: AlbumSummary = {
   album_id: '11111111-1111-4111-8111-111111111111',
@@ -23,7 +25,7 @@ function renderHost(node: React.ReactNode) {
 }
 
 describe('FE-3 Host album surfaces', () => {
-  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); });
+  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); });
 
   it('shows an actionable empty dashboard state', async () => {
     listAlbums.mockResolvedValue({ status: 200, data: { data: [], meta: {} } });
@@ -53,5 +55,34 @@ describe('FE-3 Host album surfaces', () => {
     renderHost(<AlbumOverview albumId={readyAlbum.album_id} />);
     expect(await screen.findByText('27')).toBeInTheDocument();
     expect(getAlbum).toHaveBeenCalledWith(readyAlbum.album_id);
+  });
+
+  it('requires an explicit per-participant limit choice and writes the generated value with the current revision', async () => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: draft } });
+    getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
+    patchSettings.mockResolvedValue({ status: 200, data: {} });
+    renderHost(<GuestLimitForm albumId={draft.album_id} />);
+    const select = await screen.findByRole('combobox', { name: 'Batas foto per peserta' });
+    expect(Array.from((select as HTMLSelectElement).options).slice(1).map((option) => Number(option.value))).toEqual([5, 10, 30, 50, 70, 100]);
+    expect(select).toHaveValue('');
+    fireEvent.change(select, { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan batas' }));
+    await waitFor(() => expect(patchSettings).toHaveBeenCalledWith(draft.album_id, { expected_revision: 1, per_guest_limit: 100 }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+    expect(await screen.findByText('Batas foto per peserta berhasil disimpan.')).toBeInTheDocument();
+  });
+
+  it('submits collaborator permissions as independent contract flags without billing access', async () => {
+    const invitation: InvitationSummary = { invitation_id: '22222222-2222-4222-8222-222222222222', email: 'planner@example.com', expires_at: '2026-10-01T00:00:00Z', permissions: { can_setup: true, can_moderate: false, can_export_zip: true } };
+    getInvitations.mockResolvedValue({ status: 200, data: { data: [], meta: { has_more: false } } });
+    getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
+    createInvitation.mockResolvedValue({ status: 201, data: { data: invitation } });
+    renderHost(<CollaboratorSetup albumId={draft.album_id} />);
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Email kolaborator' }), { target: { value: invitation.email } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Setup album' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ekspor ZIP' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Buat undangan' }));
+    await waitFor(() => expect(createInvitation).toHaveBeenCalledWith(draft.album_id, { email: invitation.email, can_setup: true, can_moderate: false, can_export_zip: true }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+    expect(await screen.findByText(invitation.email)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /billing|payment|pembayaran/i })).not.toBeInTheDocument();
   });
 });

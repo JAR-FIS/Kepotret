@@ -29,6 +29,7 @@ test('Host can create a draft and visit the FE-3 setup routes using contract-sha
     return route.fulfill({ status: 200, json: albumList });
   });
   await page.route(`**/api/v1/albums/${albumId}`, (route) => route.fulfill({ status: 200, json: { data: draft } }));
+  await page.route(`**/api/v1/albums/${albumId}/collaborator-invitations`, (route) => route.fulfill({ status: 200, json: { data: [], meta: { has_more: false } } }));
 
   await page.goto('/dashboard');
   await page.getByRole('link', { name: 'Buat Album' }).first().click();
@@ -47,6 +48,14 @@ test('Host can create a draft and visit the FE-3 setup routes using contract-sha
   ]) {
     await page.getByRole('navigation', { name: 'Persiapan album' }).getByRole('link', { name: new RegExp(`${label}$`) }).click();
     await expect(page).toHaveURL(`/album/${albumId}/setup/${step}`);
+    if (step === 'moderasi') {
+      const limit = page.getByRole('combobox', { name: 'Batas foto per peserta' });
+      await expect(limit.locator('option')).toHaveCount(7);
+    }
+    if (step === 'kolaborator') {
+      await expect(page.getByRole('heading', { name: 'Undang kolaborator' })).toBeVisible();
+      await expect(page.getByRole('checkbox')).toHaveCount(3);
+    }
   }
 
   await page.goto(`/album/${albumId}/siap`);
