@@ -29,6 +29,7 @@
     "api:check": "node ./scripts/check-openapi.mjs"
   },
   "dependencies": {
+    "@sentry/nextjs": "11.0.0",
     "lucide-react": "1.48.0",
     "motion": "13.4.2",
     "next": "16.3.6",
