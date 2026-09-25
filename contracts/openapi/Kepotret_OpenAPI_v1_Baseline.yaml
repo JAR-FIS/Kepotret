@@ -1,0 +1,5498 @@
+openapi: 3.1.0
+info:
+  title: Kepotret API
+  version: 1.0.0
+  description: Final Checkpoint 7 synchronized typed V1 contract aligned to PRD v0.5, BPMN/Use Case v0.5, DFD/ERD v0.5, Permission
+    v0.2, Architecture v0.3, Technology v0.2, Physical DB v0.3, and API Contract v0.1. Request/response DTOs, required fields,
+    enum/state semantics, success status codes, and security declarations are implementation constraints and the source for
+    generated TypeScript client/types.
+servers:
+- url: https://api.kepotret.id
+  description: Production
+- url: https://api-staging.kepotret.id
+  description: Staging
+- url: http://localhost:8080
+  description: Local
+tags:
+- name: Auth
+- name: Security
+- name: Admin Auth
+- name: Guest Entry
+- name: Album
+- name: Design
+- name: Collaboration
+- name: Capture
+- name: Guest Gallery
+- name: Moderation
+- name: Catalog
+- name: Payment
+- name: Export
+- name: Lifecycle
+- name: AI
+- name: Admin
+- name: Admin Sensitive
+- name: Admin Hold
+- name: Internal
+paths:
+  /api/v1/auth/google/start:
+    get:
+      tags:
+      - Auth
+      summary: Start Google OIDC + PKCE; safe return_to allowlist.
+      operationId: get_api_v1_auth_google_start
+      security: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RedirectEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Public
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/auth/google/callback:
+    get:
+      tags:
+      - Auth
+      summary: Verify code/state/nonce/PKCE; create User/AuthSession; redirect.
+      operationId: get_api_v1_auth_google_callback
+      security: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '302':
+          description: Redirect to allowlisted Kepotret frontend destination after successful callback.
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Google callback
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Return current ordinary user; no global HOST role.
+      operationId: get_api_v1_auth_me
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: User session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Revoke server session and clear cookie.
+      operationId: post_api_v1_auth_logout
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: User session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/security/csrf:
+    get:
+      tags:
+      - Security
+      summary: Issue session-bound CSRF token.
+      operationId: get_api_v1_security_csrf
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Browser session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/auth/login:
+    post:
+      tags:
+      - Admin Auth
+      summary: Verify admin email/password; issue short MFA challenge only.
+      operationId: post_api_v1_admin_auth_login
+      security: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '202':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF/Origin
+      x-kepotret-auth: Public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/auth/mfa/verify:
+    post:
+      tags:
+      - Admin Auth
+      summary: Verify TOTP; create AdminSession.
+      operationId: post_api_v1_admin_auth_mfa_verify
+      security:
+      - AdminMfaChallengeCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSessionEnvelope'
+      x-kepotret-protection: CSRF/Origin
+      x-kepotret-auth: MFA challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMfaVerifyRequest'
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/auth/me:
+    get:
+      tags:
+      - Admin Auth
+      summary: Return current admin session state.
+      operationId: get_api_v1_admin_auth_me
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSessionEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/auth/logout:
+    post:
+      tags:
+      - Admin Auth
+      summary: Revoke AdminSession and clear cookie.
+      operationId: post_api_v1_admin_auth_logout
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/guest/access/resolve:
+    post:
+      tags:
+      - Guest Entry
+      summary: Resolve guest link to safe album preview; never log secret.
+      operationId: post_api_v1_guest_access_resolve
+      security: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumSummaryEnvelope'
+      x-kepotret-protection: Origin/rate
+      x-kepotret-auth: Link secret
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestAccessResolveRequest'
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/guest/sessions:
+    post:
+      tags:
+      - Guest Entry
+      summary: Create GuestSession + GuestCredential; optional PIN.
+      operationId: post_api_v1_guest_sessions
+      security: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestSessionEnvelope'
+      x-kepotret-protection: Idempotency + rate
+      x-kepotret-auth: Link secret
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestSessionCreateRequest'
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /api/v1/guest/me:
+    get:
+      tags:
+      - Guest Entry
+      summary: Return guest/session album capabilities.
+      operationId: get_api_v1_guest_me
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestSessionEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Guest credential
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/guest/logout:
+    post:
+      tags:
+      - Guest Entry
+      summary: Revoke current GuestCredential; retain GuestSession.
+      operationId: post_api_v1_guest_logout
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Guest credential
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums:
+    post:
+      tags:
+      - Album
+      summary: Create draft album + FREE30 entitlement/quota.
+      operationId: post_api_v1_albums
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: Idempotency + CSRF
+      x-kepotret-auth: User session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumCreateRequest'
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/CsrfToken'
+    get:
+      tags:
+      - Album
+      summary: Cursor list of owned/collaborated albums.
+      operationId: get_api_v1_albums
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: User session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}:
+    get:
+      tags:
+      - Album
+      summary: Album detail after relationship authorization.
+      operationId: get_api_v1_albums_album_id
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: User session
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+    patch:
+      tags:
+      - Album
+      summary: Edit draft basics; timezone locked after first confirmation.
+      operationId: patch_api_v1_albums_album_id
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: CSRF + revision
+      x-kepotret-auth: Owner / can_setup in draft
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumPatchRequest'
+  /api/v1/albums/{album_id}/schedule:
+    put:
+      tags:
+      - Album
+      summary: Set initial schedule; server derives reveal/payment deadlines.
+      operationId: put_api_v1_albums_album_id_schedule
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleEnvelope'
+      x-kepotret-protection: CSRF + revision
+      x-kepotret-auth: Owner / can_setup in draft
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleWriteRequest'
+  /api/v1/albums/{album_id}/settings:
+    patch:
+      tags:
+      - Album
+      summary: Update gallery/moderation/guest settings.
+      operationId: patch_api_v1_albums_album_id_settings
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF + revision
+      x-kepotret-auth: Owner / can_setup as allowed
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumSettingsPatchRequest'
+  /api/v1/albums/{album_id}/access/pin:
+    put:
+      tags:
+      - Album
+      summary: Set/replace Argon2id PIN.
+      operationId: put_api_v1_albums_album_id_access_pin
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner; can_setup only while draft
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinSetRequest'
+    delete:
+      tags:
+      - Album
+      summary: Disable PIN.
+      operationId: delete_api_v1_albums_album_id_access_pin
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner; can_setup only while draft
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/design-assets/upload-authorizations:
+    post:
+      tags:
+      - Design
+      summary: Authorize direct private cover/design upload.
+      operationId: post_api_v1_albums_album_id_design_assets_upload_authorizations
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAuthorizationEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner / can_setup
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignAssetAuthorizeRequest'
+  /api/v1/albums/{album_id}/design-assets/{asset_id}/commit:
+    post:
+      tags:
+      - Design
+      summary: Verify and commit design asset.
+      operationId: post_api_v1_albums_album_id_design_assets_asset_id_commit
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner / can_setup
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignAssetCommitRequest'
+  /api/v1/albums/{album_id}/design:
+    patch:
+      tags:
+      - Design
+      summary: Select committed cover/template assets.
+      operationId: patch_api_v1_albums_album_id_design
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: CSRF + revision
+      x-kepotret-auth: Owner / can_setup
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignPatchRequest'
+  /api/v1/albums/{album_id}/review:
+    get:
+      tags:
+      - Album
+      summary: Server-side setup completeness review.
+      operationId: get_api_v1_albums_album_id_review
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner / can_setup
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/confirm-setup:
+    post:
+      tags:
+      - Album
+      summary: Final Host confirmation; persist confirmed setup snapshot; FREE→READY or PAID→PAYMENT_PENDING.
+      operationId: post_api_v1_albums_album_id_confirm_setup
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: Idempotency + CSRF
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmSetupRequest'
+      x-kepotret-rules:
+      - Owner only; persists confirmed_setup_revision, confirmed_schedule_version, confirmed_package_version_id (nullable
+        for FREE), setup_confirmed_at.
+      - First confirmation freezes first_confirmed_capture_start/timezone and fixed reschedule_cutoff_at.
+      - FREE becomes READY; paid choice becomes PAYMENT_PENDING until verified payment.
+  /api/v1/albums/{album_id}/sharing:
+    get:
+      tags:
+      - Album
+      summary: Return current guest URL/QR material.
+      operationId: get_api_v1_albums_album_id_sharing
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringUrlEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/access-link/rotate:
+    post:
+      tags:
+      - Album
+      summary: Rotate guest secret/access_version; prior-version GuestCredential becomes invalid on next request.
+      operationId: post_api_v1_albums_album_id_access_link_rotate
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringUrlEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      x-kepotret-rules:
+      - Owner only; increments access policy version and invalidates GuestCredential issued under prior access_version on
+        next request.
+      - GuestSession identity/history is retained.
+  /api/v1/albums/{album_id}/qr.pdf:
+    get:
+      tags:
+      - Album
+      summary: Generate small QR PDF on demand.
+      operationId: get_api_v1_albums_album_id_qr_pdf
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: QR PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                contentEncoding: binary
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/reschedule:
+    post:
+      tags:
+      - Album
+      summary: Owner-only reschedule before fixed cutoff; pending invoice provider work outside DB transaction; supersede
+        jobs.
+      operationId: post_api_v1_albums_album_id_reschedule
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleEnvelope'
+      x-kepotret-protection: CSRF + schedule version
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RescheduleRequest'
+      x-kepotret-rules:
+      - Owner only and server_now must be strictly before fixed reschedule_cutoff_at (exclusive 00:00 first-confirmed event
+        date).
+      - Replacement cannot be earlier than first_confirmed_capture_start and remains within three-calendar-month creation
+        limit.
+      - Pending provider invoice is resolved outside database transaction before final schedule commit.
+      - Successful existing entitlement remains valid; schedule_version changes supersede stale jobs.
+  /api/v1/albums/{album_id}/collaborators:
+    get:
+      tags:
+      - Collaboration
+      summary: List active collaborators.
+      operationId: get_api_v1_albums_album_id_collaborators
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollaboratorListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/collaborator-invitations:
+    post:
+      tags:
+      - Collaboration
+      summary: Create expiring one-time invite with three permission flags.
+      operationId: post_api_v1_albums_album_id_collaborator_invitations
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationEnvelope'
+      x-kepotret-protection: Idempotency + CSRF
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollaboratorInvitationCreateRequest'
+    get:
+      tags:
+      - Collaboration
+      summary: List invitation history/status.
+      operationId: get_api_v1_albums_album_id_collaborator_invitations
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/collaborator-invitations/{invitation_id}/accept:
+    post:
+      tags:
+      - Collaboration
+      summary: Verify Google email; atomically create membership/copy permissions.
+      operationId: post_api_v1_collaborator_invitations_invitation_id_accept
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollaboratorEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: User session + invite secret
+      parameters:
+      - name: invitation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/collaborator-invitations/{invitation_id}/revoke:
+    post:
+      tags:
+      - Collaboration
+      summary: Revoke pending invitation.
+      operationId: post_api_v1_collaborator_invitations_invitation_id_revoke
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner
+      parameters:
+      - name: invitation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/collaborators/{user_id}:
+    patch:
+      tags:
+      - Collaboration
+      summary: Update three permissions; increment permission_version.
+      operationId: patch_api_v1_albums_album_id_collaborators_user_id
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollaboratorEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollaboratorPermissionPatchRequest'
+    delete:
+      tags:
+      - Collaboration
+      summary: Revoke membership immediately; ordinary user session remains active.
+      operationId: delete_api_v1_albums_album_id_collaborators_user_id
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollaboratorEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/capture-readiness:
+    get:
+      tags:
+      - Capture
+      summary: Current server-time capture/quota readiness.
+      operationId: get_api_v1_albums_album_id_capture_readiness
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/capture-attempts:
+    post:
+      tags:
+      - Capture
+      summary: Atomic quota/session reservation before shutter.
+      operationId: post_api_v1_albums_album_id_capture_attempts
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureAttemptEnvelope'
+      x-kepotret-protection: Idempotency + CSRF
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureAttemptCreateRequest'
+  /api/v1/capture-attempts/{attempt_id}:
+    get:
+      tags:
+      - Capture
+      summary: Recovery/status for same guest attempt.
+      operationId: get_api_v1_capture_attempts_attempt_id
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureAttemptEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: attempt_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/capture-attempts/{attempt_id}/upload-authorization:
+    post:
+      tags:
+      - Capture
+      summary: Validate final JPEG metadata and issue short-lived R2 PUT.
+      operationId: post_api_v1_capture_attempts_attempt_id_upload_authorization
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAuthorizationEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: attempt_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadAuthorizationRequest'
+  /api/v1/capture-attempts/{attempt_id}/commit:
+    post:
+      tags:
+      - Capture
+      summary: Verify object/deadline; atomically create Photo and commit counters.
+      operationId: post_api_v1_capture_attempts_attempt_id_commit
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureAttemptEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: attempt_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureCommitRequest'
+  /api/v1/capture-attempts/{attempt_id}/release:
+    post:
+      tags:
+      - Capture
+      summary: Release reservation for retake/cancel.
+      operationId: post_api_v1_capture_attempts_attempt_id_release
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureAttemptEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: attempt_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/guest/gallery/photos:
+    get:
+      tags:
+      - Guest Gallery
+      summary: Visible revealed photos only; cursor sorting.
+      operationId: get_api_v1_guest_gallery_photos
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Guest credential
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/guest/gallery/photos/{photo_id}:
+    get:
+      tags:
+      - Guest Gallery
+      summary: Visible guest photo detail.
+      operationId: get_api_v1_guest_gallery_photos_photo_id
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/guest/gallery/photos/{photo_id}/like:
+    put:
+      tags:
+      - Guest Gallery
+      summary: Idempotent like-once; no unlike V1.
+      operationId: put_api_v1_guest_gallery_photos_photo_id_like
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/guest/gallery/photos/{photo_id}/download:
+    get:
+      tags:
+      - Guest Gallery
+      summary: Authorized download if album permits.
+      operationId: get_api_v1_guest_gallery_photos_photo_id_download
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Authorized short-lived Media Gateway delivery descriptor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringUrlEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/guest/gallery/photos/{photo_id}/share-link:
+    post:
+      tags:
+      - Guest Gallery
+      summary: Return deep-link using current AlbumAccessLink; no per-photo credential; recipient reauthorizes.
+      operationId: post_api_v1_guest_gallery_photos_photo_id_share_link
+      security:
+      - GuestCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Guest credential
+      parameters:
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      x-kepotret-rules:
+      - Uses current AlbumAccessLink/deep-link; no new per-photo credential/token.
+      - Recipient must satisfy current link/PIN/lifecycle authorization.
+  /api/v1/albums/{album_id}/photos:
+    get:
+      tags:
+      - Moderation
+      summary: Management gallery including allowed moderation states.
+      operationId: get_api_v1_albums_album_id_photos
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner / can_moderate
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/photos/{photo_id}:
+    get:
+      tags:
+      - Moderation
+      summary: Management photo detail.
+      operationId: get_api_v1_albums_album_id_photos_photo_id
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner / can_moderate
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+    delete:
+      tags:
+      - Moderation
+      summary: Soft delete; quota unchanged.
+      operationId: delete_api_v1_albums_album_id_photos_photo_id
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner / can_moderate
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/photos/{photo_id}/approve:
+    post:
+      tags:
+      - Moderation
+      summary: PENDING→PUBLISHED.
+      operationId: post_api_v1_albums_album_id_photos_photo_id_approve
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner / can_moderate
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/photos/{photo_id}/hide:
+    post:
+      tags:
+      - Moderation
+      summary: PUBLISHED→HIDDEN.
+      operationId: post_api_v1_albums_album_id_photos_photo_id_hide
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner / can_moderate
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/photos/{photo_id}/unhide:
+    post:
+      tags:
+      - Moderation
+      summary: HIDDEN→PUBLISHED.
+      operationId: post_api_v1_albums_album_id_photos_photo_id_unhide
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner / can_moderate
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/photos/{photo_id}/restore:
+    post:
+      tags:
+      - Moderation
+      summary: Restore same row before D+30; moderation status preserved.
+      operationId: post_api_v1_albums_album_id_photos_photo_id_restore
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Owner only
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/packages:
+    get:
+      tags:
+      - Catalog
+      summary: List saleable package versions.
+      operationId: get_api_v1_packages
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageOptionListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Public/User
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/package-options:
+    get:
+      tags:
+      - Catalog
+      summary: Album-filtered upgrade targets and payment-window state.
+      operationId: get_api_v1_albums_album_id_package_options
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageOptionListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/payments:
+    post:
+      tags:
+      - Payment
+      summary: Create initial/upgrade checkout; initial target must match confirmed setup snapshot; one active checkout per
+        album.
+      operationId: post_api_v1_albums_album_id_payments
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentEnvelope'
+      x-kepotret-protection: Idempotency + CSRF
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreateRequest'
+      x-kepotret-rules:
+      - Initial paid target must match current confirmed setup snapshot; stale/missing snapshot returns SETUP_RECONFIRM_REQUIRED.
+      - At most one active PENDING/PROCESSING local checkout per album.
+      - Upgrade target quota must be greater than current quota; no downgrade V1.
+      - Midtrans network calls occur outside database transactions.
+    get:
+      tags:
+      - Payment
+      summary: Album payment history.
+      operationId: get_api_v1_albums_album_id_payments
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/payments/{transaction_id}:
+    get:
+      tags:
+      - Payment
+      summary: Normalized PENDING/SUCCESS/FAILURE/EXPIRED status.
+      operationId: get_api_v1_payments_transaction_id
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/entitlement:
+    get:
+      tags:
+      - Payment
+      summary: Current quota/entitlement/cutoff summary.
+      operationId: get_api_v1_albums_album_id_entitlement
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/webhooks/midtrans:
+    post:
+      tags:
+      - Payment
+      summary: Durable receipt + verified normalized payment state.
+      operationId: post_api_v1_webhooks_midtrans
+      security:
+      - MidtransWebhook: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: Provider verification
+      x-kepotret-auth: Midtrans
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/exports:
+    post:
+      tags:
+      - Export
+      summary: Create async ZIP job; recovery window Owner-only.
+      operationId: post_api_v1_albums_album_id_exports
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportEnvelope'
+      x-kepotret-protection: Idempotency + CSRF
+      x-kepotret-auth: Owner / can_export_zip
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/CsrfToken'
+    get:
+      tags:
+      - Export
+      summary: Authorized export history.
+      operationId: get_api_v1_albums_album_id_exports
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner / can_export_zip
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/exports/{export_job_id}:
+    get:
+      tags:
+      - Export
+      summary: Job status/progress.
+      operationId: get_api_v1_exports_export_job_id
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Requester with current permission
+      parameters:
+      - name: export_job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/exports/{export_job_id}/download:
+    get:
+      tags:
+      - Export
+      summary: Reauthorize READY artifact; media gateway delivery.
+      operationId: get_api_v1_exports_export_job_id_download
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '200':
+          description: Authorized short-lived Media Gateway delivery descriptor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringUrlEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Requester with current permission
+      parameters:
+      - name: export_job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      x-kepotret-rules:
+      - Current permission/lifecycle/export_revision rechecked at delivery.
+      - Expired artifact returns EXPORT_EXPIRED/Gone; READY TTL max 24h and capped by lifecycle.
+      - Recovery D+30..D+37 is Owner-only.
+  /api/v1/albums/{album_id}/lifecycle:
+    get:
+      tags:
+      - Lifecycle
+      summary: Authoritative D+30/D+37/D+51 lifecycle projection.
+      operationId: get_api_v1_albums_album_id_lifecycle
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/recovery-access:
+    post:
+      tags:
+      - Lifecycle
+      summary: Explicit Owner recovery during D+30..D+37; never extends D+37.
+      operationId: post_api_v1_albums_album_id_recovery_access
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEnvelope'
+      x-kepotret-protection: Idempotency + CSRF
+      x-kepotret-auth: Owner
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/ai/assistant:
+    post:
+      tags:
+      - AI
+      summary: Read-only assistant; backend resolves actor/context; no mutation.
+      operationId: post_api_v1_ai_assistant
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIAssistantEnvelope'
+      x-kepotret-protection: CSRF/rate as applicable
+      x-kepotret-auth: Context-dependent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIAssistantRequest'
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      x-kepotret-rules:
+      - Read-only context; no mutation tools; no photo bytes/URLs sent to Gemini V1.
+      - Backend uses official Go SDK google.golang.org/genai behind server adapter; exact model is server configuration.
+      - No permanent chat/answer persistence.
+  /api/v1/admin/overview:
+    get:
+      tags:
+      - Admin
+      summary: Operational aggregates without private media.
+      operationId: get_api_v1_admin_overview
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/users:
+    get:
+      tags:
+      - Admin
+      summary: Cursor/filter user list.
+      operationId: get_api_v1_admin_users
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/users/{user_id}:
+    get:
+      tags:
+      - Admin
+      summary: Operational user detail.
+      operationId: get_api_v1_admin_users_user_id
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/users/{user_id}/suspend:
+    post:
+      tags:
+      - Admin
+      summary: Suspend user + revoke sessions; preserve albums/payments.
+      operationId: post_api_v1_admin_users_user_id_suspend
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/users/{user_id}/reactivate:
+    post:
+      tags:
+      - Admin
+      summary: Reactivate suspended user.
+      operationId: post_api_v1_admin_users_user_id_reactivate
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/users/{user_id}/revoke-sessions:
+    post:
+      tags:
+      - Admin
+      summary: Revoke ordinary sessions without account suspension.
+      operationId: post_api_v1_admin_users_user_id_revoke_sessions
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/albums:
+    get:
+      tags:
+      - Admin
+      summary: Operational album list/filter; no implicit media access.
+      operationId: get_api_v1_admin_albums
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/albums/{album_id}:
+    get:
+      tags:
+      - Admin
+      summary: Operational album detail without private photos.
+      operationId: get_api_v1_admin_albums_album_id
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/payments:
+    get:
+      tags:
+      - Admin
+      summary: Payment operations list/filter.
+      operationId: get_api_v1_admin_payments
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/payments/{transaction_id}:
+    get:
+      tags:
+      - Admin
+      summary: Payment/receipt/entitlement diagnostic detail.
+      operationId: get_api_v1_admin_payments_transaction_id
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/payments/{transaction_id}/reconcile:
+    post:
+      tags:
+      - Admin
+      summary: Provider re-check only; never manual success/entitlement.
+      operationId: post_api_v1_admin_payments_transaction_id_reconcile
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: transaction_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/packages:
+    get:
+      tags:
+      - Admin
+      summary: Full catalog/version history.
+      operationId: get_api_v1_admin_packages
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      tags:
+      - Admin
+      summary: Create package identity.
+      operationId: post_api_v1_admin_packages
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackageCreateRequest'
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/packages/{package_id}/versions:
+    post:
+      tags:
+      - Admin
+      summary: Create immutable price/quota version.
+      operationId: post_api_v1_admin_packages_package_id_versions
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: Idempotency + CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: package_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackageVersionCreateRequest'
+  /api/v1/admin/package-versions/{version_id}/sale-status:
+    patch:
+      tags:
+      - Admin
+      summary: Enable/retire sale without changing historical version fields.
+      operationId: patch_api_v1_admin_package_versions_version_id_sale_status
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackageSaleStatusPatchRequest'
+  /api/v1/admin/operational-configs:
+    get:
+      tags:
+      - Admin
+      summary: Allowlisted non-secret runtime configuration.
+      operationId: get_api_v1_admin_operational_configs
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalConfigListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/operational-configs/{key}:
+    patch:
+      tags:
+      - Admin
+      summary: Versioned config update.
+      operationId: patch_api_v1_admin_operational_configs_key
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalConfigEnvelope'
+      x-kepotret-protection: CSRF + expected_version
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationalConfigPatchRequest'
+  /api/v1/admin/issues:
+    get:
+      tags:
+      - Admin
+      summary: OperationalIssue list/filter.
+      operationId: get_api_v1_admin_issues
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalIssueListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/issues/{issue_id}:
+    get:
+      tags:
+      - Admin
+      summary: OperationalIssue safe detail.
+      operationId: get_api_v1_admin_issues_issue_id
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalIssueEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/issues/{issue_id}/acknowledge:
+    post:
+      tags:
+      - Admin
+      summary: OPEN→ACKNOWLEDGED + audit.
+      operationId: post_api_v1_admin_issues_issue_id_acknowledge
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalIssueEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/issues/{issue_id}/resolve:
+    post:
+      tags:
+      - Admin
+      summary: ACKNOWLEDGED/OPEN→RESOLVED + audit.
+      operationId: post_api_v1_admin_issues_issue_id_resolve
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalIssueEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminReasonRequest'
+  /api/v1/admin/audit-logs:
+    get:
+      tags:
+      - Admin
+      summary: Read-only append-only audit list/filter.
+      operationId: get_api_v1_admin_audit_logs
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/audit-logs/{audit_id}:
+    get:
+      tags:
+      - Admin
+      summary: Read-only audit detail.
+      operationId: get_api_v1_admin_audit_logs_audit_id
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: audit_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/admins:
+    get:
+      tags:
+      - Admin
+      summary: Read-only V1 admin roster; provisioning/reset via CLI only.
+      operationId: get_api_v1_admin_admins
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/albums/{album_id}/sensitive-access-grants:
+    post:
+      tags:
+      - Admin Sensitive
+      summary: Create ~15m view-only media grant bound to AdminSession.
+      operationId: post_api_v1_admin_albums_album_id_sensitive_access_grants
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SensitiveGrantEnvelope'
+      x-kepotret-protection: CSRF + step-up
+      x-kepotret-auth: Admin session + TOTP
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SensitiveAccessGrantCreateRequest'
+  /api/v1/admin/sensitive-access-grants/{grant_id}:
+    delete:
+      tags:
+      - Admin Sensitive
+      summary: Revoke own/authorized temporary grant.
+      operationId: delete_api_v1_admin_sensitive_access_grants_grant_id
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SensitiveGrantEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: grant_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/albums/{album_id}/operational-hold:
+    post:
+      tags:
+      - Admin Hold
+      summary: Close online access/capture/share/export without deleting data or changing schedule.
+      operationId: post_api_v1_admin_albums_album_id_operational_hold
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalHoldEnvelope'
+      x-kepotret-protection: CSRF + step-up
+      x-kepotret-auth: Admin session + TOTP
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminReasonRequest'
+    delete:
+      tags:
+      - Admin Hold
+      summary: Release hold; normal current schedule/lifecycle still governs.
+      operationId: delete_api_v1_admin_albums_album_id_operational_hold
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalHoldEnvelope'
+      x-kepotret-protection: CSRF + step-up
+      x-kepotret-auth: Admin session + TOTP
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /internal/v1/scheduler/dispatch:
+    post:
+      tags:
+      - Internal
+      summary: Dispatch due PostgreSQL scheduled_jobs in batches.
+      operationId: post_internal_v1_scheduler_dispatch
+      security:
+      - GoogleServiceOIDC: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataEnvelope'
+      x-kepotret-protection: IAM
+      x-kepotret-auth: GCP service OIDC
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /internal/v1/jobs/{job_id}/execute:
+    post:
+      tags:
+      - Internal
+      summary: Claim/execute idempotent job from DB state.
+      operationId: post_internal_v1_jobs_job_id_execute
+      security:
+      - GoogleServiceOIDC: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobExecutionEnvelope'
+      x-kepotret-protection: IAM + lease
+      x-kepotret-auth: GCP service OIDC
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /internal/v1/media/authorize:
+    post:
+      tags:
+      - Internal
+      summary: Validate media ticket and current authorization; return safe object locator/policy.
+      operationId: post_internal_v1_media_authorize
+      security:
+      - MediaGatewayHMAC: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaAuthorizationEnvelope'
+      x-kepotret-protection: HMAC + freshness
+      x-kepotret-auth: Cloudflare Worker HMAC
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaAuthorizeRequest'
+  /api/v1/albums/{album_id}/photos/{photo_id}/download:
+    get:
+      tags:
+      - Moderation
+      summary: Owner individual download through Media Gateway; allowed in normal access and explicit D+30..D+37 recovery
+        while media exists.
+      operationId: get_api_v1_albums_album_id_photos_photo_id_download
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Authorized short-lived Media Gateway delivery descriptor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringUrlEnvelope'
+      x-kepotret-auth: Owner only
+      x-kepotret-protection: '-'
+      x-kepotret-rules:
+      - Allowed during normal access and explicit Owner recovery D+30..D+37 while media exists.
+      - WO/EO can_moderate and can_export_zip do not grant individual photo download.
+      - Delivery uses current-authorization Media Gateway; D+37 remains fixed.
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+components:
+  securitySchemes:
+    UserCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-kepotret_session
+    GuestCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-kepotret_guest
+    AdminCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-kepotret_admin
+    MidtransWebhook:
+      type: http
+      scheme: bearer
+      description: Logical placeholder for provider-specific verified Midtrans webhook authentication. Browser cookies/CSRF
+        are not used; implementation must verify the actual Midtrans contract before accepting business state.
+    GoogleServiceOIDC:
+      type: http
+      scheme: bearer
+      bearerFormat: Google OIDC service identity
+    MediaGatewayHMAC:
+      type: apiKey
+      in: header
+      name: X-Kepotret-Signature
+      description: HMAC service authentication is accompanied by service identity and timestamp/freshness headers; signature
+        covers method, path, timestamp and body digest.
+    AdminMfaChallengeCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-kepotret_admin_mfa_challenge
+      description: Short-lived pre-session MFA challenge cookie issued after valid admin password; not an AdminSession.
+  schemas:
+    Error:
+      type: object
+      required:
+      - code
+      - message
+      - request_id
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        request_id:
+          type: string
+          format: uuid
+        details: {}
+    ErrorResponse:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          $ref: '#/components/schemas/Error'
+    PaginationMeta:
+      type: object
+      required:
+      - has_more
+      properties:
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        has_more:
+          type: boolean
+    AlbumReadiness:
+      type: string
+      enum:
+      - DRAFT
+      - PAYMENT_PENDING
+      - READY
+      description: Public readiness dimension; capture/reveal state remain separate.
+    PaymentPublicStatus:
+      type: string
+      enum:
+      - PENDING
+      - SUCCESS
+      - FAILURE
+      - EXPIRED
+    ExportStatus:
+      type: string
+      enum:
+      - QUEUED
+      - RUNNING
+      - READY
+      - FAILED
+      - INVALIDATED
+      - EXPIRED
+    ActorCapability:
+      type: string
+      enum:
+      - can_setup
+      - can_moderate
+      - can_export_zip
+    ModerationStatus:
+      type: string
+      enum:
+      - PENDING
+      - PUBLISHED
+      - HIDDEN
+    CaptureState:
+      type: string
+      enum:
+      - NOT_STARTED
+      - OPEN
+      - CLOSED
+    RevealState:
+      type: string
+      enum:
+      - HIDDEN
+      - REVEALED
+    PaymentTransactionStatus:
+      type: string
+      enum:
+      - PENDING
+      - PROCESSING
+      - SUCCESS
+      - FAILURE
+      - EXPIRED
+    ScheduledJobStatus:
+      type: string
+      enum:
+      - SCHEDULED
+      - DISPATCHED
+      - RUNNING
+      - SUCCEEDED
+      - FAILED
+      - SUPERSEDED
+    OperationalIssueStatus:
+      type: string
+      enum:
+      - OPEN
+      - ACKNOWLEDGED
+      - RESOLVED
+    UserSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        user_id: &id001
+          type: string
+          format: uuid
+        email:
+          type: string
+        display_name:
+          type:
+          - string
+          - 'null'
+      required:
+      - user_id
+      - email
+    AdminSessionState:
+      type: object
+      additionalProperties: false
+      properties:
+        admin_user_id: *id001
+        mfa_verified: &id004
+          type: boolean
+        session_expires_at: &id002
+          type: string
+          format: date-time
+      required:
+      - admin_user_id
+      - mfa_verified
+      - session_expires_at
+    GuestSessionSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        guest_session_id: *id001
+        album_id: *id001
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        created_at: *id002
+      required:
+      - guest_session_id
+      - album_id
+      - display_name
+      - created_at
+    AlbumSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        readiness:
+          $ref: '#/components/schemas/AlbumReadiness'
+        capture_state:
+          $ref: '#/components/schemas/CaptureState'
+        reveal_state:
+          $ref: '#/components/schemas/RevealState'
+        setup_revision: &id003
+          type: integer
+        schedule_version: *id003
+      required:
+      - album_id
+      - readiness
+      - capture_state
+      - reveal_state
+      - setup_revision
+      - schedule_version
+    AlbumDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        readiness:
+          $ref: '#/components/schemas/AlbumReadiness'
+        capture_state:
+          $ref: '#/components/schemas/CaptureState'
+        reveal_state:
+          $ref: '#/components/schemas/RevealState'
+        setup_revision: *id003
+        schedule_version: *id003
+        access_version: *id003
+        export_revision: *id003
+        confirmed_setup_revision:
+          type:
+          - integer
+          - 'null'
+        confirmed_schedule_version:
+          type:
+          - integer
+          - 'null'
+        confirmed_package_version_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        setup_confirmed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        guest_count_final:
+          type:
+          - integer
+          - 'null'
+      required:
+      - album_id
+      - readiness
+      - capture_state
+      - reveal_state
+      - setup_revision
+      - schedule_version
+      - access_version
+      - export_revision
+    AlbumSchedule:
+      type: object
+      additionalProperties: false
+      properties:
+        capture_start: *id002
+        capture_end: *id002
+        reveal_delay_days:
+          type: integer
+          enum:
+          - 1
+          - 3
+          - 5
+          - 7
+        reveal_at: *id002
+        payment_cutoff_at: *id002
+        schedule_version: *id003
+        first_confirmed_capture_start:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        first_confirmed_timezone:
+          type:
+          - string
+          - 'null'
+        reschedule_cutoff_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - capture_start
+      - capture_end
+      - reveal_delay_days
+      - reveal_at
+      - payment_cutoff_at
+      - schedule_version
+    CollaboratorPermissions:
+      type: object
+      additionalProperties: false
+      properties:
+        can_setup: *id004
+        can_moderate: *id004
+        can_export_zip: *id004
+      required:
+      - can_setup
+      - can_moderate
+      - can_export_zip
+    CollaboratorSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        user_id: *id001
+        permission_version: *id003
+        permissions:
+          $ref: '#/components/schemas/CollaboratorPermissions'
+      required:
+      - user_id
+      - permission_version
+      - permissions
+    InvitationSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        invitation_id: *id001
+        email:
+          type: string
+        permissions:
+          $ref: '#/components/schemas/CollaboratorPermissions'
+        expires_at: *id002
+      required:
+      - invitation_id
+      - email
+      - permissions
+      - expires_at
+    CaptureAttempt:
+      type: object
+      additionalProperties: false
+      properties:
+        attempt_id: *id001
+        album_id: *id001
+        status:
+          type: string
+        expires_at: *id002
+        upload_authorized_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        committed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - attempt_id
+      - album_id
+      - status
+      - expires_at
+    PhotoSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        photo_id: *id001
+        album_id: *id001
+        guest_session_id: *id001
+        moderation_status:
+          $ref: '#/components/schemas/ModerationStatus'
+        like_count: *id003
+        created_at: *id002
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - photo_id
+      - album_id
+      - guest_session_id
+      - moderation_status
+      - like_count
+      - created_at
+    PackageOption:
+      type: object
+      additionalProperties: false
+      properties:
+        package_version_id: *id001
+        price_amount:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum:
+          - IDR
+        quota_total:
+          type: integer
+          minimum: 1
+          maximum: 10000
+      required:
+      - package_version_id
+      - price_amount
+      - currency
+      - quota_total
+    PaymentTransaction:
+      type: object
+      additionalProperties: false
+      properties:
+        transaction_id: *id001
+        album_id: *id001
+        status:
+          $ref: '#/components/schemas/PaymentTransactionStatus'
+        package_version_id: *id001
+        amount:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum:
+          - IDR
+        payment_cutoff_at: *id002
+        provider_expires_at: *id002
+        paid_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - transaction_id
+      - album_id
+      - status
+      - package_version_id
+      - amount
+      - currency
+      - payment_cutoff_at
+      - provider_expires_at
+    EntitlementSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        quota_total:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        reserved_count:
+          type: integer
+          minimum: 0
+        committed_count:
+          type: integer
+          minimum: 0
+        payment_cutoff_at: *id002
+      required:
+      - album_id
+      - quota_total
+      - reserved_count
+      - committed_count
+      - payment_cutoff_at
+    ExportJob:
+      type: object
+      additionalProperties: false
+      properties:
+        export_job_id: *id001
+        album_id: *id001
+        status:
+          $ref: '#/components/schemas/ExportStatus'
+        source_export_revision: *id003
+        output_expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - export_job_id
+      - album_id
+      - status
+      - source_export_revision
+    LifecycleProjection:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        recovery_access_granted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        normal_access_end_at: *id002
+        recovery_end_at: *id002
+        backup_cleanup_deadline_at: *id002
+      required:
+      - album_id
+      - normal_access_end_at
+      - recovery_end_at
+      - backup_cleanup_deadline_at
+    SensitiveAccessGrant:
+      type: object
+      additionalProperties: false
+      properties:
+        grant_id: *id001
+        album_id: *id001
+        reason:
+          type: string
+          minLength: 1
+        expires_at: *id002
+        view_only:
+          type: boolean
+          const: true
+      required:
+      - grant_id
+      - album_id
+      - reason
+      - expires_at
+      - view_only
+    OperationalHold:
+      type: object
+      additionalProperties: false
+      properties:
+        hold_id: *id001
+        album_id: *id001
+        reason:
+          type: string
+          minLength: 1
+        created_at: *id002
+        released_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - hold_id
+      - album_id
+      - reason
+      - created_at
+    OperationalConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        config_key:
+          type: string
+        typed_value: {}
+        version:
+          type: integer
+          minimum: 1
+      required:
+      - config_key
+      - typed_value
+      - version
+    OperationalIssue:
+      type: object
+      additionalProperties: false
+      properties:
+        issue_id: *id001
+        status:
+          $ref: '#/components/schemas/OperationalIssueStatus'
+        issue_type:
+          type: string
+        severity:
+          type: string
+        summary:
+          type: string
+      required:
+      - issue_id
+      - status
+      - issue_type
+      - severity
+      - summary
+    JobExecutionResult:
+      type: object
+      additionalProperties: false
+      properties:
+        job_id: *id001
+        status:
+          $ref: '#/components/schemas/ScheduledJobStatus'
+        lease_until:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - job_id
+      - status
+    MediaAuthorizationDecision:
+      type: object
+      additionalProperties: false
+      properties:
+        decision:
+          type: string
+          enum:
+          - ALLOW
+          - DENY
+        object_locator:
+          type:
+          - string
+          - 'null'
+          description: Safe internal object locator; never a permanent public R2 URL.
+      required:
+      - decision
+    AdminLoginRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+      - email
+      - password
+    AdminMfaVerifyRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        totp_code:
+          type: string
+          minLength: 6
+          maxLength: 12
+      required:
+      - totp_code
+    GuestAccessResolveRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        link_id: *id001
+        access_secret:
+          type: string
+          minLength: 1
+      required:
+      - link_id
+      - access_secret
+    GuestSessionCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        pin:
+          type:
+          - string
+          - 'null'
+      required:
+      - display_name
+    AlbumCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        timezone:
+          type: string
+          description: IANA timezone; defaults to Asia/Jakarta when omitted.
+    AlbumPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        timezone:
+          type: string
+      required:
+      - expected_revision
+    ScheduleWriteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        capture_start: *id002
+        capture_end: *id002
+        reveal_delay_days:
+          type: integer
+          enum:
+          - 1
+          - 3
+          - 5
+          - 7
+      required:
+      - expected_revision
+      - capture_start
+      - capture_end
+      - reveal_delay_days
+    AlbumSettingsPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        per_guest_limit:
+          type: integer
+          enum:
+          - 5
+          - 10
+          - 30
+          - 50
+          - 70
+          - 100
+      required:
+      - expected_revision
+    PinSetRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        pin:
+          type: string
+          minLength: 1
+      required:
+      - pin
+    DesignAssetAuthorizeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_type:
+          type: string
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+          minimum: 1
+      required:
+      - asset_type
+      - content_type
+      - size_bytes
+    DesignAssetCommitRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+    DesignPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        cover_asset_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      required:
+      - expected_revision
+    ConfirmSetupRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_setup_revision:
+          type: integer
+          minimum: 1
+      required:
+      - expected_setup_revision
+    RescheduleRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_schedule_version:
+          type: integer
+          minimum: 1
+        capture_start: *id002
+        capture_end: *id002
+        reveal_delay_days:
+          type: integer
+          enum:
+          - 1
+          - 3
+          - 5
+          - 7
+      required:
+      - expected_schedule_version
+      - capture_start
+      - capture_end
+      - reveal_delay_days
+    CollaboratorInvitationCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+        can_setup: *id004
+        can_moderate: *id004
+        can_export_zip: *id004
+      required:
+      - email
+      - can_setup
+      - can_moderate
+      - can_export_zip
+    CollaboratorPermissionPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        can_setup: *id004
+        can_moderate: *id004
+        can_export_zip: *id004
+      required:
+      - can_setup
+      - can_moderate
+      - can_export_zip
+    CaptureAttemptCreateRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+    UploadAuthorizationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        content_type:
+          type: string
+          enum:
+          - image/jpeg
+        size_bytes:
+          type: integer
+          minimum: 1
+          maximum: 700000
+      required:
+      - content_type
+      - size_bytes
+    CaptureCommitRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+    PaymentCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        package_version_id: *id001
+      required:
+      - package_version_id
+    AIMessage:
+      type: object
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+          enum:
+          - user
+          - assistant
+        content:
+          type: string
+          maxLength: 2000
+      required:
+      - role
+      - content
+    AIAssistantRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        recent_turns:
+          type: array
+          maxItems: 6
+          items:
+            $ref: '#/components/schemas/AIMessage'
+      required:
+      - message
+    PackageCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+      required:
+      - code
+      - name
+    PackageVersionCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        price_amount:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum:
+          - IDR
+        quota_total:
+          type: integer
+          minimum: 1
+          maximum: 10000
+      required:
+      - price_amount
+      - currency
+      - quota_total
+    PackageSaleStatusPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sale_enabled: *id004
+      required:
+      - sale_enabled
+    OperationalConfigPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        typed_value: {}
+      required:
+      - expected_version
+      - typed_value
+    AdminReasonRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    SensitiveAccessGrantCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    MediaAuthorizeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        media_ticket:
+          type: string
+          minLength: 1
+      required:
+      - media_ticket
+    UserEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/UserSummary'
+      required:
+      - data
+    AdminSessionEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminSessionState'
+      required:
+      - data
+    GuestSessionEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/GuestSessionSummary'
+      required:
+      - data
+    AlbumEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AlbumDetail'
+      required:
+      - data
+    AlbumSummaryEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AlbumSummary'
+      required:
+      - data
+    ScheduleEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AlbumSchedule'
+      required:
+      - data
+    CollaboratorEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/CollaboratorSummary'
+      required:
+      - data
+    InvitationEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/InvitationSummary'
+      required:
+      - data
+    CaptureAttemptEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/CaptureAttempt'
+      required:
+      - data
+    PhotoEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/PhotoSummary'
+      required:
+      - data
+    PackageOptionEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/PackageOption'
+      required:
+      - data
+    PaymentEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/PaymentTransaction'
+      required:
+      - data
+    EntitlementEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/EntitlementSummary'
+      required:
+      - data
+    ExportEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/ExportJob'
+      required:
+      - data
+    LifecycleEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/LifecycleProjection'
+      required:
+      - data
+    SensitiveGrantEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/SensitiveAccessGrant'
+      required:
+      - data
+    OperationalHoldEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/OperationalHold'
+      required:
+      - data
+    OperationalConfigEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/OperationalConfig'
+      required:
+      - data
+    OperationalIssueEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/OperationalIssue'
+      required:
+      - data
+    JobExecutionEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/JobExecutionResult'
+      required:
+      - data
+    MediaAuthorizationEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/MediaAuthorizationDecision'
+      required:
+      - data
+    AlbumListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlbumSummary'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    CollaboratorListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollaboratorSummary'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    InvitationListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvitationSummary'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    PhotoListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhotoSummary'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    PackageOptionListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PackageOption'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    PaymentListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentTransaction'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    ExportListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportJob'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    OperationalConfigListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperationalConfig'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    OperationalIssueListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperationalIssue'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    EmptyDataEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+      required:
+      - data
+    CsrfEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            csrf_token:
+              type: string
+          required:
+          - csrf_token
+      required:
+      - data
+    RedirectEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            redirect_url:
+              type: string
+          required:
+          - redirect_url
+      required:
+      - data
+    StringUrlEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            url:
+              type: string
+          required:
+          - url
+      required:
+      - data
+    UploadAuthorizationEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            upload_url:
+              type: string
+            expires_at: *id002
+            object_key:
+              type: string
+          required:
+          - upload_url
+          - expires_at
+          - object_key
+      required:
+      - data
+    AIAssistantEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            answer:
+              type: string
+          required:
+          - answer
+      required:
+      - data
+  responses:
+    BadRequest:
+      description: Malformed request/contract
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication invalid or expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Authenticated actor lacks permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found or intentionally concealed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Business/state conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Semantically invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    RateLimited:
+      description: Rate limited
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Gone:
+      description: Resource/artifact is expired or permanently gone
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: Required dependency/service is temporarily unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Optional client correlation UUID; server may replace invalid values.
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Operation-scoped retry identity. Same key + different payload returns conflict.
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Required for state-changing browser-cookie requests.
+x-kepotret-checkpoint: 7
+x-kepotret-physical-table-count: 42
+x-kepotret-upstream-baselines:
+  prd: v0.5 Final
+  bpmn_use_case: v0.5 Final
+  dfd_erd: v0.5 Final
+  permission: v0.2 Final
+  architecture: v0.3 Final
+  technology: v0.2 Final
+  physical_database: v0.3 Final
+  api_contract: v0.1 Final
+x-kepotret-contract-maturity: typed-candidate
+x-kepotret-generated-client-source: true
+x-kepotret-validation-stage: '7.3'
+x-kepotret-final-lock: false
+x-kepotret-status: PASS — API CONTRACT + OPENAPI V1 SYNCHRONIZED

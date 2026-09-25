@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+
+/* Platform-neutral foundation tokens; authoritative Kepotret design tokens are pending. */
+:root {
+  --color-surface: Canvas;
+  --color-content: CanvasText;
+  --color-border: ButtonBorder;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-content);
+}
