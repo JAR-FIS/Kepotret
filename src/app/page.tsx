@@ -1,9 +1,15 @@
-import { StatusMessage } from '@/components/ui/status-message';
+import type { Metadata } from 'next';
+import { getLocale } from 'next-intl/server';
 
-export default function HomePage() {
-  return (
-    <main>
-      <StatusMessage>Frontend foundation is ready.</StatusMessage>
-    </main>
-  );
+import { H01Page } from '@/features/marketing/components/h01-page';
+import type { Locale } from '@/features/marketing/content';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: { url: '/' },
+};
+
+export default async function HomePage() {
+  const locale = await getLocale();
+  return <H01Page locale={locale as Locale} />;
 }

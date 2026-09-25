@@ -2,19 +2,34 @@
 
 import { NextIntlClientProvider } from 'next-intl';
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import en from '@/messages/en.json';
 import id from '@/messages/id.json';
 
 export type Locale = 'id' | 'en';
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocale] = useState<Locale>('id');
+export function LocaleProvider({
+  children,
+  initialLocale = 'id',
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
+  const router = useRouter();
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const messages = locale === 'id' ? id : en;
 
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  const setLocale = (nextLocale: Locale) => {
+    if (nextLocale === locale) return;
+    setLocaleState(nextLocale);
+    document.cookie = `kepotret-locale=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    router.refresh();
+  };
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

@@ -69,13 +69,14 @@ describe('shared feedback primitives', () => {
 });
 
 describe('disclosure and media primitives', () => {
-  it('uses native details/summary disclosure semantics', () => {
+  it('uses an accessible button disclosure', () => {
     render(<Disclosure title="More information">Expanded details.</Disclosure>);
-    const summary = screen.getByText('More information');
-    const details = summary.closest('details');
-    expect(details).not.toHaveAttribute('open');
-    fireEvent.click(summary);
-    expect(details).toHaveAttribute('open');
+    const trigger = screen.getByRole('button', { name: 'More information' });
+    const panelId = trigger.getAttribute('aria-controls');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(document.getElementById(panelId!)).not.toBeVisible();
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('Expanded details.')).toBeVisible();
   });
 
