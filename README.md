@@ -1,6 +1,6 @@
 # Kepotret frontend
 
-This repository contains the Kepotret V1 frontend foundation (FE-0). Product features are intentionally not implemented in this bootstrap.
+This repository contains the Kepotret V1 frontend foundation and shared FE-1 UI primitives. Product features are intentionally not implemented in this bootstrap.
 
 ## Local development
 
@@ -33,3 +33,12 @@ operations remain isolated under `src/lib/api/generated/internal`.
 pnpm api:generate
 pnpm api:check
 ```
+
+## Optional error telemetry
+
+The Sentry SDK is installed, but telemetry is disabled unless both
+`NEXT_PUBLIC_SENTRY_ENABLED=true` and `NEXT_PUBLIC_SENTRY_DSN` are supplied in
+the build/runtime environment. No Sentry project values or credentials are
+committed. The baseline disables traces, request bodies, cookies, headers,
+query parameters, user identification, and sensitive event fields. Source map
+upload is not configured; it can be enabled after a Sentry project is provisioned.
