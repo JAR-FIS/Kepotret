@@ -91,8 +91,13 @@ test('guest completes camera capture, review and direct upload at common mobile 
   });
   await page.route(`**/api/v1/capture-attempts/${attemptId}/upload-authorization`, (route) => route.fulfill({ status: 200, json: { data: { upload_url: 'https://upload.test/object', expires_at: '2026-09-27T01:00:00Z', object_key: 'private/test' } } }));
   let uploadedType = '';
+  let recoveryChecks = 0;
   await page.route('https://upload.test/object', async (route) => { uploadedType = route.request().headers()['content-type']; await route.fulfill({ status: 200 }); });
-  await page.route(`**/api/v1/capture-attempts/${attemptId}/commit`, (route) => route.fulfill({ status: 201, json: { data: { attempt_id: attemptId, album_id: albumId, status: 'COMMITTED', expires_at: '2026-09-27T01:00:00Z', committed_at: '2026-09-27T00:01:00Z' } } }));
+  await page.route(`**/api/v1/capture-attempts/${attemptId}/commit`, (route) => route.abort());
+  await page.route(`**/api/v1/capture-attempts/${attemptId}`, (route) => {
+    recoveryChecks += 1;
+    return route.fulfill({ status: 200, json: { data: { attempt_id: attemptId, album_id: albumId, status: 'COMMITTED', expires_at: '2026-09-27T01:00:00Z', committed_at: '2026-09-27T00:01:00Z' } } });
+  });
 
   await page.setViewportSize({ width: 320, height: 850 });
   await page.goto(`/j/${linkId}#fragment-secret`);
@@ -112,6 +117,7 @@ test('guest completes camera capture, review and direct upload at common mobile 
   expect(await page.evaluate(() => location.hash)).toBe('');
   expect(await page.evaluate(() => (window.captureTrace?.indexOf('reserved') ?? -1) < (window.captureTrace?.indexOf('frame-drawn') ?? -1))).toBe(true);
   expect(uploadedType).toBe('image/jpeg');
+  expect(recoveryChecks).toBe(1);
 });
 
 test('camera denial and offline-before-shutter do not reserve or capture a frame', async ({ page }) => {

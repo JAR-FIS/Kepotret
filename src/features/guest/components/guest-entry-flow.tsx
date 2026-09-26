@@ -242,8 +242,14 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
       const uploadData = authorization.data.data;
       const put = await fetch(uploadData.upload_url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: finalJpeg });
       if (!put.ok) throw new Error('put');
-      const commit = await postApiV1CaptureAttemptsAttemptIdCommit(attempt.attemptId, {}, { headers });
-      if (commit.status !== 201) {
+      let committed = false;
+      try {
+        const commit = await postApiV1CaptureAttemptsAttemptIdCommit(attempt.attemptId, {}, { headers });
+        committed = commit.status === 201 && commit.data.data.status === 'COMMITTED';
+      } catch {
+        committed = false;
+      }
+      if (!committed) {
         const recovered = await getApiV1CaptureAttemptsAttemptId(attempt.attemptId);
         if (recovered.status !== 200 || recovered.data.data.status !== 'COMMITTED') throw new Error('commit');
       }
