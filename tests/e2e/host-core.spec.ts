@@ -30,6 +30,17 @@ test('Host can create a draft and visit the FE-3 setup routes using contract-sha
   });
   await page.route(`**/api/v1/albums/${albumId}`, (route) => route.fulfill({ status: 200, json: { data: draft } }));
   await page.route(`**/api/v1/albums/${albumId}/collaborator-invitations`, (route) => route.fulfill({ status: 200, json: { data: [], meta: { has_more: false } } }));
+  await page.route('**/api/v1/packages', (route) => route.fulfill({ status: 200, json: { data: [{ package_version_id: 'pkg-v1', price_amount: 0, currency: 'IDR', quota_total: 30 }], meta: { has_more: false, next_cursor: null } } }));
+  await page.route(`**/api/v1/albums/${albumId}/review`, (route) => route.fulfill({ status: 200, json: { data: draft } }));
+  await page.route(`**/api/v1/albums/${albumId}/schedule`, async (route) => {
+    expect(route.request().method()).toBe('PUT');
+    const body = route.request().postDataJSON() as { expected_revision: number; capture_start: string; capture_end: string; reveal_delay_days: number };
+    expect(body.expected_revision).toBe(1);
+    expect(body.reveal_delay_days).toBe(3);
+    expect(body.capture_start).toMatch(/Z$/);
+    expect(body.capture_end).toMatch(/Z$/);
+    return route.fulfill({ status: 200, json: { data: { ...body, reveal_at: body.capture_end, payment_cutoff_at: body.capture_end, schedule_version: 1 } } });
+  });
 
   await page.goto('/dashboard');
   await page.getByRole('link', { name: 'Buat Album' }).first().click();
@@ -48,6 +59,21 @@ test('Host can create a draft and visit the FE-3 setup routes using contract-sha
   ]) {
     await page.getByRole('navigation', { name: 'Persiapan album' }).getByRole('link', { name: new RegExp(`${label}$`) }).click();
     await expect(page).toHaveURL(`/album/${albumId}/setup/${step}`);
+    if (step === 'jadwal') {
+      const { start, end } = await page.evaluate(() => {
+        const format = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T10:00`;
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() + 1);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 1);
+        return { start: format(startDate), end: format(endDate) };
+      });
+      await page.getByLabel('Tanggal dan waktu mulai').fill(start);
+      await page.getByLabel('Tanggal dan waktu selesai').fill(end);
+      await page.getByLabel('Jeda reveal').selectOption('3');
+      await page.getByRole('button', { name: 'Simpan jadwal' }).click();
+      await expect(page.getByRole('status')).toContainText('Jadwal berhasil disimpan.');
+    }
     if (step === 'moderasi') {
       const limit = page.getByRole('combobox', { name: 'Batas foto per peserta' });
       await expect(limit.locator('option')).toHaveCount(7);

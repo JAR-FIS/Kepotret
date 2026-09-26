@@ -13,14 +13,14 @@ import { hostRoutes } from '@/features/host/routes';
 export function ActivationResult({ albumId }: { albumId: string }) {
   const t = useTranslations('host.readyPage');
   const shared = useTranslations('host');
-  const [state, setState] = useState<'loading' | 'ready' | 'draft' | 'error' | 'unauthenticated' | 'forbidden'>('loading');
+  const [state, setState] = useState<'loading' | 'ready' | 'draft' | 'paymentPending' | 'error' | 'unauthenticated' | 'forbidden'>('loading');
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
     void getApiV1AlbumsAlbumId(albumId).then((result) => {
       if (!active) return;
-      if (result.status === 200) setState(result.data.data.readiness === 'READY' ? 'ready' : 'draft');
+      if (result.status === 200) setState(result.data.data.readiness === 'READY' ? 'ready' : result.data.data.readiness === 'PAYMENT_PENDING' ? 'paymentPending' : 'draft');
       else if (result.status === 401) setState('unauthenticated');
       else if (result.status === 403) setState('forbidden');
       else setState('error');
@@ -34,8 +34,8 @@ export function ActivationResult({ albumId }: { albumId: string }) {
   if (state === 'error') return <ErrorState title={shared('errorTitle')} description={shared('errorDescription')} retryLabel={shared('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
 
   return <section className="max-w-2xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 sm:p-8">
-    <h2 className="font-[var(--font-display)] text-2xl font-bold">{state === 'ready' ? t('complete') : t('pending')}</h2>
-    <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{state === 'ready' ? t('completeDescription') : t('pendingDescription')}</p>
+    <h2 className="font-[var(--font-display)] text-2xl font-bold">{state === 'ready' ? t('complete') : state === 'paymentPending' ? t('paymentPending') : t('pending')}</h2>
+    <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{state === 'ready' ? t('completeDescription') : state === 'paymentPending' ? t('paymentPendingDescription') : t('pendingDescription')}</p>
     {state === 'ready' && <Link href={hostRoutes.albums} className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]">{t('dashboard')}</Link>}
   </section>;
 }
