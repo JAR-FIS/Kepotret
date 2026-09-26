@@ -8,6 +8,7 @@
 import type {
   BadRequestResponse,
   ConflictResponse,
+  EventCategoryListEnvelope,
   ForbiddenResponse,
   NotFoundResponse,
   PackageOptionListEnvelope,
@@ -94,6 +95,76 @@ export const getApiV1Packages = async ( options?: RequestInit): Promise<getApiV1
 
   const data: getApiV1PackagesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1PackagesResponse
+}
+
+
+export type getApiV1EventCategoriesResponse200 = {
+  data: EventCategoryListEnvelope
+  status: 200
+}
+
+export type getApiV1EventCategoriesResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getApiV1EventCategoriesResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1EventCategoriesResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type getApiV1EventCategoriesResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type getApiV1EventCategoriesResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1EventCategoriesResponseSuccess = (getApiV1EventCategoriesResponse200) & {
+  headers: Headers;
+};
+export type getApiV1EventCategoriesResponseError = (getApiV1EventCategoriesResponse400 | getApiV1EventCategoriesResponse404 | getApiV1EventCategoriesResponse409 | getApiV1EventCategoriesResponse422 | getApiV1EventCategoriesResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1EventCategoriesResponse = (getApiV1EventCategoriesResponseSuccess | getApiV1EventCategoriesResponseError)
+
+export const getGetApiV1EventCategoriesUrl = () => {
+
+
+
+
+  return `/api/v1/event-categories`
+}
+
+/**
+ * @summary List active event categories available for new album setup.
+ */
+export const getApiV1EventCategories = async ( options?: RequestInit): Promise<getApiV1EventCategoriesResponse> => {
+
+  const res = await fetch(getGetApiV1EventCategoriesUrl(),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1EventCategoriesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1EventCategoriesResponse
 }
 
 

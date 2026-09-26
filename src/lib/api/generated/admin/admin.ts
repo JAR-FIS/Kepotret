@@ -10,6 +10,10 @@ import type {
   BadRequestResponse,
   ConflictResponse,
   EmptyDataEnvelope,
+  EventCategoryCreateRequest,
+  EventCategoryEnvelope,
+  EventCategoryListEnvelope,
+  EventCategoryPatchRequest,
   ForbiddenResponse,
   NotFoundResponse,
   OperationalConfigEnvelope,
@@ -911,6 +915,275 @@ export const postApiV1AdminPaymentsTransactionIdReconcile = async (transactionId
 
   const data: postApiV1AdminPaymentsTransactionIdReconcileResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1AdminPaymentsTransactionIdReconcileResponse
+}
+
+
+export type getApiV1AdminEventCategoriesResponse200 = {
+  data: EventCategoryListEnvelope
+  status: 200
+}
+
+export type getApiV1AdminEventCategoriesResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getApiV1AdminEventCategoriesResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AdminEventCategoriesResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AdminEventCategoriesResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AdminEventCategoriesResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type getApiV1AdminEventCategoriesResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type getApiV1AdminEventCategoriesResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1AdminEventCategoriesResponseSuccess = (getApiV1AdminEventCategoriesResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AdminEventCategoriesResponseError = (getApiV1AdminEventCategoriesResponse400 | getApiV1AdminEventCategoriesResponse401 | getApiV1AdminEventCategoriesResponse403 | getApiV1AdminEventCategoriesResponse404 | getApiV1AdminEventCategoriesResponse409 | getApiV1AdminEventCategoriesResponse422 | getApiV1AdminEventCategoriesResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1AdminEventCategoriesResponse = (getApiV1AdminEventCategoriesResponseSuccess | getApiV1AdminEventCategoriesResponseError)
+
+export const getGetApiV1AdminEventCategoriesUrl = () => {
+
+
+
+
+  return `/api/v1/admin/event-categories`
+}
+
+/**
+ * @summary List event categories including inactive historical categories.
+ */
+export const getApiV1AdminEventCategories = async ( options?: RequestInit): Promise<getApiV1AdminEventCategoriesResponse> => {
+
+  const res = await fetch(getGetApiV1AdminEventCategoriesUrl(),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AdminEventCategoriesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminEventCategoriesResponse
+}
+
+
+export type postApiV1AdminEventCategoriesResponse201 = {
+  data: EventCategoryEnvelope
+  status: 201
+}
+
+export type postApiV1AdminEventCategoriesResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type postApiV1AdminEventCategoriesResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type postApiV1AdminEventCategoriesResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type postApiV1AdminEventCategoriesResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type postApiV1AdminEventCategoriesResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type postApiV1AdminEventCategoriesResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type postApiV1AdminEventCategoriesResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type postApiV1AdminEventCategoriesResponseSuccess = (postApiV1AdminEventCategoriesResponse201) & {
+  headers: Headers;
+};
+export type postApiV1AdminEventCategoriesResponseError = (postApiV1AdminEventCategoriesResponse400 | postApiV1AdminEventCategoriesResponse401 | postApiV1AdminEventCategoriesResponse403 | postApiV1AdminEventCategoriesResponse404 | postApiV1AdminEventCategoriesResponse409 | postApiV1AdminEventCategoriesResponse422 | postApiV1AdminEventCategoriesResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1AdminEventCategoriesResponse = (postApiV1AdminEventCategoriesResponseSuccess | postApiV1AdminEventCategoriesResponseError)
+
+export const getPostApiV1AdminEventCategoriesUrl = () => {
+
+
+
+
+  return `/api/v1/admin/event-categories`
+}
+
+/**
+ * @summary Create a stable event category identity.
+ */
+export const postApiV1AdminEventCategories = async (eventCategoryCreateRequest: EventCategoryCreateRequest, options?: RequestInit): Promise<postApiV1AdminEventCategoriesResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AdminEventCategoriesUrl(),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(eventCategoryCreateRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AdminEventCategoriesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AdminEventCategoriesResponse
+}
+
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse200 = {
+  data: EventCategoryEnvelope
+  status: 200
+}
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponseSuccess = (patchApiV1AdminEventCategoriesCategoryIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1AdminEventCategoriesCategoryIdResponseError = (patchApiV1AdminEventCategoriesCategoryIdResponse400 | patchApiV1AdminEventCategoriesCategoryIdResponse401 | patchApiV1AdminEventCategoriesCategoryIdResponse403 | patchApiV1AdminEventCategoriesCategoryIdResponse404 | patchApiV1AdminEventCategoriesCategoryIdResponse409 | patchApiV1AdminEventCategoriesCategoryIdResponse422 | patchApiV1AdminEventCategoriesCategoryIdResponse429) & {
+  headers: Headers;
+};
+
+export type patchApiV1AdminEventCategoriesCategoryIdResponse = (patchApiV1AdminEventCategoriesCategoryIdResponseSuccess | patchApiV1AdminEventCategoriesCategoryIdResponseError)
+
+export const getPatchApiV1AdminEventCategoriesCategoryIdUrl = (categoryId: string,) => {
+
+
+
+
+  return `/api/v1/admin/event-categories/${categoryId}`
+}
+
+/**
+ * @summary Update event category labels/order/active state; category identity is retained.
+ */
+export const patchApiV1AdminEventCategoriesCategoryId = async (categoryId: string,
+    eventCategoryPatchRequest: EventCategoryPatchRequest, options?: RequestInit): Promise<patchApiV1AdminEventCategoriesCategoryIdResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPatchApiV1AdminEventCategoriesCategoryIdUrl(categoryId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(eventCategoryPatchRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1AdminEventCategoriesCategoryIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1AdminEventCategoriesCategoryIdResponse
 }
 
 
