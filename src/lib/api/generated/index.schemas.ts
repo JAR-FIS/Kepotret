@@ -147,6 +147,82 @@ export interface GuestSessionSummary {
   created_at: string;
 }
 
+export interface GuestEventContext {
+  album_id: string;
+  event_name: string;
+  /** @nullable */
+  event_location?: string | null;
+  timezone: string;
+  /** @nullable */
+  capture_start?: string | null;
+  /** @nullable */
+  capture_end?: string | null;
+  /** @nullable */
+  reveal_at?: string | null;
+  capture_state: CaptureState;
+  reveal_state: RevealState;
+}
+
+export interface GuestAccessPreview {
+  album_id: string;
+  event_name: string;
+  /** @nullable */
+  event_location?: string | null;
+  timezone: string;
+  /** @nullable */
+  capture_start?: string | null;
+  /** @nullable */
+  capture_end?: string | null;
+  /** @nullable */
+  reveal_at?: string | null;
+  capture_state: CaptureState;
+  reveal_state: RevealState;
+  pin_required: boolean;
+  /** @minLength 1 */
+  consent_version: string;
+}
+
+export interface GuestContext {
+  guest_session: GuestSessionSummary;
+  event: GuestEventContext;
+}
+
+export type CaptureReadinessState = typeof CaptureReadinessState[keyof typeof CaptureReadinessState];
+
+
+export const CaptureReadinessState = {
+  WAITING: 'WAITING',
+  READY: 'READY',
+  CLOSED: 'CLOSED',
+  QUOTA_FULL: 'QUOTA_FULL',
+  GUEST_LIMIT_REACHED: 'GUEST_LIMIT_REACHED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export interface CaptureReadiness {
+  album_id: string;
+  state: CaptureReadinessState;
+  can_capture: boolean;
+  server_time: string;
+  /** @nullable */
+  capture_start?: string | null;
+  /** @nullable */
+  capture_end?: string | null;
+  /** @nullable */
+  reveal_at?: string | null;
+  reveal_state: RevealState;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  album_remaining_count?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  guest_remaining_count?: number | null;
+}
+
 export interface AlbumSummary {
   album_id: string;
   readiness: AlbumReadiness;
@@ -338,10 +414,22 @@ export interface InvitationSummary {
   expires_at: string;
 }
 
+export type CaptureAttemptStatus = typeof CaptureAttemptStatus[keyof typeof CaptureAttemptStatus];
+
+
+export const CaptureAttemptStatus = {
+  ACTIVE: 'ACTIVE',
+  UPLOAD_AUTHORIZED: 'UPLOAD_AUTHORIZED',
+  COMMITTED: 'COMMITTED',
+  RELEASED: 'RELEASED',
+  EXPIRED: 'EXPIRED',
+  FAILED: 'FAILED',
+} as const;
+
 export interface CaptureAttempt {
   attempt_id: string;
   album_id: string;
-  status: string;
+  status: CaptureAttemptStatus;
   expires_at: string;
   /** @nullable */
   upload_authorized_at?: string | null;
@@ -544,6 +632,9 @@ export interface GuestAccessResolveRequest {
 }
 
 export interface GuestSessionCreateRequest {
+  link_id: string;
+  /** @minLength 1 */
+  access_secret: string;
   /**
      * @minLength 1
      * @maxLength 50
@@ -551,6 +642,8 @@ export interface GuestSessionCreateRequest {
   display_name: string;
   /** @nullable */
   pin?: string | null;
+  /** @minLength 1 */
+  accepted_consent_version: string;
 }
 
 export interface AlbumCreateRequest {
@@ -808,6 +901,18 @@ export interface AdminSessionEnvelope {
 
 export interface GuestSessionEnvelope {
   data: GuestSessionSummary;
+}
+
+export interface GuestAccessPreviewEnvelope {
+  data: GuestAccessPreview;
+}
+
+export interface GuestContextEnvelope {
+  data: GuestContext;
+}
+
+export interface CaptureReadinessEnvelope {
+  data: CaptureReadiness;
 }
 
 export interface AlbumEnvelope {

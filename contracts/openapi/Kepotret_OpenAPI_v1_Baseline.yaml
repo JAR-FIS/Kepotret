@@ -165,10 +165,11 @@ paths:
     get:
       tags:
       - Security
-      summary: Issue session-bound CSRF token.
+      summary: Issue a session-bound CSRF token for user or guest cookie sessions.
       operationId: get_api_v1_security_csrf
       security:
       - UserCookie: []
+      - GuestCookie: []
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -191,7 +192,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/CsrfEnvelope'
       x-kepotret-protection: '-'
-      x-kepotret-auth: Browser session
+      x-kepotret-auth: User or guest session
+      x-kepotret-rules:
+      - Bind the token to the authenticated UserCookie or GuestCookie session that requested it.
       parameters:
       - $ref: '#/components/parameters/RequestId'
   /api/v1/admin/auth/login:
@@ -344,7 +347,7 @@ paths:
     post:
       tags:
       - Guest Entry
-      summary: Resolve guest link to safe album preview; never log secret.
+      summary: Resolve guest link to a guest-safe event preview; never log secret.
       operationId: post_api_v1_guest_access_resolve
       security: []
       responses:
@@ -367,9 +370,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AlbumSummaryEnvelope'
+                $ref: '#/components/schemas/GuestAccessPreviewEnvelope'
       x-kepotret-protection: Origin/rate
       x-kepotret-auth: Link secret
+      x-kepotret-rules:
+      - Return only guest-safe event/capture fields; never include PIN hashes, owner/admin fields, package/payment data, revisions, or secret material.
+      - consent_version is the current server-owned consent version required to create a GuestSession.
+      - Do not log or persist access_secret; accept it only in the request body over HTTPS.
       requestBody:
         required: true
         content:
@@ -382,7 +389,7 @@ paths:
     post:
       tags:
       - Guest Entry
-      summary: Create GuestSession + GuestCredential; optional PIN.
+      summary: Create GuestSession + GuestCredential after consent; optional PIN.
       operationId: post_api_v1_guest_sessions
       security: []
       responses:
@@ -408,6 +415,11 @@ paths:
                 $ref: '#/components/schemas/GuestSessionEnvelope'
       x-kepotret-protection: Idempotency + rate
       x-kepotret-auth: Link secret
+      x-kepotret-rules:
+      - Require the same valid link_id/access_secret and current accepted_consent_version returned by guest access resolve.
+      - Trim display_name and accept 1-50 Unicode characters; duplicate names are allowed and the saved name is immutable.
+      - Require pin only when the resolved event requires it; never treat display_name as authentication or recovery.
+      - Idempotency-Key must be UUIDv7 and reused for retries of the same logical join request.
       requestBody:
         required: true
         content:
@@ -421,7 +433,7 @@ paths:
     get:
       tags:
       - Guest Entry
-      summary: Return guest/session album capabilities.
+      summary: Return the authenticated guest identity and safe event context for phase restoration.
       operationId: get_api_v1_guest_me
       security:
       - GuestCookie: []
@@ -445,7 +457,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GuestSessionEnvelope'
+                $ref: '#/components/schemas/GuestContextEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Guest credential
       parameters:
@@ -1642,9 +1654,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AlbumEnvelope'
+                $ref: '#/components/schemas/CaptureReadinessEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Guest credential
+      x-kepotret-rules:
+      - Return only safe readiness state and event timing/count projections; operational holds map to UNAVAILABLE without disclosing reason or diagnostics.
+      - server_time is authoritative; client countdowns are presentation only.
+      - can_capture is true only when state is READY; the capture-attempt reservation remains the authoritative quota/session gate.
       parameters:
       - name: album_id
         in: path
@@ -1684,6 +1700,10 @@ paths:
                 $ref: '#/components/schemas/CaptureAttemptEnvelope'
       x-kepotret-protection: Idempotency + CSRF
       x-kepotret-auth: Guest credential
+      x-kepotret-rules:
+      - Atomically reserve quota and guest allowance before allowing the browser to capture a frame.
+      - Idempotency-Key must be UUIDv7 and reused for retries of the same shutter reservation; a new shutter uses a new key.
+      - Initial status is ACTIVE only after a successful reservation; server checks remain authoritative even after readiness was read.
       parameters:
       - name: album_id
         in: path
@@ -4619,6 +4639,99 @@ components:
       - album_id
       - display_name
       - created_at
+    GuestEventContext:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        event_name:
+          type: string
+        event_location:
+          type: [string, 'null']
+        timezone:
+          type: string
+        capture_start:
+          type: [string, 'null']
+          format: date-time
+        capture_end:
+          type: [string, 'null']
+          format: date-time
+        reveal_at:
+          type: [string, 'null']
+          format: date-time
+        capture_state:
+          $ref: '#/components/schemas/CaptureState'
+        reveal_state:
+          $ref: '#/components/schemas/RevealState'
+      required: [album_id, event_name, timezone, capture_state, reveal_state]
+    GuestAccessPreview:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        event_name:
+          type: string
+        event_location:
+          type: [string, 'null']
+        timezone:
+          type: string
+        capture_start:
+          type: [string, 'null']
+          format: date-time
+        capture_end:
+          type: [string, 'null']
+          format: date-time
+        reveal_at:
+          type: [string, 'null']
+          format: date-time
+        capture_state:
+          $ref: '#/components/schemas/CaptureState'
+        reveal_state:
+          $ref: '#/components/schemas/RevealState'
+        pin_required:
+          type: boolean
+        consent_version:
+          type: string
+          minLength: 1
+      required: [album_id, event_name, timezone, capture_state, reveal_state, pin_required, consent_version]
+    GuestContext:
+      type: object
+      additionalProperties: false
+      properties:
+        guest_session:
+          $ref: '#/components/schemas/GuestSessionSummary'
+        event:
+          $ref: '#/components/schemas/GuestEventContext'
+      required: [guest_session, event]
+    CaptureReadiness:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        state:
+          type: string
+          enum: [WAITING, READY, CLOSED, QUOTA_FULL, GUEST_LIMIT_REACHED, UNAVAILABLE]
+        can_capture:
+          type: boolean
+        server_time: *id002
+        capture_start:
+          type: [string, 'null']
+          format: date-time
+        capture_end:
+          type: [string, 'null']
+          format: date-time
+        reveal_at:
+          type: [string, 'null']
+          format: date-time
+        reveal_state:
+          $ref: '#/components/schemas/RevealState'
+        album_remaining_count:
+          type: [integer, 'null']
+          minimum: 0
+        guest_remaining_count:
+          type: [integer, 'null']
+          minimum: 0
+      required: [album_id, state, can_capture, server_time, reveal_state]
     AlbumSummary:
       type: object
       additionalProperties: false
@@ -4988,6 +5101,7 @@ components:
         album_id: *id001
         status:
           type: string
+          enum: [ACTIVE, UPLOAD_AUTHORIZED, COMMITTED, RELEASED, EXPIRED, FAILED]
         expires_at: *id002
         upload_authorized_at:
           type:
@@ -5335,6 +5449,10 @@ components:
       type: object
       additionalProperties: false
       properties:
+        link_id: *id001
+        access_secret:
+          type: string
+          minLength: 1
         display_name:
           type: string
           minLength: 1
@@ -5343,8 +5461,14 @@ components:
           type:
           - string
           - 'null'
+        accepted_consent_version:
+          type: string
+          minLength: 1
       required:
+      - link_id
+      - access_secret
       - display_name
+      - accepted_consent_version
     AlbumCreateRequest:
       type: object
       additionalProperties: false
@@ -5729,6 +5853,27 @@ components:
           $ref: '#/components/schemas/GuestSessionSummary'
       required:
       - data
+    GuestAccessPreviewEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/GuestAccessPreview'
+      required: [data]
+    GuestContextEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/GuestContext'
+      required: [data]
+    CaptureReadinessEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/CaptureReadiness'
+      required: [data]
     AlbumEnvelope:
       type: object
       additionalProperties: false

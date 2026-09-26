@@ -6,11 +6,11 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  AlbumEnvelope,
   BadRequestResponse,
   CaptureAttemptCreateRequest,
   CaptureAttemptEnvelope,
   CaptureCommitRequest,
+  CaptureReadinessEnvelope,
   ConflictResponse,
   ForbiddenResponse,
   NotFoundResponse,
@@ -23,7 +23,7 @@ import type {
 
 
 export type getApiV1AlbumsAlbumIdCaptureReadinessResponse200 = {
-  data: AlbumEnvelope
+  data: CaptureReadinessEnvelope
   status: 200
 }
 

@@ -75,7 +75,7 @@ export const getGetApiV1SecurityCsrfUrl = () => {
 }
 
 /**
- * @summary Issue session-bound CSRF token.
+ * @summary Issue a session-bound CSRF token for user or guest cookie sessions.
  */
 export const getApiV1SecurityCsrf = async ( options?: RequestInit): Promise<getApiV1SecurityCsrfResponse> => {
 

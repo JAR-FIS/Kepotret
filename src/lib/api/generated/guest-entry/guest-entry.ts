@@ -6,12 +6,13 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  AlbumSummaryEnvelope,
   BadRequestResponse,
   ConflictResponse,
   EmptyDataEnvelope,
   ForbiddenResponse,
+  GuestAccessPreviewEnvelope,
   GuestAccessResolveRequest,
+  GuestContextEnvelope,
   GuestSessionCreateRequest,
   GuestSessionEnvelope,
   NotFoundResponse,
@@ -22,7 +23,7 @@ import type {
 
 
 export type postApiV1GuestAccessResolveResponse200 = {
-  data: AlbumSummaryEnvelope
+  data: GuestAccessPreviewEnvelope
   status: 200
 }
 
@@ -79,7 +80,7 @@ export const getPostApiV1GuestAccessResolveUrl = () => {
 }
 
 /**
- * @summary Resolve guest link to safe album preview; never log secret.
+ * @summary Resolve guest link to a guest-safe event preview; never log secret.
  */
 export const postApiV1GuestAccessResolve = async (guestAccessResolveRequest: GuestAccessResolveRequest, options?: RequestInit): Promise<postApiV1GuestAccessResolveResponse> => {
 
@@ -173,7 +174,7 @@ export const getPostApiV1GuestSessionsUrl = () => {
 }
 
 /**
- * @summary Create GuestSession + GuestCredential; optional PIN.
+ * @summary Create GuestSession + GuestCredential after consent; optional PIN.
  */
 export const postApiV1GuestSessions = async (guestSessionCreateRequest: GuestSessionCreateRequest, options?: RequestInit): Promise<postApiV1GuestSessionsResponse> => {
 
@@ -210,7 +211,7 @@ const res = await fetch(getPostApiV1GuestSessionsUrl(),
 
 
 export type getApiV1GuestMeResponse200 = {
-  data: GuestSessionEnvelope
+  data: GuestContextEnvelope
   status: 200
 }
 
@@ -267,7 +268,7 @@ export const getGetApiV1GuestMeUrl = () => {
 }
 
 /**
- * @summary Return guest/session album capabilities.
+ * @summary Return the authenticated guest identity and safe event context for phase restoration.
  */
 export const getApiV1GuestMe = async ( options?: RequestInit): Promise<getApiV1GuestMeResponse> => {
 
