@@ -152,12 +152,45 @@ export interface AlbumSummary {
   readiness: AlbumReadiness;
   capture_state: CaptureState;
   reveal_state: RevealState;
+  /** @nullable */
+  event_name: string | null;
+  timezone: string;
+  /** @nullable */
+  capture_start: string | null;
+  /** @nullable */
+  capture_end: string | null;
   setup_revision: number;
   schedule_version: number;
+  /** @nullable */
+  guest_count_final: number | null;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     * @nullable
+     */
+  quota_total: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  committed_count: number | null;
 }
 
 export interface AlbumDetail {
   album_id: string;
+  /** @nullable */
+  event_name: string | null;
+  /** @nullable */
+  event_location: string | null;
+  /** @nullable */
+  event_category_id: string | null;
+  timezone: string;
+  /** @nullable */
+  capture_start: string | null;
+  /** @nullable */
+  capture_end: string | null;
+  /** @nullable */
+  selected_package_version_id: string | null;
   readiness: AlbumReadiness;
   capture_state: CaptureState;
   reveal_state: RevealState;
@@ -166,16 +199,79 @@ export interface AlbumDetail {
   access_version: number;
   export_revision: number;
   /** @nullable */
-  confirmed_setup_revision?: number | null;
+  confirmed_setup_revision: number | null;
   /** @nullable */
-  confirmed_schedule_version?: number | null;
+  confirmed_schedule_version: number | null;
   /** @nullable */
-  confirmed_package_version_id?: string | null;
+  confirmed_package_version_id: string | null;
   /** @nullable */
-  setup_confirmed_at?: string | null;
+  setup_confirmed_at: string | null;
   /** @nullable */
-  guest_count_final?: number | null;
+  guest_count_final: number | null;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     * @nullable
+     */
+  quota_total: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  committed_count: number | null;
 }
+
+export interface AlbumDesign {
+  /** @nullable */
+  cover_asset_id: string | null;
+  /** @minimum 1 */
+  setup_revision: number;
+}
+
+export type SetupReviewIssueSection = typeof SetupReviewIssueSection[keyof typeof SetupReviewIssueSection];
+
+
+export const SetupReviewIssueSection = {
+  acara: 'acara',
+  jadwal: 'jadwal',
+  akses: 'akses',
+  moderasi: 'moderasi',
+  desain: 'desain',
+  paket: 'paket',
+  kolaborator: 'kolaborator',
+} as const;
+
+export type SetupReviewIssueSeverity = typeof SetupReviewIssueSeverity[keyof typeof SetupReviewIssueSeverity];
+
+
+export const SetupReviewIssueSeverity = {
+  BLOCKING: 'BLOCKING',
+  WARNING: 'WARNING',
+} as const;
+
+export interface SetupReviewIssue {
+  code: string;
+  section: SetupReviewIssueSection;
+  severity: SetupReviewIssueSeverity;
+  /** @nullable */
+  message_key?: string | null;
+}
+
+export type SetupReviewSnapshotEventBasics = {
+  event_name: string;
+  event_location: string;
+  event_category_id: string;
+  timezone: string;
+};
+
+export type SetupReviewSnapshotAccess = {
+  pin_enabled: boolean;
+};
+
+export type SetupReviewSnapshotSettings = {
+  /** @nullable */
+  per_guest_limit: number | null;
+};
 
 export type AlbumScheduleRevealDelayDays = typeof AlbumScheduleRevealDelayDays[keyof typeof AlbumScheduleRevealDelayDays];
 
@@ -200,6 +296,27 @@ export interface AlbumSchedule {
   first_confirmed_timezone?: string | null;
   /** @nullable */
   reschedule_cutoff_at?: string | null;
+}
+
+export interface SetupReviewSnapshot {
+  event_basics: SetupReviewSnapshotEventBasics;
+  schedule: AlbumSchedule | null;
+  access: SetupReviewSnapshotAccess;
+  settings: SetupReviewSnapshotSettings;
+  design: AlbumDesign;
+  /** @nullable */
+  selected_package_version_id: string | null;
+  /** @minimum 0 */
+  collaborator_count: number;
+}
+
+export interface SetupReview {
+  album_id: string;
+  /** @minimum 1 */
+  setup_revision: number;
+  complete: boolean;
+  issues: SetupReviewIssue[];
+  snapshot: SetupReviewSnapshot;
 }
 
 export interface CollaboratorPermissions {
@@ -251,7 +368,10 @@ export const PackageOptionCurrency = {
 } as const;
 
 export interface PackageOption {
+  package_id: string;
   package_version_id: string;
+  code: string;
+  name: string;
   /** @minimum 0 */
   price_amount: number;
   currency: PackageOptionCurrency;
@@ -260,6 +380,26 @@ export interface PackageOption {
      * @maximum 10000
      */
   quota_total: number;
+}
+
+export interface EventCategory {
+  category_id: string;
+  code: string;
+  label_id: string;
+  label_en: string;
+  display_order: number;
+  active: boolean;
+}
+
+export interface ExportCapabilities {
+  /**
+     * Operationally configured limit; not a hard product constant.
+     * @minimum 1
+     */
+  max_photos_per_job: number;
+  /** @minimum 0 */
+  eligible_photo_count: number;
+  allow_all: boolean;
 }
 
 export type PaymentTransactionCurrency = typeof PaymentTransactionCurrency[keyof typeof PaymentTransactionCurrency];
@@ -297,10 +437,21 @@ export interface EntitlementSummary {
   payment_cutoff_at: string;
 }
 
+export type ExportJobMode = typeof ExportJobMode[keyof typeof ExportJobMode];
+
+
+export const ExportJobMode = {
+  ALL: 'ALL',
+  SELECTED: 'SELECTED',
+} as const;
+
 export interface ExportJob {
   export_job_id: string;
   album_id: string;
   status: ExportStatus;
+  mode: ExportJobMode;
+  /** @minimum 0 */
+  selected_count: number;
   source_export_revision: number;
   /** @nullable */
   output_expires_at?: string | null;
@@ -410,7 +561,11 @@ export interface AlbumCreateRequest {
 export interface AlbumPatchRequest {
   /** @minimum 1 */
   expected_revision: number;
+  /** IANA timezone; locked after first setup confirmation. */
   timezone?: string;
+  event_name?: string;
+  event_location?: string;
+  event_category_id?: string;
 }
 
 export type ScheduleWriteRequestRevealDelayDays = typeof ScheduleWriteRequestRevealDelayDays[keyof typeof ScheduleWriteRequestRevealDelayDays];
@@ -429,6 +584,16 @@ export interface ScheduleWriteRequest {
   capture_start: string;
   capture_end: string;
   reveal_delay_days: ScheduleWriteRequestRevealDelayDays;
+}
+
+export interface SetupPackageSelectionRequest {
+  /** @minimum 1 */
+  expected_revision: number;
+  /**
+     * Null selects the FREE30 setup package. Paid choice does not grant entitlement.
+     * @nullable
+     */
+  package_version_id: string | null;
 }
 
 export type AlbumSettingsPatchRequestPerGuestLimit = typeof AlbumSettingsPatchRequestPerGuestLimit[keyof typeof AlbumSettingsPatchRequestPerGuestLimit];
@@ -468,6 +633,37 @@ export interface DesignPatchRequest {
   expected_revision: number;
   /** @nullable */
   cover_asset_id?: string | null;
+}
+
+export interface EventCategoryCreateRequest {
+  code: string;
+  label_id: string;
+  label_en: string;
+  display_order: number;
+  active: boolean;
+}
+
+export interface EventCategoryPatchRequest {
+  label_id?: string;
+  label_en?: string;
+  display_order?: number;
+  active?: boolean;
+}
+
+export type ExportCreateRequestMode = typeof ExportCreateRequestMode[keyof typeof ExportCreateRequestMode];
+
+
+export const ExportCreateRequestMode = {
+  ALL: 'ALL',
+  SELECTED: 'SELECTED',
+} as const;
+
+/**
+ * photo_ids is required for SELECTED mode and omitted for ALL mode.
+ */
+export interface ExportCreateRequest {
+  mode: ExportCreateRequestMode;
+  photo_ids?: string[];
 }
 
 export interface ConfirmSetupRequest {
@@ -626,6 +822,14 @@ export interface ScheduleEnvelope {
   data: AlbumSchedule;
 }
 
+export interface AlbumDesignEnvelope {
+  data: AlbumDesign;
+}
+
+export interface SetupReviewEnvelope {
+  data: SetupReview;
+}
+
 export interface CollaboratorEnvelope {
   data: CollaboratorSummary;
 }
@@ -656,6 +860,14 @@ export interface EntitlementEnvelope {
 
 export interface ExportEnvelope {
   data: ExportJob;
+}
+
+export interface ExportCapabilitiesEnvelope {
+  data: ExportCapabilities;
+}
+
+export interface EventCategoryEnvelope {
+  data: EventCategory;
 }
 
 export interface LifecycleEnvelope {
@@ -708,6 +920,11 @@ export interface PhotoListEnvelope {
 
 export interface PackageOptionListEnvelope {
   data: PackageOption[];
+  meta: PaginationMeta;
+}
+
+export interface EventCategoryListEnvelope {
+  data: EventCategory[];
   meta: PaginationMeta;
 }
 

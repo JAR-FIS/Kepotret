@@ -626,6 +626,11 @@ paths:
                 $ref: '#/components/schemas/AlbumEnvelope'
       x-kepotret-protection: CSRF + revision
       x-kepotret-auth: Owner / can_setup in draft
+      x-kepotret-rules:
+      - capture_start/capture_end are RFC3339 instants; clients present and convert event wall time using AlbumDetail.timezone.
+      - Initial start is not in the past and is within three calendar months with month-end clamping.
+      - Capture duration is at most 120 hours; end must be after start; reveal delay is exactly 1, 3, 5, or 7.
+      - reveal_at and payment_cutoff_at are derived by the server; payment cutoff is capture_end minus 120 minutes.
       parameters:
       - name: album_id
         in: path
@@ -642,6 +647,44 @@ paths:
             schema:
               $ref: '#/components/schemas/AlbumPatchRequest'
   /api/v1/albums/{album_id}/schedule:
+    get:
+      tags:
+      - Album
+      summary: Read the current album schedule in its persisted event timezone.
+      operationId: get_api_v1_albums_album_id_schedule
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner / can_setup
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
     put:
       tags:
       - Album
@@ -917,6 +960,44 @@ paths:
             schema:
               $ref: '#/components/schemas/DesignAssetCommitRequest'
   /api/v1/albums/{album_id}/design:
+    get:
+      tags:
+      - Design
+      summary: Read current committed cover design state.
+      operationId: get_api_v1_albums_album_id_design
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumDesignEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner / can_setup
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
     patch:
       tags:
       - Design
@@ -990,7 +1071,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AlbumEnvelope'
+                $ref: '#/components/schemas/SetupReviewEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Owner / can_setup
       parameters:
@@ -1051,6 +1132,8 @@ paths:
       x-kepotret-rules:
       - Owner only; persists confirmed_setup_revision, confirmed_schedule_version, confirmed_package_version_id (nullable
         for FREE), setup_confirmed_at.
+      - Validate expected_setup_revision and authoritative completeness review before confirmation.
+      - Snapshot the persisted draft selected_package_version_id; the browser does not resend commercial values or package ID.
       - First confirmation freezes first_confirmed_capture_start/timezone and fixed reschedule_cutoff_at.
       - FREE becomes READY; paid choice becomes PAYMENT_PENDING until verified payment.
   /api/v1/albums/{album_id}/sharing:
@@ -2301,8 +2384,7 @@ paths:
       - Catalog
       summary: List saleable package versions.
       operationId: get_api_v1_packages
-      security:
-      - UserCookie: []
+      security: []
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -2325,9 +2407,86 @@ paths:
               schema:
                 $ref: '#/components/schemas/PackageOptionListEnvelope'
       x-kepotret-protection: '-'
-      x-kepotret-auth: Public/User
+      x-kepotret-auth: Public
       parameters:
       - $ref: '#/components/parameters/RequestId'
+  /api/v1/event-categories:
+    get:
+      tags:
+      - Catalog
+      summary: List active event categories available for new album setup.
+      operationId: get_api_v1_event_categories
+      security: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventCategoryListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Public
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/setup/package:
+    put:
+      tags:
+      - Album
+      summary: Persist the draft setup package selection; null selects FREE30.
+      operationId: put_api_v1_albums_album_id_setup_package
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Draft selection persisted. No paid entitlement is granted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumEnvelope'
+      x-kepotret-protection: CSRF + revision
+      x-kepotret-auth: Owner / can_setup while setup is editable
+      x-kepotret-rules:
+      - package_version_id null selects FREE30; a paid selection grants no entitlement before setup confirmation and verified payment.
+      - Validate the package version against the server catalog, current setup revision, and 10,000 photo hard ceiling.
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetupPackageSelectionRequest'
   /api/v1/albums/{album_id}/package-options:
     get:
       tags:
@@ -2602,6 +2761,10 @@ paths:
                 $ref: '#/components/schemas/ExportEnvelope'
       x-kepotret-protection: Idempotency + CSRF
       x-kepotret-auth: Owner / can_export_zip
+      x-kepotret-rules:
+      - SELECTED photo IDs must belong to the album and pass physical eligibility/current authorization checks.
+      - Persist selected photo IDs for asynchronous work; enforce the operational export limit from capabilities.
+      - Keep export work asynchronous, revision-guarded, re-authorized, short-lived, and bounded in worker memory.
       parameters:
       - name: album_id
         in: path
@@ -2612,6 +2775,12 @@ paths:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/IdempotencyKey'
       - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportCreateRequest'
     get:
       tags:
       - Export
@@ -2640,6 +2809,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExportListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner / can_export_zip
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/export-capabilities:
+    get:
+      tags:
+      - Export
+      summary: Read operational ZIP selection capability for an album.
+      operationId: get_api_v1_albums_album_id_export_capabilities
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportCapabilitiesEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Owner / can_export_zip
       parameters:
@@ -3271,6 +3479,124 @@ paths:
           format: uuid
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/admin/event-categories:
+    get:
+      tags:
+      - Admin
+      summary: List event categories including inactive historical categories.
+      operationId: get_api_v1_admin_event_categories
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventCategoryListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      tags:
+      - Admin
+      summary: Create a stable event category identity.
+      operationId: post_api_v1_admin_event_categories
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventCategoryEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCategoryCreateRequest'
+  /api/v1/admin/event-categories/{category_id}:
+    patch:
+      tags:
+      - Admin
+      summary: Update event category labels/order/active state; category identity is retained.
+      operationId: patch_api_v1_admin_event_categories_category_id
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventCategoryEnvelope'
+      x-kepotret-protection: CSRF
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCategoryPatchRequest'
   /api/v1/admin/packages:
     get:
       tags:
@@ -4304,21 +4630,89 @@ components:
           $ref: '#/components/schemas/CaptureState'
         reveal_state:
           $ref: '#/components/schemas/RevealState'
+        event_name:
+          type:
+          - string
+          - 'null'
+        timezone:
+          type: string
+        capture_start:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        capture_end:
+          type:
+          - string
+          - 'null'
+          format: date-time
         setup_revision: &id003
           type: integer
         schedule_version: *id003
+        guest_count_final:
+          type:
+          - integer
+          - 'null'
+        quota_total:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 10000
+        committed_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
       required:
       - album_id
       - readiness
       - capture_state
       - reveal_state
+      - event_name
+      - timezone
+      - capture_start
+      - capture_end
       - setup_revision
       - schedule_version
+      - guest_count_final
+      - quota_total
+      - committed_count
     AlbumDetail:
       type: object
       additionalProperties: false
       properties:
         album_id: *id001
+        event_name:
+          type:
+          - string
+          - 'null'
+        event_location:
+          type:
+          - string
+          - 'null'
+        event_category_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        timezone:
+          type: string
+        capture_start:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        capture_end:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        selected_package_version_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
         readiness:
           $ref: '#/components/schemas/AlbumReadiness'
         capture_state:
@@ -4351,8 +4745,26 @@ components:
           type:
           - integer
           - 'null'
+        quota_total:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 10000
+        committed_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
       required:
       - album_id
+      - event_name
+      - event_location
+      - event_category_id
+      - timezone
+      - capture_start
+      - capture_end
+      - selected_package_version_id
       - readiness
       - capture_state
       - reveal_state
@@ -4360,6 +4772,139 @@ components:
       - schedule_version
       - access_version
       - export_revision
+      - confirmed_setup_revision
+      - confirmed_schedule_version
+      - confirmed_package_version_id
+      - setup_confirmed_at
+      - guest_count_final
+      - quota_total
+      - committed_count
+    AlbumDesign:
+      type: object
+      additionalProperties: false
+      properties:
+        cover_asset_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        setup_revision:
+          type: integer
+          minimum: 1
+      required:
+      - cover_asset_id
+      - setup_revision
+    SetupReviewIssue:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        section:
+          type: string
+          enum:
+          - acara
+          - jadwal
+          - akses
+          - moderasi
+          - desain
+          - paket
+          - kolaborator
+        severity:
+          type: string
+          enum:
+          - BLOCKING
+          - WARNING
+        message_key:
+          type:
+          - string
+          - 'null'
+      required:
+      - code
+      - section
+      - severity
+    SetupReviewSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        event_basics:
+          type: object
+          additionalProperties: false
+          properties:
+            event_name:
+              type: string
+            event_location:
+              type: string
+            event_category_id: *id001
+            timezone:
+              type: string
+          required:
+          - event_name
+          - event_location
+          - event_category_id
+          - timezone
+        schedule:
+          oneOf:
+          - $ref: '#/components/schemas/AlbumSchedule'
+          - type: 'null'
+        access:
+          type: object
+          additionalProperties: false
+          properties:
+            pin_enabled:
+              type: boolean
+          required:
+          - pin_enabled
+        settings:
+          type: object
+          additionalProperties: false
+          properties:
+            per_guest_limit:
+              type:
+              - integer
+              - 'null'
+          required:
+          - per_guest_limit
+        design:
+          $ref: '#/components/schemas/AlbumDesign'
+        selected_package_version_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        collaborator_count:
+          type: integer
+          minimum: 0
+      required:
+      - event_basics
+      - schedule
+      - access
+      - settings
+      - design
+      - selected_package_version_id
+      - collaborator_count
+    SetupReview:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        setup_revision:
+          type: integer
+          minimum: 1
+        complete:
+          type: boolean
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetupReviewIssue'
+        snapshot:
+          $ref: '#/components/schemas/SetupReviewSnapshot'
+      required:
+      - album_id
+      - setup_revision
+      - complete
+      - issues
+      - snapshot
     AlbumSchedule:
       type: object
       additionalProperties: false
@@ -4486,7 +5031,12 @@ components:
       type: object
       additionalProperties: false
       properties:
+        package_id: *id001
         package_version_id: *id001
+        code:
+          type: string
+        name:
+          type: string
         price_amount:
           type: integer
           minimum: 0
@@ -4499,10 +5049,52 @@ components:
           minimum: 1
           maximum: 10000
       required:
+      - package_id
       - package_version_id
+      - code
+      - name
       - price_amount
       - currency
       - quota_total
+    EventCategory:
+      type: object
+      additionalProperties: false
+      properties:
+        category_id: *id001
+        code:
+          type: string
+        label_id:
+          type: string
+        label_en:
+          type: string
+        display_order:
+          type: integer
+        active:
+          type: boolean
+      required:
+      - category_id
+      - code
+      - label_id
+      - label_en
+      - display_order
+      - active
+    ExportCapabilities:
+      type: object
+      additionalProperties: false
+      properties:
+        max_photos_per_job:
+          type: integer
+          minimum: 1
+          description: Operationally configured limit; not a hard product constant.
+        eligible_photo_count:
+          type: integer
+          minimum: 0
+        allow_all:
+          type: boolean
+      required:
+      - max_photos_per_job
+      - eligible_photo_count
+      - allow_all
     PaymentTransaction:
       type: object
       additionalProperties: false
@@ -4565,6 +5157,14 @@ components:
         album_id: *id001
         status:
           $ref: '#/components/schemas/ExportStatus'
+        mode:
+          type: string
+          enum:
+          - ALL
+          - SELECTED
+        selected_count:
+          type: integer
+          minimum: 0
         source_export_revision: *id003
         output_expires_at:
           type:
@@ -4575,6 +5175,8 @@ components:
       - export_job_id
       - album_id
       - status
+      - mode
+      - selected_count
       - source_export_revision
     LifecycleProjection:
       type: object
@@ -4759,6 +5361,12 @@ components:
           minimum: 1
         timezone:
           type: string
+          description: IANA timezone; locked after first setup confirmation.
+        event_name:
+          type: string
+        event_location:
+          type: string
+        event_category_id: *id001
       required:
       - expected_revision
     ScheduleWriteRequest:
@@ -4782,6 +5390,22 @@ components:
       - capture_start
       - capture_end
       - reveal_delay_days
+    SetupPackageSelectionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        package_version_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Null selects the FREE30 setup package. Paid choice does not grant entitlement.
+      required:
+      - expected_revision
+      - package_version_id
     AlbumSettingsPatchRequest:
       type: object
       additionalProperties: false
@@ -4842,6 +5466,55 @@ components:
           format: uuid
       required:
       - expected_revision
+    EventCategoryCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        label_id:
+          type: string
+        label_en:
+          type: string
+        display_order:
+          type: integer
+        active:
+          type: boolean
+      required:
+      - code
+      - label_id
+      - label_en
+      - display_order
+      - active
+    EventCategoryPatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        label_id:
+          type: string
+        label_en:
+          type: string
+        display_order:
+          type: integer
+        active:
+          type: boolean
+    ExportCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        mode:
+          type: string
+          enum:
+          - ALL
+          - SELECTED
+        photo_ids:
+          type: array
+          uniqueItems: true
+          items: *id001
+      required:
+      - mode
+      description: photo_ids is required for SELECTED mode and omitted for ALL mode.
     ConfirmSetupRequest:
       type: object
       additionalProperties: false
@@ -5080,6 +5753,22 @@ components:
           $ref: '#/components/schemas/AlbumSchedule'
       required:
       - data
+    AlbumDesignEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AlbumDesign'
+      required:
+      - data
+    SetupReviewEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/SetupReview'
+      required:
+      - data
     CollaboratorEnvelope:
       type: object
       additionalProperties: false
@@ -5142,6 +5831,22 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/ExportJob'
+      required:
+      - data
+    ExportCapabilitiesEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/ExportCapabilities'
+      required:
+      - data
+    EventCategoryEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/EventCategory'
       required:
       - data
     LifecycleEnvelope:
@@ -5260,6 +5965,19 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PackageOption'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+    EventCategoryListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventCategory'
         meta:
           $ref: '#/components/schemas/PaginationMeta'
       required:
