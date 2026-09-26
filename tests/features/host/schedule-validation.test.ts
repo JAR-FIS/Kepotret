@@ -1,56 +1,48 @@
 import { describe, expect, it } from 'vitest';
 
 import { ScheduleWriteRequestRevealDelayDays, type ScheduleWriteRequest } from '@/lib/api/generated/index.schemas';
-import { addCalendarMonths, validateSchedule } from '@/features/host/schedule-validation';
+import { toEventWallTime, toScheduleTimestamp, validateSchedule } from '@/features/host/schedule-validation';
 
-const now = new Date(2026, 0, 31, 10, 0, 0, 0);
-const validStart = '2026-01-31T11:00';
-const validEnd = '2026-02-01T11:00';
+const zone = 'Asia/Jakarta';
+const now = new Date('2026-01-31T10:00:00Z');
+const todayStart = '2026-01-31T18:00';
+const oneDayEnd = '2026-02-01T18:00';
 
-describe('schedule validation against the generated API request', () => {
-  it('accepts a start later today', () => {
-    expect(validateSchedule(validStart, validEnd, 1, now)).toBeNull();
+describe('schedule validation in the saved album timezone', () => {
+  it('accepts a valid start later today', () => {
+    expect(validateSchedule(todayStart, oneDayEnd, 1, zone, now)).toBeNull();
   });
 
   it('rejects a start in the past', () => {
-    expect(validateSchedule('2026-01-31T09:59', validEnd, 1, now)).toBe('startPast');
+    expect(validateSchedule('2026-01-31T16:59', oneDayEnd, 1, zone, now)).toBe('startPast');
   });
 
-  it('allows exactly three calendar months ahead and clamps month end', () => {
-    const boundary = addCalendarMonths(now, 3);
-    expect(boundary.getFullYear()).toBe(2026);
-    expect(boundary.getMonth()).toBe(3);
-    expect(boundary.getDate()).toBe(30);
-    expect(validateSchedule('2026-04-30T10:00', '2026-05-01T10:00', 1, now)).toBeNull();
+  it('allows exactly three calendar months ahead with month-end clamping', () => {
+    expect(validateSchedule('2026-04-30T17:00', '2026-05-01T17:00', 1, zone, now)).toBeNull();
   });
 
   it('rejects a start beyond three calendar months', () => {
-    expect(validateSchedule('2026-04-30T10:01', '2026-05-01T10:01', 1, now)).toBe('startTooFar');
-  });
-
-  it('handles a month-end transition without treating it as a 90-day window', () => {
-    expect(addCalendarMonths(new Date(2026, 7, 31, 10), 3).getDate()).toBe(30);
-    expect(addCalendarMonths(new Date(2026, 0, 31, 10), 1).getDate()).toBe(28);
+    expect(validateSchedule('2026-04-30T17:01', '2026-05-01T17:01', 1, zone, now)).toBe('startTooFar');
   });
 
   it('accepts a valid one-day event', () => {
-    expect(validateSchedule('2026-02-01T10:00', '2026-02-02T10:00', 1, now)).toBeNull();
+    expect(validateSchedule('2026-02-01T17:00', '2026-02-02T17:00', 1, zone, now)).toBeNull();
   });
 
-  it('accepts exactly five days / 120 hours', () => {
-    expect(validateSchedule('2026-02-01T10:00', '2026-02-06T10:00', 1, now)).toBeNull();
+  it('accepts exactly five days / 120 elapsed hours', () => {
+    expect(validateSchedule('2026-02-01T17:00', '2026-02-06T17:00', 1, zone, now)).toBeNull();
   });
 
-  it('rejects events longer than five days / 120 hours', () => {
-    expect(validateSchedule('2026-02-01T10:00', '2026-02-06T10:01', 1, now)).toBe('durationTooLong');
+  it('rejects events longer than five days / 120 elapsed hours', () => {
+    expect(validateSchedule('2026-02-01T17:00', '2026-02-06T17:01', 1, zone, now)).toBe('durationTooLong');
   });
 
   it('requires end to be after start', () => {
-    expect(validateSchedule('2026-02-01T10:00', '2026-02-01T10:00', 1, now)).toBe('endBeforeStart');
-    expect(validateSchedule('2026-02-01T10:00', '2026-02-01T09:59', 1, now)).toBe('endBeforeStart');
+    expect(validateSchedule('2026-02-01T17:00', '2026-02-01T17:00', 1, zone, now)).toBe('endBeforeStart');
+    expect(validateSchedule('2026-02-01T17:00', '2026-02-01T16:59', 1, zone, now)).toBe('endBeforeStart');
   });
 
-  it('supports only generated D+1, D+3, D+5, and D+7 values', () => {
+  it('accepts only the generated D+1/D+3/D+5/D+7 values', () => {
     const request: ScheduleWriteRequest = {
       expected_revision: 1,
       capture_start: '2026-02-01T10:00:00Z',
@@ -58,13 +50,20 @@ describe('schedule validation against the generated API request', () => {
       reveal_delay_days: ScheduleWriteRequestRevealDelayDays.NUMBER_1,
     };
     for (const delay of Object.values(ScheduleWriteRequestRevealDelayDays)) {
-      expect(validateSchedule(validStart, validEnd, delay, now)).toBeNull();
+      expect(validateSchedule(todayStart, oneDayEnd, delay, zone, now)).toBeNull();
     }
-    expect(request.reveal_delay_days).toBe(1);
     expect(Object.values(ScheduleWriteRequestRevealDelayDays)).toEqual([1, 3, 5, 7]);
+    expect(request.reveal_delay_days).toBe(1);
+    expect(validateSchedule(todayStart, oneDayEnd, 2, zone, now)).toBe('revealDelay');
   });
 
-  it('rejects reveal delays that are absent from the generated contract', () => {
-    expect(validateSchedule(validStart, validEnd, 2, now)).toBe('revealDelay');
+  it('interprets and rehydrates wall time in the album zone, not browser local time', () => {
+    expect(toScheduleTimestamp('2026-02-02T10:00', 'America/Los_Angeles')).toBe('2026-02-02T18:00:00Z');
+    expect(toEventWallTime('2026-02-02T18:00:00Z', 'America/Los_Angeles')).toBe('2026-02-02T10:00');
+  });
+
+  it('rejects nonexistent and ambiguous daylight-saving wall times', () => {
+    expect(validateSchedule('2026-03-08T02:30', '2026-03-09T02:30', 1, 'America/Los_Angeles', now)).toBe('localTimeInvalid');
+    expect(validateSchedule('2026-11-01T01:30', '2026-11-02T01:30', 1, 'America/Los_Angeles', now)).toBe('localTimeInvalid');
   });
 });

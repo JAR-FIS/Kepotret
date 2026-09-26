@@ -16,9 +16,11 @@ import type { AlbumDetail, AlbumSummary, InvitationSummary } from '@/lib/api/gen
 const draft: AlbumSummary = {
   album_id: '11111111-1111-4111-8111-111111111111',
   readiness: 'DRAFT', capture_state: 'NOT_STARTED', reveal_state: 'HIDDEN', setup_revision: 1, schedule_version: 0,
+  event_name: null, timezone: 'Asia/Jakarta', capture_start: null, capture_end: null, guest_count_final: null, quota_total: null, committed_count: null,
 };
 const readyAlbum: AlbumDetail = {
-  ...draft, readiness: 'READY', access_version: 1, export_revision: 1, guest_count_final: 27,
+  ...draft, event_location: null, event_category_id: null, selected_package_version_id: null, readiness: 'READY', access_version: 1, export_revision: 1,
+  confirmed_setup_revision: null, confirmed_schedule_version: null, confirmed_package_version_id: null, setup_confirmed_at: null, guest_count_final: 27,
 };
 
 function renderHost(node: React.ReactNode) {
