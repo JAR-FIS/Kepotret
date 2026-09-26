@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, Plus } from 'lucide-react';
 
 import { EmptyState } from '@/components/ui/empty-state';
@@ -18,6 +18,7 @@ type AlbumsState = { kind: 'loading' } | { kind: 'ready'; albums: AlbumSummary[]
 
 export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
   const t = useTranslations('host');
+  const locale = useLocale();
   const [state, setState] = useState<AlbumsState>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -56,7 +57,7 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
         const statusKey = albumStatusKey(album);
         return <li key={album.album_id}>
           <Link href={hostRoutes.album(album.album_id)} className="group flex min-h-24 min-w-0 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:bg-[var(--color-muted)] sm:px-6">
-            <div className="min-w-0"><p className="text-xs text-[var(--color-muted-foreground)]">{t('albums.id')}</p><p className="mt-1 break-all font-mono text-sm font-semibold">{album.album_id}</p><div className="mt-3"><AlbumStatus album={album} label={t(`albums.${statusKey}`)} /></div></div>
+            <div className="min-w-0"><p className="text-lg font-semibold">{album.event_name ?? t('albums.unnamed')}</p><p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t('albums.id')}</p><p className="mt-1 break-all font-mono text-sm">{album.album_id}</p><div className="mt-3"><AlbumStatus album={album} label={t(`albums.${statusKey}`)} /></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--color-muted-foreground)]">{album.capture_start && album.capture_end ? <span>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(album.capture_start))} – {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(album.capture_end))}</span> : <span>{t('albums.scheduleNotSet')}</span>}{album.quota_total !== null && album.committed_count !== null && <span>{t('albums.quota', { committed: album.committed_count, quota: album.quota_total })}</span>}{album.guest_count_final !== null && <span>{t('albums.guests', { count: album.guest_count_final })}</span>}</div></div>
             <ArrowRight aria-hidden="true" className="shrink-0 transition-transform group-hover:translate-x-1" size={19} />
           </Link>
         </li>;
