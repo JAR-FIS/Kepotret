@@ -1,7 +1,5 @@
 # FE-3 API contract change note — 2026-09-27
 
-The repository has no `docs/references/architecture` directory, so this note is stored directly in the existing `docs/references` directory without adding a folder.
-
 ## Approved contract corrections
 
 - H28 album PATCH/read models now include event name, location, category identity, and IANA timezone.

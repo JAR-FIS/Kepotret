@@ -3509,7 +3509,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventCategoryListEnvelope'
       x-kepotret-protection: '-'
-      x-kepotret-auth: Superadmin
+      x-kepotret-auth: Admin session
       parameters:
       - $ref: '#/components/parameters/RequestId'
     post:
@@ -3541,7 +3541,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventCategoryEnvelope'
       x-kepotret-protection: CSRF
-      x-kepotret-auth: Superadmin
+      x-kepotret-auth: Admin session
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/CsrfToken'
@@ -3581,7 +3581,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventCategoryEnvelope'
       x-kepotret-protection: CSRF
-      x-kepotret-auth: Superadmin
+      x-kepotret-auth: Admin session
       parameters:
       - name: category_id
         in: path
