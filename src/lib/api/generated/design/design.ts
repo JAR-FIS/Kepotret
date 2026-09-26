@@ -6,6 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AlbumDesignEnvelope,
   AlbumEnvelope,
   BadRequestResponse,
   ConflictResponse,
@@ -210,6 +211,86 @@ const res = await fetch(getPostApiV1AlbumsAlbumIdDesignAssetsAssetIdCommitUrl(al
 
   const data: postApiV1AlbumsAlbumIdDesignAssetsAssetIdCommitResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1AlbumsAlbumIdDesignAssetsAssetIdCommitResponse
+}
+
+
+export type getApiV1AlbumsAlbumIdDesignResponse200 = {
+  data: AlbumDesignEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdDesignResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getApiV1AlbumsAlbumIdDesignResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdDesignResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdDesignResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdDesignResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type getApiV1AlbumsAlbumIdDesignResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type getApiV1AlbumsAlbumIdDesignResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1AlbumsAlbumIdDesignResponseSuccess = (getApiV1AlbumsAlbumIdDesignResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdDesignResponseError = (getApiV1AlbumsAlbumIdDesignResponse400 | getApiV1AlbumsAlbumIdDesignResponse401 | getApiV1AlbumsAlbumIdDesignResponse403 | getApiV1AlbumsAlbumIdDesignResponse404 | getApiV1AlbumsAlbumIdDesignResponse409 | getApiV1AlbumsAlbumIdDesignResponse422 | getApiV1AlbumsAlbumIdDesignResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdDesignResponse = (getApiV1AlbumsAlbumIdDesignResponseSuccess | getApiV1AlbumsAlbumIdDesignResponseError)
+
+export const getGetApiV1AlbumsAlbumIdDesignUrl = (albumId: string,) => {
+
+
+
+
+  return `/api/v1/albums/${albumId}/design`
+}
+
+/**
+ * @summary Read current committed cover design state.
+ */
+export const getApiV1AlbumsAlbumIdDesign = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdDesignResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdDesignUrl(albumId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdDesignResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdDesignResponse
 }
 
 

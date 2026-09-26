@@ -32,7 +32,7 @@ export function LocaleProvider({
   };
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
+    <NextIntlClientProvider locale={locale} timeZone="Asia/Jakarta" messages={messages}>
       <LocaleContext.Provider value={{ locale, setLocale }}>
         {children}
       </LocaleContext.Provider>

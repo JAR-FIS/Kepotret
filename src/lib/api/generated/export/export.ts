@@ -8,6 +8,8 @@
 import type {
   BadRequestResponse,
   ConflictResponse,
+  ExportCapabilitiesEnvelope,
+  ExportCreateRequest,
   ExportEnvelope,
   ExportListEnvelope,
   ForbiddenResponse,
@@ -80,15 +82,30 @@ export const getPostApiV1AlbumsAlbumIdExportsUrl = (albumId: string,) => {
 /**
  * @summary Create async ZIP job; recovery window Owner-only.
  */
-export const postApiV1AlbumsAlbumIdExports = async (albumId: string, options?: RequestInit): Promise<postApiV1AlbumsAlbumIdExportsResponse> => {
+export const postApiV1AlbumsAlbumIdExports = async (albumId: string,
+    exportCreateRequest: ExportCreateRequest, options?: RequestInit): Promise<postApiV1AlbumsAlbumIdExportsResponse> => {
 
-  const res = await fetch(getPostApiV1AlbumsAlbumIdExportsUrl(albumId),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AlbumsAlbumIdExportsUrl(albumId),
   {
       credentials: 'include',
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(exportCreateRequest)
   }
 )
 
@@ -177,6 +194,86 @@ export const getApiV1AlbumsAlbumIdExports = async (albumId: string, options?: Re
 
   const data: getApiV1AlbumsAlbumIdExportsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdExportsResponse
+}
+
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse200 = {
+  data: ExportCapabilitiesEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponseSuccess = (getApiV1AlbumsAlbumIdExportCapabilitiesResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponseError = (getApiV1AlbumsAlbumIdExportCapabilitiesResponse400 | getApiV1AlbumsAlbumIdExportCapabilitiesResponse401 | getApiV1AlbumsAlbumIdExportCapabilitiesResponse403 | getApiV1AlbumsAlbumIdExportCapabilitiesResponse404 | getApiV1AlbumsAlbumIdExportCapabilitiesResponse409 | getApiV1AlbumsAlbumIdExportCapabilitiesResponse422 | getApiV1AlbumsAlbumIdExportCapabilitiesResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdExportCapabilitiesResponse = (getApiV1AlbumsAlbumIdExportCapabilitiesResponseSuccess | getApiV1AlbumsAlbumIdExportCapabilitiesResponseError)
+
+export const getGetApiV1AlbumsAlbumIdExportCapabilitiesUrl = (albumId: string,) => {
+
+
+
+
+  return `/api/v1/albums/${albumId}/export-capabilities`
+}
+
+/**
+ * @summary Read operational ZIP selection capability for an album.
+ */
+export const getApiV1AlbumsAlbumIdExportCapabilities = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdExportCapabilitiesResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdExportCapabilitiesUrl(albumId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdExportCapabilitiesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdExportCapabilitiesResponse
 }
 
 

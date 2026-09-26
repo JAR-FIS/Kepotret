@@ -22,6 +22,8 @@ import type {
   RescheduleRequest,
   ScheduleEnvelope,
   ScheduleWriteRequest,
+  SetupPackageSelectionRequest,
+  SetupReviewEnvelope,
   StringUrlEnvelope,
   UnauthorizedResponse,
   ValidationErrorResponse
@@ -374,6 +376,86 @@ const res = await fetch(getPatchApiV1AlbumsAlbumIdUrl(albumId),
 
   const data: patchApiV1AlbumsAlbumIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1AlbumsAlbumIdResponse
+}
+
+
+export type getApiV1AlbumsAlbumIdScheduleResponse200 = {
+  data: ScheduleEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdScheduleResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getApiV1AlbumsAlbumIdScheduleResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdScheduleResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdScheduleResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdScheduleResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type getApiV1AlbumsAlbumIdScheduleResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type getApiV1AlbumsAlbumIdScheduleResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1AlbumsAlbumIdScheduleResponseSuccess = (getApiV1AlbumsAlbumIdScheduleResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdScheduleResponseError = (getApiV1AlbumsAlbumIdScheduleResponse400 | getApiV1AlbumsAlbumIdScheduleResponse401 | getApiV1AlbumsAlbumIdScheduleResponse403 | getApiV1AlbumsAlbumIdScheduleResponse404 | getApiV1AlbumsAlbumIdScheduleResponse409 | getApiV1AlbumsAlbumIdScheduleResponse422 | getApiV1AlbumsAlbumIdScheduleResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdScheduleResponse = (getApiV1AlbumsAlbumIdScheduleResponseSuccess | getApiV1AlbumsAlbumIdScheduleResponseError)
+
+export const getGetApiV1AlbumsAlbumIdScheduleUrl = (albumId: string,) => {
+
+
+
+
+  return `/api/v1/albums/${albumId}/schedule`
+}
+
+/**
+ * @summary Read the current album schedule in its persisted event timezone.
+ */
+export const getApiV1AlbumsAlbumIdSchedule = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdScheduleResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdScheduleUrl(albumId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdScheduleResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdScheduleResponse
 }
 
 
@@ -743,7 +825,7 @@ export const deleteApiV1AlbumsAlbumIdAccessPin = async (albumId: string, options
 
 
 export type getApiV1AlbumsAlbumIdReviewResponse200 = {
-  data: AlbumEnvelope
+  data: SetupReviewEnvelope
   status: 200
 }
 
@@ -1248,6 +1330,101 @@ const res = await fetch(getPostApiV1AlbumsAlbumIdRescheduleUrl(albumId),
 
   const data: postApiV1AlbumsAlbumIdRescheduleResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1AlbumsAlbumIdRescheduleResponse
+}
+
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse200 = {
+  data: AlbumEnvelope
+  status: 200
+}
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponseSuccess = (putApiV1AlbumsAlbumIdSetupPackageResponse200) & {
+  headers: Headers;
+};
+export type putApiV1AlbumsAlbumIdSetupPackageResponseError = (putApiV1AlbumsAlbumIdSetupPackageResponse400 | putApiV1AlbumsAlbumIdSetupPackageResponse401 | putApiV1AlbumsAlbumIdSetupPackageResponse403 | putApiV1AlbumsAlbumIdSetupPackageResponse404 | putApiV1AlbumsAlbumIdSetupPackageResponse409 | putApiV1AlbumsAlbumIdSetupPackageResponse422 | putApiV1AlbumsAlbumIdSetupPackageResponse429) & {
+  headers: Headers;
+};
+
+export type putApiV1AlbumsAlbumIdSetupPackageResponse = (putApiV1AlbumsAlbumIdSetupPackageResponseSuccess | putApiV1AlbumsAlbumIdSetupPackageResponseError)
+
+export const getPutApiV1AlbumsAlbumIdSetupPackageUrl = (albumId: string,) => {
+
+
+
+
+  return `/api/v1/albums/${albumId}/setup/package`
+}
+
+/**
+ * @summary Persist the draft setup package selection; null selects FREE30.
+ */
+export const putApiV1AlbumsAlbumIdSetupPackage = async (albumId: string,
+    setupPackageSelectionRequest: SetupPackageSelectionRequest, options?: RequestInit): Promise<putApiV1AlbumsAlbumIdSetupPackageResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPutApiV1AlbumsAlbumIdSetupPackageUrl(albumId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(setupPackageSelectionRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1AlbumsAlbumIdSetupPackageResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1AlbumsAlbumIdSetupPackageResponse
 }
 
 
