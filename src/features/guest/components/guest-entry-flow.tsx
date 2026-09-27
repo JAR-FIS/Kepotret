@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   getApiV1AlbumsAlbumIdCaptureReadiness,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/api/browser';
 import type { CaptureAttemptStatus, CaptureReadiness, GuestAccessPreview, GuestContext } from '@/lib/api/generated/index.schemas';
 import { createUuidV7 } from '@/features/guest/lib/idempotency';
+import { guestRoutes } from '@/features/guest/routes';
 import { MAX_CAPTURE_BYTES, processCapture } from '@/features/guest/capture/capture-processor';
 import {
   CameraViewfinder,
@@ -54,6 +56,7 @@ function displayNameLength(value: string) { return Array.from(value.trim()).leng
 export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const t = useTranslations('guest');
   const locale = useLocale();
+  const router = useRouter();
   const [stage, setStage] = useState<Stage>('loading');
   const [preview, setPreview] = useState<GuestAccessPreview | null>(null);
   const [context, setContext] = useState<GuestContext | null>(null);
@@ -80,6 +83,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const attemptRef = useRef<Attempt | null>(null);
   const pendingRef = useRef(false);
   const checkedBoundaryRef = useRef<string | null>(null);
+  const checkedRevealRef = useRef(false);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
 
   const stopCamera = useCallback(() => {
@@ -219,6 +223,34 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     const timer = window.setInterval(() => setElapsedSeconds((seconds) => seconds + 1), 1000);
     return () => window.clearInterval(timer);
   }, [readiness?.reveal_at, stage]);
+
+  useEffect(() => {
+    if (stage !== 'closed' || !readiness?.reveal_at || !readiness.server_time) return;
+    const remaining = Date.parse(readiness.reveal_at) - Date.parse(readiness.server_time) - elapsedSeconds * 1000;
+    if (remaining > 0 || checkedRevealRef.current) return;
+    checkedRevealRef.current = true;
+    let cancelled = false;
+    let retryTimer: number | undefined;
+    void getApiV1GuestMe().then((result) => {
+      if (cancelled) return;
+      if (result.status === 200 && result.data.data.event.reveal_state === 'REVEALED') {
+        router.replace(guestRoutes.gallery(linkId));
+      } else if (result.status === 410) {
+        router.replace(guestRoutes.postEventEnd(linkId));
+      } else if (result.status === 401 || result.status === 403) {
+        router.replace(guestRoutes.ended(linkId));
+      } else {
+        checkedRevealRef.current = false;
+        retryTimer = window.setTimeout(() => setElapsedSeconds((seconds) => seconds + 1), 15_000);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        checkedRevealRef.current = false;
+        retryTimer = window.setTimeout(() => setElapsedSeconds((seconds) => seconds + 1), 15_000);
+      }
+    });
+    return () => { cancelled = true; if (retryTimer !== undefined) window.clearTimeout(retryTimer); };
+  }, [context, elapsedSeconds, linkId, readiness, router, stage]);
 
   useEffect(() => {
     const onOffline = () => { setReadinessFresh(false); };
