@@ -9,19 +9,24 @@ import type {
   BadRequestResponse,
   ConflictResponse,
   ForbiddenResponse,
+  GetApiV1AlbumsAlbumIdPhotosParams,
+  GetApiV1AlbumsAlbumIdPhotosTrashParams,
   GoneResponse,
+  ManagementPhotoEnvelope,
+  ManagementPhotoListEnvelope,
   NotFoundResponse,
   PhotoEnvelope,
-  PhotoListEnvelope,
+  PhotoShareLinkEnvelope,
   RateLimitedResponse,
   StringUrlEnvelope,
+  TrashPhotoListEnvelope,
   UnauthorizedResponse,
   ValidationErrorResponse
 } from '../index.schemas';
 
 
 export type getApiV1AlbumsAlbumIdPhotosResponse200 = {
-  data: PhotoListEnvelope
+  data: ManagementPhotoListEnvelope
   status: 200
 }
 
@@ -69,20 +74,29 @@ export type getApiV1AlbumsAlbumIdPhotosResponseError = (getApiV1AlbumsAlbumIdPho
 
 export type getApiV1AlbumsAlbumIdPhotosResponse = (getApiV1AlbumsAlbumIdPhotosResponseSuccess | getApiV1AlbumsAlbumIdPhotosResponseError)
 
-export const getGetApiV1AlbumsAlbumIdPhotosUrl = (albumId: string,) => {
+export const getGetApiV1AlbumsAlbumIdPhotosUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdPhotosParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/albums/${albumId}/photos`
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/photos?${stringifiedParams}` : `/api/v1/albums/${albumId}/photos`
 }
 
 /**
  * @summary Management gallery including allowed moderation states.
  */
-export const getApiV1AlbumsAlbumIdPhotos = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdPhotosResponse> => {
+export const getApiV1AlbumsAlbumIdPhotos = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdPhotosParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdPhotosResponse> => {
 
-  const res = await fetch(getGetApiV1AlbumsAlbumIdPhotosUrl(albumId),
+  const res = await fetch(getGetApiV1AlbumsAlbumIdPhotosUrl(albumId,params),
   {
       credentials: 'include',
     ...options,
@@ -100,8 +114,82 @@ export const getApiV1AlbumsAlbumIdPhotos = async (albumId: string, options?: Req
 }
 
 
+export type getApiV1AlbumsAlbumIdPhotosTrashResponse200 = {
+  data: TrashPhotoListEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdPhotosTrashResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdPhotosTrashResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdPhotosTrashResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdPhotosTrashResponse410 = {
+  data: GoneResponse
+  status: 410
+}
+
+export type getApiV1AlbumsAlbumIdPhotosTrashResponseSuccess = (getApiV1AlbumsAlbumIdPhotosTrashResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdPhotosTrashResponseError = (getApiV1AlbumsAlbumIdPhotosTrashResponse401 | getApiV1AlbumsAlbumIdPhotosTrashResponse403 | getApiV1AlbumsAlbumIdPhotosTrashResponse404 | getApiV1AlbumsAlbumIdPhotosTrashResponse410) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdPhotosTrashResponse = (getApiV1AlbumsAlbumIdPhotosTrashResponseSuccess | getApiV1AlbumsAlbumIdPhotosTrashResponseError)
+
+export const getGetApiV1AlbumsAlbumIdPhotosTrashUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdPhotosTrashParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/photos/trash?${stringifiedParams}` : `/api/v1/albums/${albumId}/photos/trash`
+}
+
+/**
+ * @summary List soft-deleted photos available to the album Owner.
+ */
+export const getApiV1AlbumsAlbumIdPhotosTrash = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdPhotosTrashParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdPhotosTrashResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdPhotosTrashUrl(albumId,params),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdPhotosTrashResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdPhotosTrashResponse
+}
+
+
 export type getApiV1AlbumsAlbumIdPhotosPhotoIdResponse200 = {
-  data: PhotoEnvelope
+  data: ManagementPhotoEnvelope
   status: 200
 }
 
@@ -540,6 +628,11 @@ export type postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse409 = {
   status: 409
 }
 
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse410 = {
+  data: GoneResponse
+  status: 410
+}
+
 export type postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse422 = {
   data: ValidationErrorResponse
   status: 422
@@ -553,7 +646,7 @@ export type postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse429 = {
 export type postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponseSuccess = (postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse200) & {
   headers: Headers;
 };
-export type postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponseError = (postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse400 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse401 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse403 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse404 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse409 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse422 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse429) & {
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponseError = (postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse400 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse401 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse403 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse404 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse409 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse410 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse422 | postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse429) & {
   headers: Headers;
 };
 
@@ -589,6 +682,78 @@ export const postApiV1AlbumsAlbumIdPhotosPhotoIdRestore = async (albumId: string
 
   const data: postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1AlbumsAlbumIdPhotosPhotoIdRestoreResponse
+}
+
+
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse200 = {
+  data: PhotoShareLinkEnvelope
+  status: 200
+}
+
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponseSuccess = (postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponseError = (postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse401 | postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse403 | postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse404 | postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse409 | postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse = (postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponseSuccess | postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponseError)
+
+export const getPostApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkUrl = (albumId: string,
+    photoId: string,) => {
+
+
+
+
+  return `/api/v1/albums/${albumId}/photos/${photoId}/share-link`
+}
+
+/**
+ * @summary Return a current-policy photo deep link for the album Owner.
+ */
+export const postApiV1AlbumsAlbumIdPhotosPhotoIdShareLink = async (albumId: string,
+    photoId: string, options?: RequestInit): Promise<postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse> => {
+
+  const res = await fetch(getPostApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkUrl(albumId,photoId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AlbumsAlbumIdPhotosPhotoIdShareLinkResponse
 }
 
 

@@ -10,7 +10,9 @@ import type {
   AlbumEnvelope,
   AlbumListEnvelope,
   AlbumPatchRequest,
+  AlbumSettingsEnvelope,
   AlbumSettingsPatchRequest,
+  AlbumSharingEnvelope,
   BadRequestResponse,
   ConfirmSetupRequest,
   ConflictResponse,
@@ -24,7 +26,6 @@ import type {
   ScheduleWriteRequest,
   SetupPackageSelectionRequest,
   SetupReviewEnvelope,
-  StringUrlEnvelope,
   UnauthorizedResponse,
   ValidationErrorResponse
 } from '../index.schemas';
@@ -554,6 +555,66 @@ const res = await fetch(getPutApiV1AlbumsAlbumIdScheduleUrl(albumId),
 }
 
 
+export type getApiV1AlbumsAlbumIdSettingsResponse200 = {
+  data: AlbumSettingsEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdSettingsResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdSettingsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdSettingsResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdSettingsResponseSuccess = (getApiV1AlbumsAlbumIdSettingsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdSettingsResponseError = (getApiV1AlbumsAlbumIdSettingsResponse401 | getApiV1AlbumsAlbumIdSettingsResponse403 | getApiV1AlbumsAlbumIdSettingsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdSettingsResponse = (getApiV1AlbumsAlbumIdSettingsResponseSuccess | getApiV1AlbumsAlbumIdSettingsResponseError)
+
+export const getGetApiV1AlbumsAlbumIdSettingsUrl = (albumId: string,) => {
+
+
+
+
+  return `/api/v1/albums/${albumId}/settings`
+}
+
+/**
+ * @summary Return the current gallery and guest settings projection.
+ */
+export const getApiV1AlbumsAlbumIdSettings = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdSettingsResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdSettingsUrl(albumId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdSettingsResponse
+}
+
+
 export type patchApiV1AlbumsAlbumIdSettingsResponse200 = {
   data: EmptyDataEnvelope
   status: 200
@@ -1000,7 +1061,7 @@ const res = await fetch(getPostApiV1AlbumsAlbumIdConfirmSetupUrl(albumId),
 
 
 export type getApiV1AlbumsAlbumIdSharingResponse200 = {
-  data: StringUrlEnvelope
+  data: AlbumSharingEnvelope
   status: 200
 }
 
@@ -1080,7 +1141,7 @@ export const getApiV1AlbumsAlbumIdSharing = async (albumId: string, options?: Re
 
 
 export type postApiV1AlbumsAlbumIdAccessLinkRotateResponse200 = {
-  data: StringUrlEnvelope
+  data: AlbumSharingEnvelope
   status: 200
 }
 

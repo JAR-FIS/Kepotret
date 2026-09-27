@@ -446,6 +446,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
@@ -460,6 +462,8 @@ paths:
                 $ref: '#/components/schemas/GuestContextEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Guest credential
+      x-kepotret-rules:
+      - 410 Gone represents normal guest access closure at D+30; guest recovery and capture are not permitted.
       parameters:
       - $ref: '#/components/parameters/RequestId'
   /api/v1/guest/logout:
@@ -743,6 +747,35 @@ paths:
             schema:
               $ref: '#/components/schemas/ScheduleWriteRequest'
   /api/v1/albums/{album_id}/settings:
+    get:
+      tags:
+      - Album
+      summary: Return the current gallery and guest settings projection.
+      operationId: get_api_v1_albums_album_id_settings
+      security:
+      - UserCookie: []
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '200':
+          description: Current persisted album settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumSettingsEnvelope'
+      x-kepotret-auth: Owner / can_setup as allowed
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
     patch:
       tags:
       - Album
@@ -1176,9 +1209,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StringUrlEnvelope'
+                $ref: '#/components/schemas/AlbumSharingEnvelope'
       x-kepotret-protection: '-'
-      x-kepotret-auth: Owner
+      x-kepotret-auth: Owner / active authorized WO/EO relationship
       parameters:
       - name: album_id
         in: path
@@ -1215,7 +1248,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StringUrlEnvelope'
+                $ref: '#/components/schemas/AlbumSharingEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Owner
       parameters:
@@ -1262,7 +1295,7 @@ paths:
                 type: string
                 contentEncoding: binary
       x-kepotret-protection: '-'
-      x-kepotret-auth: Owner
+      x-kepotret-auth: Owner / active authorized WO/EO relationship
       parameters:
       - name: album_id
         in: path
@@ -1908,6 +1941,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
@@ -1919,11 +1954,33 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PhotoListEnvelope'
+                $ref: '#/components/schemas/GuestGalleryListEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Guest credential
       parameters:
       - $ref: '#/components/parameters/RequestId'
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [NEWEST, OLDEST, MOST_LIKED]
+          default: NEWEST
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          description: Opaque keyset cursor bound to the requested sort.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 60
+          default: 24
   /api/v1/guest/gallery/photos/{photo_id}:
     get:
       tags:
@@ -1941,6 +1998,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
@@ -1952,7 +2011,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PhotoEnvelope'
+                $ref: '#/components/schemas/GuestGalleryPhotoEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Guest credential
       parameters:
@@ -1991,7 +2050,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PhotoEnvelope'
+                $ref: '#/components/schemas/GuestGalleryPhotoEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Guest credential
       parameters:
@@ -2070,7 +2129,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PhotoEnvelope'
+                $ref: '#/components/schemas/PhotoShareLinkEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Guest credential
       parameters:
@@ -2113,7 +2172,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PhotoListEnvelope'
+                $ref: '#/components/schemas/ManagementPhotoListEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Owner / can_moderate
       parameters:
@@ -2124,6 +2183,83 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          description: Opaque keyset cursor bound to the requested sort and status filter.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [NEWEST, OLDEST]
+          default: NEWEST
+      - name: moderation_status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ModerationStatus'
+  /api/v1/albums/{album_id}/photos/trash:
+    get:
+      tags:
+      - Moderation
+      summary: List soft-deleted photos available to the album Owner.
+      operationId: get_api_v1_albums_album_id_photos_trash
+      security:
+      - UserCookie: []
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '200':
+          description: Owner-only soft-deleted photo collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrashPhotoListEnvelope'
+      x-kepotret-auth: Owner only
+      x-kepotret-protection: '-'
+      x-kepotret-rules:
+      - Soft-deleted photos continue to count toward album quota.
+      - can_moderate does not grant Trash access or restore permission.
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
   /api/v1/albums/{album_id}/photos/{photo_id}:
     get:
       tags:
@@ -2152,7 +2288,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PhotoEnvelope'
+                $ref: '#/components/schemas/ManagementPhotoEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Owner / can_moderate
       parameters:
@@ -2369,6 +2505,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
@@ -2383,6 +2521,51 @@ paths:
                 $ref: '#/components/schemas/PhotoEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Owner only
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/photos/{photo_id}/share-link:
+    post:
+      tags:
+      - Moderation
+      summary: Return a current-policy photo deep link for the album Owner.
+      operationId: post_api_v1_albums_album_id_photos_photo_id_share_link
+      security:
+      - UserCookie: []
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Current album access deep link; never a media URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoShareLinkEnvelope'
+      x-kepotret-auth: Owner only
+      x-kepotret-protection: CSRF
+      x-kepotret-rules:
+      - Uses current AlbumAccessLink policy and creates no per-photo credential.
+      - Recipient must satisfy current guest link, PIN, and lifecycle authorization.
       parameters:
       - name: album_id
         in: path
@@ -5141,6 +5324,153 @@ components:
       - moderation_status
       - like_count
       - created_at
+    MediaDeliveryReference:
+      type: object
+      additionalProperties: false
+      description: Short-lived Media Gateway URL that rechecks current authorization on each request. Never a storage URL or object locator.
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Short-lived Media Gateway delivery URL.
+        expires_at: *id002
+      required: [url, expires_at]
+    GuestPhotoActions:
+      type: object
+      additionalProperties: false
+      properties:
+        can_like:
+          type: boolean
+        liked_by_me:
+          type: boolean
+        can_download:
+          type: boolean
+        can_share:
+          type: boolean
+      required: [can_like, liked_by_me, can_download, can_share]
+    GuestGalleryPhoto:
+      type: object
+      additionalProperties: false
+      description: Guest-safe projection. The server returns only photos currently visible to this GuestCredential.
+      properties:
+        photo_id: *id001
+        created_at: *id002
+        photographer_display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        like_count: *id003
+        media:
+          $ref: '#/components/schemas/MediaDeliveryReference'
+        actions:
+          $ref: '#/components/schemas/GuestPhotoActions'
+      required: [photo_id, created_at, photographer_display_name, like_count, media, actions]
+    ManagementPhotoActions:
+      type: object
+      additionalProperties: false
+      properties:
+        can_approve:
+          type: boolean
+        can_hide:
+          type: boolean
+        can_unhide:
+          type: boolean
+        can_delete:
+          type: boolean
+        can_download:
+          type: boolean
+        can_share:
+          type: boolean
+      required: [can_approve, can_hide, can_unhide, can_delete, can_download, can_share]
+    ManagementPhoto:
+      type: object
+      additionalProperties: false
+      description: Management-only projection; authorization and action capabilities are evaluated by the server.
+      properties:
+        photo_id: *id001
+        moderation_status:
+          $ref: '#/components/schemas/ModerationStatus'
+        created_at: *id002
+        photographer_display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        like_count: *id003
+        media:
+          $ref: '#/components/schemas/MediaDeliveryReference'
+        actions:
+          $ref: '#/components/schemas/ManagementPhotoActions'
+      required: [photo_id, moderation_status, created_at, photographer_display_name, like_count, media, actions]
+    TrashPhoto:
+      type: object
+      additionalProperties: false
+      properties:
+        photo_id: *id001
+        moderation_status:
+          $ref: '#/components/schemas/ModerationStatus'
+        created_at: *id002
+        deleted_at: *id002
+        photographer_display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        media:
+          anyOf:
+          - $ref: '#/components/schemas/MediaDeliveryReference'
+          - type: 'null'
+        can_restore:
+          type: boolean
+      required: [photo_id, moderation_status, created_at, deleted_at, photographer_display_name, media, can_restore]
+    PhotoShareLink:
+      type: object
+      additionalProperties: false
+      description: Current-policy guest deep link, not a media delivery URL or per-photo credential.
+      properties:
+        url:
+          type: string
+          format: uri
+        photo_id: *id001
+      required: [url, photo_id]
+    AlbumGalleryVisibility:
+      type: string
+      enum: [GUEST, HOST_ONLY]
+    AlbumModerationMode:
+      type: string
+      enum: [INSTANT, APPROVAL]
+    AlbumSettings:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        visibility:
+          $ref: '#/components/schemas/AlbumGalleryVisibility'
+        moderation_mode:
+          $ref: '#/components/schemas/AlbumModerationMode'
+        likes_enabled:
+          type: boolean
+        downloads_enabled:
+          type: boolean
+        share_enabled:
+          type: boolean
+        per_guest_limit:
+          type:
+          - integer
+          - 'null'
+          enum: [5, 10, 30, 50, 70, 100, null]
+      required: [revision, visibility, moderation_mode, likes_enabled, downloads_enabled, share_enabled, per_guest_limit]
+    AlbumSharing:
+      type: object
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Current guest access link. Treat as a secret and keep only in view state.
+        can_rotate:
+          type: boolean
+      required: [url, can_rotate]
     PackageOption:
       type: object
       additionalProperties: false
@@ -5533,6 +5863,7 @@ components:
     AlbumSettingsPatchRequest:
       type: object
       additionalProperties: false
+      minProperties: 2
       properties:
         expected_revision:
           type: integer
@@ -5546,6 +5877,16 @@ components:
           - 50
           - 70
           - 100
+        visibility:
+          $ref: '#/components/schemas/AlbumGalleryVisibility'
+        moderation_mode:
+          $ref: '#/components/schemas/AlbumModerationMode'
+        likes_enabled:
+          type: boolean
+        downloads_enabled:
+          type: boolean
+        share_enabled:
+          type: boolean
       required:
       - expected_revision
     PinSetRequest:
@@ -5946,6 +6287,41 @@ components:
           $ref: '#/components/schemas/PhotoSummary'
       required:
       - data
+    GuestGalleryPhotoEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/GuestGalleryPhoto'
+      required: [data]
+    ManagementPhotoEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/ManagementPhoto'
+      required: [data]
+    PhotoShareLinkEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/PhotoShareLink'
+      required: [data]
+    AlbumSettingsEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AlbumSettings'
+      required: [data]
+    AlbumSharingEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AlbumSharing'
+      required: [data]
     PackageOptionEnvelope:
       type: object
       additionalProperties: false
@@ -6102,6 +6478,39 @@ components:
       required:
       - data
       - meta
+    GuestGalleryListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/GuestGalleryPhoto'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
+    ManagementPhotoListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManagementPhoto'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
+    TrashPhotoListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrashPhoto'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
     PackageOptionListEnvelope:
       type: object
       additionalProperties: false
