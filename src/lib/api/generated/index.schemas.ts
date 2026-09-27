@@ -446,6 +446,126 @@ export interface PhotoSummary {
   deleted_at?: string | null;
 }
 
+/**
+ * Short-lived Media Gateway URL that rechecks current authorization on each request. Never a storage URL or object locator.
+ */
+export interface MediaDeliveryReference {
+  /** Short-lived Media Gateway delivery URL. */
+  url: string;
+  expires_at: string;
+}
+
+export interface GuestPhotoActions {
+  can_like: boolean;
+  liked_by_me: boolean;
+  can_download: boolean;
+  can_share: boolean;
+}
+
+/**
+ * Guest-safe projection. The server returns only photos currently visible to this GuestCredential.
+ */
+export interface GuestGalleryPhoto {
+  photo_id: string;
+  created_at: string;
+  /** @nullable */
+  photographer_display_name?: string | null;
+  like_count: number;
+  media: MediaDeliveryReference;
+  actions: GuestPhotoActions;
+}
+
+export interface ManagementPhotoActions {
+  can_approve: boolean;
+  can_hide: boolean;
+  can_unhide: boolean;
+  can_delete: boolean;
+  can_download: boolean;
+  can_share: boolean;
+}
+
+/**
+ * Management-only projection; authorization and action capabilities are evaluated by the server.
+ */
+export interface ManagementPhoto {
+  photo_id: string;
+  moderation_status: ModerationStatus;
+  created_at: string;
+  /** @nullable */
+  photographer_display_name?: string | null;
+  like_count: number;
+  media: MediaDeliveryReference;
+  actions: ManagementPhotoActions;
+}
+
+export interface TrashPhoto {
+  photo_id: string;
+  moderation_status: ModerationStatus;
+  created_at: string;
+  deleted_at: string;
+  /** @nullable */
+  photographer_display_name?: string | null;
+  media: MediaDeliveryReference | null;
+  can_restore: boolean;
+}
+
+/**
+ * Current-policy guest deep link, not a media delivery URL or per-photo credential.
+ */
+export interface PhotoShareLink {
+  url: string;
+  photo_id: string;
+}
+
+export type AlbumGalleryVisibility = typeof AlbumGalleryVisibility[keyof typeof AlbumGalleryVisibility];
+
+
+export const AlbumGalleryVisibility = {
+  GUEST_VISIBLE: 'GUEST_VISIBLE',
+  HOST_ONLY: 'HOST_ONLY',
+} as const;
+
+export type AlbumModerationMode = typeof AlbumModerationMode[keyof typeof AlbumModerationMode];
+
+
+export const AlbumModerationMode = {
+  INSTANT: 'INSTANT',
+  APPROVAL: 'APPROVAL',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AlbumSettingsPerGuestLimit = typeof AlbumSettingsPerGuestLimit[keyof typeof AlbumSettingsPerGuestLimit] | null;
+
+
+export const AlbumSettingsPerGuestLimit = {
+  NUMBER_5: 5,
+  NUMBER_10: 10,
+  NUMBER_30: 30,
+  NUMBER_50: 50,
+  NUMBER_70: 70,
+  NUMBER_100: 100,
+} as const;
+
+export interface AlbumSettings {
+  /** @minimum 1 */
+  revision: number;
+  visibility: AlbumGalleryVisibility;
+  moderation_mode: AlbumModerationMode;
+  likes_enabled: boolean;
+  downloads_enabled: boolean;
+  share_enabled: boolean;
+  /** @nullable */
+  per_guest_limit: AlbumSettingsPerGuestLimit;
+}
+
+export interface AlbumSharing {
+  /** Current guest access link. Treat as a secret and keep only in view state. */
+  url: string;
+  can_rotate: boolean;
+}
+
 export type PackageOptionCurrency = typeof PackageOptionCurrency[keyof typeof PackageOptionCurrency];
 
 
@@ -703,6 +823,11 @@ export interface AlbumSettingsPatchRequest {
   /** @minimum 1 */
   expected_revision: number;
   per_guest_limit?: AlbumSettingsPatchRequestPerGuestLimit;
+  visibility?: AlbumGalleryVisibility;
+  moderation_mode?: AlbumModerationMode;
+  likes_enabled?: boolean;
+  downloads_enabled?: boolean;
+  share_enabled?: boolean;
 }
 
 export interface PinSetRequest {
@@ -949,6 +1074,26 @@ export interface PhotoEnvelope {
   data: PhotoSummary;
 }
 
+export interface GuestGalleryPhotoEnvelope {
+  data: GuestGalleryPhoto;
+}
+
+export interface ManagementPhotoEnvelope {
+  data: ManagementPhoto;
+}
+
+export interface PhotoShareLinkEnvelope {
+  data: PhotoShareLink;
+}
+
+export interface AlbumSettingsEnvelope {
+  data: AlbumSettings;
+}
+
+export interface AlbumSharingEnvelope {
+  data: AlbumSharing;
+}
+
 export interface PackageOptionEnvelope {
   data: PackageOption;
 }
@@ -1018,6 +1163,21 @@ export interface InvitationListEnvelope {
 
 export interface PhotoListEnvelope {
   data: PhotoSummary[];
+  meta: PaginationMeta;
+}
+
+export interface GuestGalleryListEnvelope {
+  data: GuestGalleryPhoto[];
+  meta: PaginationMeta;
+}
+
+export interface ManagementPhotoListEnvelope {
+  data: ManagementPhoto[];
+  meta: PaginationMeta;
+}
+
+export interface TrashPhotoListEnvelope {
+  data: TrashPhoto[];
   meta: PaginationMeta;
 }
 
@@ -1158,4 +1318,62 @@ export type IdempotencyKeyParameter = string;
  * Required for state-changing browser-cookie requests.
  */
 export type CsrfTokenParameter = string;
+
+export type GetApiV1GuestGalleryPhotosParams = {
+sort?: GetApiV1GuestGalleryPhotosSort;
+/**
+ * Opaque keyset cursor bound to the requested sort.
+ * @minLength 1
+ */
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 60
+ */
+limit?: number;
+};
+
+export type GetApiV1GuestGalleryPhotosSort = typeof GetApiV1GuestGalleryPhotosSort[keyof typeof GetApiV1GuestGalleryPhotosSort];
+
+
+export const GetApiV1GuestGalleryPhotosSort = {
+  NEWEST: 'NEWEST',
+  OLDEST: 'OLDEST',
+  MOST_LIKED: 'MOST_LIKED',
+} as const;
+
+export type GetApiV1AlbumsAlbumIdPhotosParams = {
+/**
+ * Opaque keyset cursor bound to the requested sort and status filter.
+ * @minLength 1
+ */
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+sort?: GetApiV1AlbumsAlbumIdPhotosSort;
+moderation_status?: ModerationStatus;
+};
+
+export type GetApiV1AlbumsAlbumIdPhotosSort = typeof GetApiV1AlbumsAlbumIdPhotosSort[keyof typeof GetApiV1AlbumsAlbumIdPhotosSort];
+
+
+export const GetApiV1AlbumsAlbumIdPhotosSort = {
+  NEWEST: 'NEWEST',
+  OLDEST: 'OLDEST',
+} as const;
+
+export type GetApiV1AlbumsAlbumIdPhotosTrashParams = {
+/**
+ * @minLength 1
+ */
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
 

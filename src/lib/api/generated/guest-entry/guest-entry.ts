@@ -10,6 +10,7 @@ import type {
   ConflictResponse,
   EmptyDataEnvelope,
   ForbiddenResponse,
+  GoneResponse,
   GuestAccessPreviewEnvelope,
   GuestAccessResolveRequest,
   GuestContextEnvelope,
@@ -240,6 +241,11 @@ export type getApiV1GuestMeResponse409 = {
   status: 409
 }
 
+export type getApiV1GuestMeResponse410 = {
+  data: GoneResponse
+  status: 410
+}
+
 export type getApiV1GuestMeResponse422 = {
   data: ValidationErrorResponse
   status: 422
@@ -253,7 +259,7 @@ export type getApiV1GuestMeResponse429 = {
 export type getApiV1GuestMeResponseSuccess = (getApiV1GuestMeResponse200) & {
   headers: Headers;
 };
-export type getApiV1GuestMeResponseError = (getApiV1GuestMeResponse400 | getApiV1GuestMeResponse401 | getApiV1GuestMeResponse403 | getApiV1GuestMeResponse404 | getApiV1GuestMeResponse409 | getApiV1GuestMeResponse422 | getApiV1GuestMeResponse429) & {
+export type getApiV1GuestMeResponseError = (getApiV1GuestMeResponse400 | getApiV1GuestMeResponse401 | getApiV1GuestMeResponse403 | getApiV1GuestMeResponse404 | getApiV1GuestMeResponse409 | getApiV1GuestMeResponse410 | getApiV1GuestMeResponse422 | getApiV1GuestMeResponse429) & {
   headers: Headers;
 };
 

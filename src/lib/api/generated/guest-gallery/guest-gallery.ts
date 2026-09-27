@@ -9,9 +9,12 @@ import type {
   BadRequestResponse,
   ConflictResponse,
   ForbiddenResponse,
+  GetApiV1GuestGalleryPhotosParams,
+  GoneResponse,
+  GuestGalleryListEnvelope,
+  GuestGalleryPhotoEnvelope,
   NotFoundResponse,
-  PhotoEnvelope,
-  PhotoListEnvelope,
+  PhotoShareLinkEnvelope,
   RateLimitedResponse,
   StringUrlEnvelope,
   UnauthorizedResponse,
@@ -20,7 +23,7 @@ import type {
 
 
 export type getApiV1GuestGalleryPhotosResponse200 = {
-  data: PhotoListEnvelope
+  data: GuestGalleryListEnvelope
   status: 200
 }
 
@@ -49,6 +52,11 @@ export type getApiV1GuestGalleryPhotosResponse409 = {
   status: 409
 }
 
+export type getApiV1GuestGalleryPhotosResponse410 = {
+  data: GoneResponse
+  status: 410
+}
+
 export type getApiV1GuestGalleryPhotosResponse422 = {
   data: ValidationErrorResponse
   status: 422
@@ -62,26 +70,33 @@ export type getApiV1GuestGalleryPhotosResponse429 = {
 export type getApiV1GuestGalleryPhotosResponseSuccess = (getApiV1GuestGalleryPhotosResponse200) & {
   headers: Headers;
 };
-export type getApiV1GuestGalleryPhotosResponseError = (getApiV1GuestGalleryPhotosResponse400 | getApiV1GuestGalleryPhotosResponse401 | getApiV1GuestGalleryPhotosResponse403 | getApiV1GuestGalleryPhotosResponse404 | getApiV1GuestGalleryPhotosResponse409 | getApiV1GuestGalleryPhotosResponse422 | getApiV1GuestGalleryPhotosResponse429) & {
+export type getApiV1GuestGalleryPhotosResponseError = (getApiV1GuestGalleryPhotosResponse400 | getApiV1GuestGalleryPhotosResponse401 | getApiV1GuestGalleryPhotosResponse403 | getApiV1GuestGalleryPhotosResponse404 | getApiV1GuestGalleryPhotosResponse409 | getApiV1GuestGalleryPhotosResponse410 | getApiV1GuestGalleryPhotosResponse422 | getApiV1GuestGalleryPhotosResponse429) & {
   headers: Headers;
 };
 
 export type getApiV1GuestGalleryPhotosResponse = (getApiV1GuestGalleryPhotosResponseSuccess | getApiV1GuestGalleryPhotosResponseError)
 
-export const getGetApiV1GuestGalleryPhotosUrl = () => {
+export const getGetApiV1GuestGalleryPhotosUrl = (params?: GetApiV1GuestGalleryPhotosParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/guest/gallery/photos`
+  return stringifiedParams.length > 0 ? `/api/v1/guest/gallery/photos?${stringifiedParams}` : `/api/v1/guest/gallery/photos`
 }
 
 /**
  * @summary Visible revealed photos only; cursor sorting.
  */
-export const getApiV1GuestGalleryPhotos = async ( options?: RequestInit): Promise<getApiV1GuestGalleryPhotosResponse> => {
+export const getApiV1GuestGalleryPhotos = async (params?: GetApiV1GuestGalleryPhotosParams, options?: RequestInit): Promise<getApiV1GuestGalleryPhotosResponse> => {
 
-  const res = await fetch(getGetApiV1GuestGalleryPhotosUrl(),
+  const res = await fetch(getGetApiV1GuestGalleryPhotosUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -100,7 +115,7 @@ export const getApiV1GuestGalleryPhotos = async ( options?: RequestInit): Promis
 
 
 export type getApiV1GuestGalleryPhotosPhotoIdResponse200 = {
-  data: PhotoEnvelope
+  data: GuestGalleryPhotoEnvelope
   status: 200
 }
 
@@ -129,6 +144,11 @@ export type getApiV1GuestGalleryPhotosPhotoIdResponse409 = {
   status: 409
 }
 
+export type getApiV1GuestGalleryPhotosPhotoIdResponse410 = {
+  data: GoneResponse
+  status: 410
+}
+
 export type getApiV1GuestGalleryPhotosPhotoIdResponse422 = {
   data: ValidationErrorResponse
   status: 422
@@ -142,7 +162,7 @@ export type getApiV1GuestGalleryPhotosPhotoIdResponse429 = {
 export type getApiV1GuestGalleryPhotosPhotoIdResponseSuccess = (getApiV1GuestGalleryPhotosPhotoIdResponse200) & {
   headers: Headers;
 };
-export type getApiV1GuestGalleryPhotosPhotoIdResponseError = (getApiV1GuestGalleryPhotosPhotoIdResponse400 | getApiV1GuestGalleryPhotosPhotoIdResponse401 | getApiV1GuestGalleryPhotosPhotoIdResponse403 | getApiV1GuestGalleryPhotosPhotoIdResponse404 | getApiV1GuestGalleryPhotosPhotoIdResponse409 | getApiV1GuestGalleryPhotosPhotoIdResponse422 | getApiV1GuestGalleryPhotosPhotoIdResponse429) & {
+export type getApiV1GuestGalleryPhotosPhotoIdResponseError = (getApiV1GuestGalleryPhotosPhotoIdResponse400 | getApiV1GuestGalleryPhotosPhotoIdResponse401 | getApiV1GuestGalleryPhotosPhotoIdResponse403 | getApiV1GuestGalleryPhotosPhotoIdResponse404 | getApiV1GuestGalleryPhotosPhotoIdResponse409 | getApiV1GuestGalleryPhotosPhotoIdResponse410 | getApiV1GuestGalleryPhotosPhotoIdResponse422 | getApiV1GuestGalleryPhotosPhotoIdResponse429) & {
   headers: Headers;
 };
 
@@ -180,7 +200,7 @@ export const getApiV1GuestGalleryPhotosPhotoId = async (photoId: string, options
 
 
 export type putApiV1GuestGalleryPhotosPhotoIdLikeResponse200 = {
-  data: PhotoEnvelope
+  data: GuestGalleryPhotoEnvelope
   status: 200
 }
 
@@ -340,7 +360,7 @@ export const getApiV1GuestGalleryPhotosPhotoIdDownload = async (photoId: string,
 
 
 export type postApiV1GuestGalleryPhotosPhotoIdShareLinkResponse200 = {
-  data: PhotoEnvelope
+  data: PhotoShareLinkEnvelope
   status: 200
 }
 
