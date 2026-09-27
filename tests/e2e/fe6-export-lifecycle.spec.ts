@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 const albumId = '11111111-1111-4111-8111-111111111111';
 const jobId = '77777777-7777-4777-8777-777777777777';
 const photoId = '88888888-8888-4888-8888-888888888888';
+const readyJob = { export_job_id: jobId, album_id: albumId, status: 'READY', mode: 'ALL', selected_count: 1, source_export_revision: 1, processed_count: 1, total_count: 1, created_at: '2026-10-01T10:00:00Z', updated_at: '2026-10-01T10:01:00Z', output_expires_at: '2026-10-02T10:01:00Z' };
 
 test('H50 and H51 create an ALL export with CSRF, show server progress and request a short-lived download descriptor', async ({ page }) => {
   await page.route(`**/api/v1/albums/${albumId}/export-capabilities`, route => route.fulfill({ status: 200, json: { data: { max_photos_per_job: 500, eligible_photo_count: 3, allow_all: true, allow_selected: false } } }));
@@ -117,6 +118,31 @@ test('H51 disables READY descriptor requests while offline', async ({ page }) =>
   expect(descriptorRequests).toBe(0);
 });
 
+test('H51 stops polling after forbidden job access', async ({ page }) => {
+  let requests = 0;
+  await page.route(`**/api/v1/exports/${jobId}`, route => { requests += 1; return route.fulfill({ status: 403, json: { error: { code: 'FORBIDDEN' } } }); });
+  await page.route(`**/api/v1/albums/${albumId}/export-capabilities`, route => route.fulfill({ status: 403, json: { error: { code: 'FORBIDDEN' } } }));
+  await page.goto(`/album/${albumId}/ekspor/${jobId}`);
+  await expect(page.getByText('Akses tidak tersedia')).toBeVisible();
+  const initialRequests = requests;
+  expect(initialRequests).toBeGreaterThan(0);
+  await page.waitForTimeout(4300);
+  expect(requests).toBe(initialRequests);
+});
+
+for (const [status, feedback] of [[401, 'Sesi perlu diperbarui'], [403, 'Akses tidak tersedia'], [410, 'Arsip ekspor ini sudah kedaluwarsa.'], [429, 'Terlalu banyak permintaan.']] as const) {
+  test(`H51 handles download descriptor HTTP ${status} without automatic retry`, async ({ page }) => {
+    let requests = 0;
+    await page.route(`**/api/v1/exports/${jobId}`, route => route.fulfill({ status: 200, json: { data: readyJob } }));
+    await page.route(`**/api/v1/albums/${albumId}/export-capabilities`, route => route.fulfill({ status: 200, json: { data: { max_photos_per_job: 20, eligible_photo_count: 1, allow_all: true, allow_selected: false } } }));
+    await page.route(`**/api/v1/exports/${jobId}/download`, route => { requests += 1; return route.fulfill({ status, json: { error: { code: 'DENIED' } } }); });
+    await page.goto(`/album/${albumId}/ekspor/${jobId}`);
+    await page.getByRole('button', { name: 'Unduh ZIP' }).click();
+    await expect(page.getByText(feedback, { exact: false })).toBeVisible();
+    expect(requests).toBe(1);
+  });
+}
+
 test('H55 and H56 keep recovery actions closed offline and after the server projects PURGED', async ({ page }) => {
   let retentionState: 'ACTIVE'|'RECOVERY'|'PURGED' = 'ACTIVE';
   let activationRequests = 0;
@@ -176,4 +202,35 @@ test('H53 uses server schedule version and preserves the proposal after a stale 
   await expect(page.getByText('Jadwal berubah di server.', { exact: false })).toBeVisible();
   await expect(page.getByLabel('Mulai pengambilan')).toHaveValue('2026-10-01T22:00');
   await expect(page.getByLabel('Jeda publikasi (hari)')).toHaveValue('5');
+});
+
+test('H53 refetches schedule, package options, lifecycle, and entitlement after successful reschedule', async ({ page }) => {
+  let updated = false;
+  const reads = { schedule: 0, packages: 0, lifecycle: 0, entitlement: 0 };
+  const schedule = () => ({ capture_start: updated ? '2026-10-01T15:00:00Z' : '2026-10-01T14:00:00Z', capture_end: updated ? '2026-10-02T15:00:00Z' : '2026-10-02T14:00:00Z', reveal_delay_days: updated ? 5 : 3, reveal_at: '2026-10-05T14:00:00Z', payment_cutoff_at: '2026-10-02T12:00:00Z', timezone: 'Asia/Jakarta', server_time: '2026-09-27T00:00:00Z', can_reschedule: true, earliest_capture_start: null, latest_capture_start: null, schedule_version: updated ? 8 : 7, first_confirmed_capture_start: '2026-10-01T14:00:00Z', first_confirmed_timezone: 'Asia/Jakarta', reschedule_cutoff_at: '2026-09-29T14:00:00Z' });
+  await page.route(`**/api/v1/albums/${albumId}/schedule`, route => { reads.schedule += 1; return route.fulfill({ status: 200, json: { data: schedule() } }); });
+  await page.route(`**/api/v1/albums/${albumId}/package-options`, route => { reads.packages += 1; return route.fulfill({ status: 200, json: { data: { album_id: albumId, current_quota_total: updated ? 100 : 30, reserved_count: 0, committed_count: 0, payment_cutoff_at: '2026-10-02T12:00:00Z', server_time: '2026-09-27T00:00:00Z', can_create_checkout: false, checkout_block_reason: null, active_checkout: null, options: [] } } }); });
+  await page.route(`**/api/v1/albums/${albumId}/lifecycle`, route => { reads.lifecycle += 1; return route.fulfill({ status: 200, json: { data: { album_id: albumId, retention_state: 'ACTIVE', server_time: '2026-09-27T00:00:00Z', recovery_access_granted_at: null, normal_access_end_at: '2026-10-02T14:00:00Z', recovery_end_at: '2026-10-09T14:00:00Z', backup_cleanup_deadline_at: '2026-10-23T14:00:00Z', can_activate_recovery: false, can_open_recovery_media: false, can_create_recovery_export: false } } }); });
+  await page.route(`**/api/v1/albums/${albumId}/entitlement`, route => { reads.entitlement += 1; return route.fulfill({ status: 200, json: { data: { album_id: albumId, quota_total: updated ? 100 : 30, source: updated ? 'PURCHASE' : 'FREE30' } } }); });
+  await page.route('**/api/v1/security/csrf', route => route.fulfill({ status: 200, json: { data: { csrf_token: 'test-csrf' } } }));
+  let posts = 0;
+  await page.route(`**/api/v1/albums/${albumId}/reschedule`, route => {
+    posts += 1;
+    expect(route.request().postDataJSON()).toMatchObject({ expected_schedule_version: 7, capture_start: '2026-10-01T15:00:00Z', capture_end: '2026-10-02T15:00:00Z', reveal_delay_days: 5 });
+    updated = true;
+    return route.fulfill({ status: 200, json: { data: schedule() } });
+  });
+
+  await page.goto(`/album/${albumId}/jadwal-ulang`);
+  await expect(page.getByLabel('Mulai pengambilan')).toHaveValue('2026-10-01T21:00');
+  const before = { ...reads };
+  expect(Object.values(before).every(count => count > 0)).toBe(true);
+  await page.getByLabel('Mulai pengambilan').fill('2026-10-01T22:00');
+  await page.getByLabel('Akhir pengambilan').fill('2026-10-02T22:00');
+  await page.getByLabel('Jeda publikasi (hari)').selectOption('5');
+  await page.getByRole('button', { name: 'Tinjau jadwal' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Simpan jadwal' }).click();
+  await expect.poll(() => (Object.keys(before) as Array<keyof typeof before>).every(key => reads[key] > before[key])).toBe(true);
+  await expect(page.getByLabel('Mulai pengambilan')).toHaveValue('2026-10-01T22:00');
+  expect(posts).toBe(1);
 });

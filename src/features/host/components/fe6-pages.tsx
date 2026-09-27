@@ -12,6 +12,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { DeliveryImage } from '@/features/gallery/components/delivery-image';
 import { hostRoutes } from '@/features/host/routes';
 import { createUuidV7 } from '@/features/guest/lib/idempotency';
+import { intentKey } from '@/features/host/lib/intent-key';
 import { useConnectivity } from '@/hooks/use-connectivity';
 import { isRescheduleWithinServerBounds, toEventWallTime, toScheduleTimestamp } from '@/features/host/schedule-validation';
 import {
@@ -58,21 +59,6 @@ function stableKey(kind: string, id: string) {
   if (!value) { value = createUuidV7(); sessionStorage.setItem(slot, value); }
   return value;
 }
-function intentKey(slot: string, identity: string) {
-  const storageKey = `kepotret:${slot}`;
-  if (typeof window === 'undefined') return createUuidV7();
-  try {
-    const saved = sessionStorage.getItem(storageKey);
-    if (saved) {
-      const parsed = JSON.parse(saved) as { identity?: string; key?: string };
-      if (parsed.identity === identity && parsed.key) return parsed.key;
-    }
-  } catch { /* Replace malformed or obsolete intent state. */ }
-  const key = createUuidV7();
-  sessionStorage.setItem(storageKey, JSON.stringify({ identity, key }));
-  return key;
-}
-
 export function CheckoutPage({ albumId, packageVersionId }: { albumId: string; packageVersionId: string }) {
   const t = useTranslations('host.commerce'); const locale = useLocale(); const online = useConnectivity();
   const [data, setData] = useState<AlbumPackageOptions | null>(null); const [state, setState] = useState<LoadState>('loading'); const [busy, setBusy] = useState(false); const [confirm, setConfirm] = useState(false); const [error, setError] = useState(''); const [conflict, setConflict] = useState<'setup'|'active'|'generic'|null>(null); const [attempt, setAttempt] = useState(0);
@@ -90,8 +76,44 @@ export function UpgradePage({ albumId }: { albumId: string }) {
 
 export function PaymentStatusPage({ albumId, transactionId }: { albumId: string; transactionId: string }) {
   const t = useTranslations('host.commerce'); const locale=useLocale(); const [payment, setPayment] = useState<PaymentTransaction | null>(null); const [state, setState] = useState<LoadState>('ready'); const [quota, setQuota] = useState<number | null>(null); const [attempt, setAttempt] = useState(0);
-  const refresh = useCallback(async () => { try { const r = await getApiV1PaymentsTransactionId(transactionId); setState(statusState(r.status)); if (r.status === 200 && r.data.data.album_id === albumId) { setPayment(r.data.data); if (r.data.data.status === 'SUCCESS') { const e = await getApiV1AlbumsAlbumIdEntitlement(albumId); if (e.status === 200) setQuota(e.data.data.quota_total); } return r.data.data.status; } if (r.status === 200) setState('error'); return null; } catch { setState('error'); return null; } }, [albumId, transactionId]);
-  useEffect(() => { let live = true; let busy=false; let timer: ReturnType<typeof setTimeout>; let interval = 0; const poll = async () => { if (!live||busy) return; if (document.hidden || !navigator.onLine) { timer = setTimeout(poll, 5000); return; } busy=true; const status = await refresh(); busy=false; if (!live || (status && status !== 'PENDING')) return; const delays = [2000, 4000, 8000, 15000, 30000]; timer = setTimeout(poll, delays[Math.min(interval, delays.length - 1)]); interval += 1; }; void poll(); const focus = () => { if (!document.hidden) {clearTimeout(timer);void poll();} }; const online = () => {clearTimeout(timer);void poll();}; window.addEventListener('focus', focus); window.addEventListener('online', online); return () => { live = false; clearTimeout(timer); window.removeEventListener('focus', focus); window.removeEventListener('online', online); }; }, [refresh, attempt]);
+  const refresh = useCallback(async (): Promise<'pending' | 'stop' | 'retry' | 'slow-retry'> => {
+    const r = await getApiV1PaymentsTransactionId(transactionId);
+    setState(statusState(r.status));
+    if (r.status === 200) {
+      if (r.data.data.album_id !== albumId) { setState('error'); return 'stop'; }
+      setPayment(r.data.data);
+      if (r.data.data.status === 'SUCCESS') {
+        try {
+          const e = await getApiV1AlbumsAlbumIdEntitlement(albumId);
+          if (e.status === 200) setQuota(e.data.data.quota_total);
+        } catch { /* Payment remains terminal even if the quota projection is unavailable. */ }
+      }
+      return r.data.data.status === 'PENDING' ? 'pending' : 'stop';
+    }
+    if (r.status === 429) return 'slow-retry';
+    return r.status >= 500 ? 'retry' : 'stop';
+  }, [albumId, transactionId]);
+  useEffect(() => {
+    let live = true; let busy = false; let terminal = false; let timer: ReturnType<typeof setTimeout>; let interval = 0;
+    const poll = async () => {
+      if (!live || busy || terminal) return;
+      if (document.hidden || !navigator.onLine) { timer = setTimeout(poll, 5000); return; }
+      busy = true;
+      let outcome: 'pending' | 'stop' | 'retry' | 'slow-retry';
+      try { outcome = await refresh(); } catch { setState('error'); outcome = 'retry'; }
+      busy = false;
+      if (!live) return;
+      if (outcome === 'stop') { terminal = true; return; }
+      const delays = [2000, 4000, 8000, 15000, 30000];
+      timer = setTimeout(poll, outcome === 'slow-retry' ? 30000 : delays[Math.min(interval, delays.length - 1)]);
+      interval += 1;
+    };
+    void poll();
+    const focus = () => { if (!document.hidden && !terminal) { clearTimeout(timer); void poll(); } };
+    const online = () => { if (!terminal) { clearTimeout(timer); void poll(); } };
+    window.addEventListener('focus', focus); window.addEventListener('online', online);
+    return () => { live = false; clearTimeout(timer); window.removeEventListener('focus', focus); window.removeEventListener('online', online); };
+  }, [refresh, attempt]);
   return state==='ready'&&!payment ? <Card><p className="text-xl font-semibold">{t('verifyingTitle')}</p><p role="status" className="mt-3">{t('verifying')}</p></Card> : <State state={state} retry={() => { setState('ready'); setAttempt(x => x + 1); }}>{payment && <Card><p className="text-xl font-semibold">{t(`paymentStatus.${payment.status}`)}</p><p className="mt-3">{payment.package_name_snapshot} · {payment.target_quota_total_snapshot.toLocaleString(locale)}</p><p>{money(payment.amount,locale,payment.currency)}</p><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('createdAt')}: {stamp(payment.created_at,locale)}</p>{payment.status === 'SUCCESS' && quota !== null && <p className="mt-4 font-semibold">{t('quota')}: {quota.toLocaleString(locale)}</p>}{payment.status === 'PENDING' && <p role="status" className="mt-4">{t('verifying')}</p>}<Link className="mt-5 inline-block underline" href={hostRoutes.payments(albumId)}>{t('history')}</Link></Card>}</State>;
 }
 
@@ -119,10 +141,39 @@ export function ExportCenterPage({ albumId }: { albumId: string }) {
 
 export function ExportJobPage({ albumId, exportJobId }: { albumId: string; exportJobId: string }) {
   const t=useTranslations('host.export');const locale=useLocale();const online=useConnectivity();const router=useRouter();const [job,setJob]=useState<ExportJob|null>(null);const [caps,setCaps]=useState<ExportCapabilities|null>(null);const [state,setState]=useState<LoadState>('loading');const [attempt,setAttempt]=useState(0);const [error,setError]=useState('');const [retryConfirm,setRetryConfirm]=useState(false);const [busy,setBusy]=useState(false);
-  const refresh=useCallback(async()=>{const r=await getApiV1ExportsExportJobId(exportJobId);setState(statusState(r.status));if(r.status===200){if(r.data.data.album_id!==albumId){setState('error');return null;}setJob(r.data.data);return r.data.data.status;}return null;},[albumId,exportJobId]);
-  useEffect(()=>{let live=true;let busy=false;let timer:ReturnType<typeof setTimeout>;const poll=async()=>{if(!live||busy)return;if(document.hidden||!navigator.onLine){timer=setTimeout(poll,5000);return}busy=true;let status:ExportJob['status']|null=null;try{status=await refresh()}catch{/* Keep polling after transient network failures. */}finally{busy=false}if(live&&(!status||['QUEUED','RUNNING'].includes(status)))timer=setTimeout(poll,status?4000:8000)};void poll();const f=()=>{if(!document.hidden){clearTimeout(timer);void poll()}};const onlineEvent=()=>{clearTimeout(timer);void poll()};window.addEventListener('focus',f);window.addEventListener('online',onlineEvent);return()=>{live=false;clearTimeout(timer);window.removeEventListener('focus',f);window.removeEventListener('online',onlineEvent)}},[refresh,attempt]);
+  const refresh=useCallback(async():Promise<'pending'|'stop'|'retry'|'slow-retry'>=>{
+    const r=await getApiV1ExportsExportJobId(exportJobId);
+    setState(statusState(r.status));
+    if(r.status===200){
+      if(r.data.data.album_id!==albumId){setState('error');return 'stop'}
+      setJob(r.data.data);
+      return r.data.data.status==='QUEUED'||r.data.data.status==='RUNNING'?'pending':'stop';
+    }
+    if(r.status===429)return 'slow-retry';
+    return r.status>=500?'retry':'stop';
+  },[albumId,exportJobId]);
+  useEffect(()=>{
+    let live=true;let busy=false;let terminal=false;let timer:ReturnType<typeof setTimeout>;let retries=0;
+    const poll=async()=>{
+      if(!live||busy||terminal)return;
+      if(document.hidden||!navigator.onLine){timer=setTimeout(poll,5000);return}
+      busy=true;
+      let outcome:'pending'|'stop'|'retry'|'slow-retry';
+      try{outcome=await refresh()}catch{setState('error');outcome='retry'}
+      busy=false;
+      if(!live)return;
+      if(outcome==='stop'){terminal=true;return}
+      retries=outcome==='pending'?0:Math.min(retries+1,3);
+      timer=setTimeout(poll,outcome==='pending'?4000:outcome==='slow-retry'?30000:[8000,15000,30000,30000][retries]);
+    };
+    void poll();
+    const focus=()=>{if(!document.hidden&&!terminal){clearTimeout(timer);void poll()}};
+    const onlineEvent=()=>{if(!terminal){clearTimeout(timer);void poll()}};
+    window.addEventListener('focus',focus);window.addEventListener('online',onlineEvent);
+    return()=>{live=false;clearTimeout(timer);window.removeEventListener('focus',focus);window.removeEventListener('online',onlineEvent)};
+  },[refresh,attempt]);
   useEffect(()=>{let live=true;void getApiV1AlbumsAlbumIdExportCapabilities(albumId).then(r=>{if(live&&r.status===200)setCaps(r.data.data)});return()=>{live=false}},[albumId]);
-  async function download(){if(!online){setError(t('offline'));return}try{const r=await getApiV1ExportsExportJobIdDownload(exportJobId);if(r.status!==200){setError(t(r.status===403?'forbidden':r.status===410?'artifactExpired':'downloadError'));return}const u=new URL(r.data.data.url);if(u.protocol!=='https:')throw new Error();window.location.assign(u.href)}catch{setError(t('downloadError'))}}
+  async function download(){if(!online){setError(t('offline'));return}setError('');try{const r=await getApiV1ExportsExportJobIdDownload(exportJobId);if(r.status===401){setState('unauthenticated');return}if(r.status===403){setState('forbidden');return}if(r.status===410){setError(t('artifactExpired'));return}if(r.status===429){setError(t('rateLimited'));return}if(r.status!==200){setError(t('downloadError'));return}const u=new URL(r.data.data.url);if(u.protocol!=='https:')throw new Error();window.location.assign(u.href)}catch{setError(t('downloadError'))}}
   async function retryAll(){if(!online||busy)return;setBusy(true);try{const headers=await csrfHeaders(stableKey('export-retry',exportJobId));const r=await postApiV1AlbumsAlbumIdExports(albumId,{mode:'ALL'},{headers});if(r.status===201){sessionStorage.removeItem(`kepotret:export-retry:${exportJobId}`);router.push(hostRoutes.export(albumId,r.data.data.export_job_id))}else if(r.status===401)setState('unauthenticated');else if(r.status===403)setState('forbidden');else setError(r.status===429?t('rateLimited'):t('createError'))}catch(e){if(e instanceof CsrfFailure&&e.status===401)setState('unauthenticated');else if(e instanceof CsrfFailure&&e.status===403)setState('forbidden');else setError(e instanceof CsrfFailure&&e.status===429?t('rateLimited'):t('createError'))}finally{setBusy(false);setRetryConfirm(false)}}
   return <State state={state} retry={()=>{setState('loading');setAttempt(x=>x+1)}}>{job&&<Card><p className="text-xl font-semibold">{t(`status.${job.status}`)}</p><p className="mt-3">{job.mode} · {job.processed_count} / {job.total_count}</p>{job.output_expires_at&&<p>{t('expires')}: {stamp(job.output_expires_at,locale)}</p>}{['FAILED','INVALIDATED','EXPIRED'].includes(job.status)&&<p className="mt-3" role="status">{t(`terminal.${job.status}`)}</p>}{job.status==='READY'&&<Button className="mt-4" disabled={!online} onClick={()=>void download()}>{t('download')}</Button>}{!online&&job.status==='READY'&&<p className="mt-2" role="status">{t('offline')}</p>}{error&&<p role="alert">{error}</p>}{['FAILED','INVALIDATED','EXPIRED'].includes(job.status)&&job.mode==='ALL'&&caps?.allow_all&&<Button className="mt-4" disabled={!online||busy} onClick={()=>setRetryConfirm(true)}>{t('retryExport')}</Button>}{['FAILED','INVALIDATED','EXPIRED'].includes(job.status)&&job.mode==='SELECTED'&&<Link className="mt-4 inline-block underline" href={hostRoutes.exports(albumId)}>{t('reselect')}</Link>}</Card>}<ConfirmDialog open={retryConfirm} title={t('retryConfirmTitle')} description={t('retryConfirmDescription')} confirmLabel={t('retryExport')} cancelLabel={t('cancel')} disabled={busy} onCancel={()=>setRetryConfirm(false)} onConfirm={()=>void retryAll()}/></State>;
 }

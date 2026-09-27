@@ -36,6 +36,8 @@ test('H37 uses server checkout eligibility and sends CSRF with a stable UUIDv7 b
 });
 
 test('H38 ignores provider return query parameters and shows only the server payment status', async ({ page }) => {
+  let entitlementRequests = 0;
+  await page.route(`**/api/v1/albums/${albumId}/entitlement`, route => { entitlementRequests += 1; return route.fulfill({ status: 200, json: { data: { album_id: albumId, quota_total: 999, source: 'PURCHASE' } } }); });
   await page.route('**/api/v1/payments/' + transactionId, route => route.fulfill({ status: 200, json: { data: {
     transaction_id: transactionId, album_id: albumId, type: 'UPGRADE', status: 'PENDING', package_version_id: packageVersionId,
     package_name_snapshot: 'Plus', target_quota_total_snapshot: 300, amount: 75000, currency: 'IDR',
@@ -44,7 +46,55 @@ test('H38 ignores provider return query parameters and shows only the server pay
   await page.goto(`/album/${albumId}/pembayaran/${transactionId}/status?status=success&transaction_status=settlement`);
   await expect(page.getByText('Menunggu pembayaran')).toBeVisible();
   await expect(page.getByText('Pembayaran berhasil')).toHaveCount(0);
+  await expect(page.getByText('Kapasitas foto: 999')).toHaveCount(0);
+  expect(entitlementRequests).toBe(0);
 });
+
+test('H38 shows Verifying before the first server response and displays the server entitlement on SUCCESS', async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let entitlementRequests = 0;
+  await page.route(`**/api/v1/payments/${transactionId}`, async route => {
+    await held;
+    return route.fulfill({ status: 200, json: { data: { ...transaction, status: 'SUCCESS' } } });
+  });
+  await page.route(`**/api/v1/albums/${albumId}/entitlement`, route => {
+    entitlementRequests += 1;
+    return route.fulfill({ status: 200, json: { data: { album_id: albumId, quota_total: 487, source: 'PURCHASE' } } });
+  });
+  await page.goto(`/album/${albumId}/pembayaran/${transactionId}/status?status=failure&transaction_status=deny`);
+  await expect(page.getByText('Memverifikasi pembayaran')).toBeVisible();
+  release();
+  await expect(page.getByText('Pembayaran berhasil')).toBeVisible();
+  await expect(page.getByText('Kapasitas foto: 487')).toBeVisible();
+  await expect(page.getByText('Pembayaran gagal')).toHaveCount(0);
+  expect(entitlementRequests).toBeGreaterThan(0);
+});
+
+for (const status of ['FAILURE', 'EXPIRED'] as const) {
+  test(`H38 treats ${status} as terminal without presenting an upgraded entitlement`, async ({ page }) => {
+    let entitlementRequests = 0;
+    await page.route(`**/api/v1/payments/${transactionId}`, route => route.fulfill({ status: 200, json: { data: { ...transaction, status } } }));
+    await page.route(`**/api/v1/albums/${albumId}/entitlement`, route => { entitlementRequests += 1; return route.fulfill({ status: 200, json: { data: { album_id: albumId, quota_total: 487, source: 'PURCHASE' } } }); });
+    await page.goto(`/album/${albumId}/pembayaran/${transactionId}/status?status=success`);
+    await expect(page.getByText(status === 'FAILURE' ? 'Pembayaran gagal' : 'Pembayaran kedaluwarsa')).toBeVisible();
+    await expect(page.getByText('Kapasitas foto: 487')).toHaveCount(0);
+    expect(entitlementRequests).toBe(0);
+  });
+}
+
+for (const status of [401, 403] as const) {
+  test(`H38 stops polling after HTTP ${status}`, async ({ page }) => {
+    let requests = 0;
+    await page.route(`**/api/v1/payments/${transactionId}`, route => { requests += 1; return route.fulfill({ status, json: { error: { code: 'DENIED' } } }); });
+    await page.goto(`/album/${albumId}/pembayaran/${transactionId}/status`);
+    await expect(page.getByText(status === 401 ? 'Sesi perlu diperbarui' : 'Akses tidak tersedia')).toBeVisible();
+    const initialRequests = requests;
+    expect(initialRequests).toBeGreaterThan(0);
+    await page.waitForTimeout(2300);
+    expect(requests).toBe(initialRequests);
+  });
+}
 
 test('H47/H48 show server transaction snapshots; H49 offers only higher-quota packages', async ({ page }) => {
   await page.route(`**/api/v1/albums/${albumId}/payments**`, route => route.fulfill({ status: 200, json: { data: [transaction], meta: { has_more: false, next_cursor: null } } }));

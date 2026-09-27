@@ -12,6 +12,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { getApiV1AlbumsAlbumIdReview, getApiV1SecurityCsrf, postApiV1AlbumsAlbumIdConfirmSetup } from '@/lib/api/browser';
 import type { AlbumReadiness, SetupReview as SetupReviewData } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
+import { intentKey } from '@/features/host/lib/intent-key';
 
 export function SetupReview({ albumId }: { albumId: string }) {
   const t = useTranslations('host.review');
@@ -51,10 +52,11 @@ export function SetupReview({ albumId }: { albumId: string }) {
       const result = await postApiV1AlbumsAlbumIdConfirmSetup(albumId, { expected_setup_revision: review.setup_revision }, {
         headers: {
           'X-CSRF-Token': csrf.data.data.csrf_token,
-          'Idempotency-Key': crypto.randomUUID(),
+          'Idempotency-Key': intentKey(`confirm-setup:${albumId}`, String(review.setup_revision)),
         },
       });
       if (result.status === 200) {
+        sessionStorage.removeItem(`kepotret:confirm-setup:${albumId}`);
         const readiness = result.data.data.readiness;
         setConfirmedReadiness(readiness);
         if (readiness === 'PAYMENT_PENDING' && snapshot.selected_package_version_id) {
