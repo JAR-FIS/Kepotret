@@ -1,4 +1,5 @@
 import { postApiV1Albums } from '@/lib/api/browser';
+import { CaptureAttemptStatus } from '@/lib/api/generated/index.schemas';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('generated browser API client boundary', () => {
@@ -35,5 +36,9 @@ describe('generated browser API client boundary', () => {
     expect(headers.get('Idempotency-Key')).toBe(
       '00000000-0000-4000-8000-000000000000',
     );
+  });
+
+  it('keeps CaptureAttempt.status within the locked lifecycle states', () => {
+    expect(Object.values(CaptureAttemptStatus)).toEqual(['ACTIVE', 'COMMITTED', 'RELEASED', 'EXPIRED']);
   });
 });
