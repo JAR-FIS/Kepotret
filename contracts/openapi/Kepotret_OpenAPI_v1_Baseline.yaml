@@ -5101,7 +5101,7 @@ components:
         album_id: *id001
         status:
           type: string
-          enum: [ACTIVE, UPLOAD_AUTHORIZED, COMMITTED, RELEASED, EXPIRED, FAILED]
+          enum: [ACTIVE, COMMITTED, RELEASED, EXPIRED]
         expires_at: *id002
         upload_authorized_at:
           type:

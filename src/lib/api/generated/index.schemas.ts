@@ -419,11 +419,9 @@ export type CaptureAttemptStatus = typeof CaptureAttemptStatus[keyof typeof Capt
 
 export const CaptureAttemptStatus = {
   ACTIVE: 'ACTIVE',
-  UPLOAD_AUTHORIZED: 'UPLOAD_AUTHORIZED',
   COMMITTED: 'COMMITTED',
   RELEASED: 'RELEASED',
   EXPIRED: 'EXPIRED',
-  FAILED: 'FAILED',
 } as const;
 
 export interface CaptureAttempt {
