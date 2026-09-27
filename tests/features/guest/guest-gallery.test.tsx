@@ -1,6 +1,7 @@
 import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { GuestGalleryPhoto } from '@/lib/api/generated/index.schemas';
 
 const api = vi.hoisted(() => ({
   getMe: vi.fn(), list: vi.fn(), detail: vi.fn(), like: vi.fn(), download: vi.fn(), share: vi.fn(), csrf: vi.fn(),
@@ -24,7 +25,7 @@ const eventContext = {
   guest_session: { guest_session_id: 'guest-1', album_id: 'album-1', display_name: 'Guest', created_at: '2026-09-27T00:00:00Z' },
   event: { album_id: 'album-1', event_name: 'Shared event', event_location: null, timezone: 'Asia/Jakarta', capture_start: null, capture_end: null, reveal_at: '2026-09-28T00:00:00Z', capture_state: 'CLOSED', reveal_state: 'REVEALED' },
 };
-const photo = {
+const photo: GuestGalleryPhoto = {
   photo_id: 'photo-1', created_at: '2026-09-28T01:00:00Z', photographer_display_name: 'Ari', like_count: 2,
   media: { url: 'https://media.test/short-lived/photo-1', expires_at: '2026-09-28T01:05:00Z' },
   actions: { can_like: true, liked_by_me: false, can_download: true, can_share: true },
@@ -38,6 +39,7 @@ function renderGallery(props: { linkId: string; photoId?: string }) {
 describe('guest gallery', () => {
   beforeEach(() => {
     Object.values(api).forEach((mock) => mock.mockReset());
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
     api.getMe.mockResolvedValue({ status: 200, data: { data: eventContext } });
     api.list.mockResolvedValue(page([photo]));
     api.detail.mockResolvedValue({ status: 200, data: { data: photo } });
@@ -72,5 +74,25 @@ describe('guest gallery', () => {
     await waitFor(() => expect(api.like).toHaveBeenCalledWith('photo-1', { headers: { 'X-CSRF-Token': 'test-csrf' } }));
     expect(await screen.findByRole('button', { name: /photo liked/i })).toBeDisabled();
     expect(screen.queryByRole('button', { name: /unlike/i })).not.toBeInTheDocument();
+  });
+
+  it('disables like, download, and sharing while offline and restores them when online', async () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    renderGallery({ linkId: 'link-1', photoId: 'photo-1' });
+    expect(await screen.findByRole('button', { name: /like photo/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'WhatsApp' })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent(/offline/i);
+    expect(api.like).not.toHaveBeenCalled();
+    expect(api.download).not.toHaveBeenCalled();
+    expect(api.share).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    window.dispatchEvent(new Event('online'));
+    await waitFor(() => expect(screen.getByRole('button', { name: /like photo/i })).toBeEnabled());
+    expect(screen.getByRole('button', { name: 'Download' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'WhatsApp' })).toBeEnabled();
   });
 });

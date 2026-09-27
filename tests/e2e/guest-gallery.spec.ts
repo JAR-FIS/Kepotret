@@ -56,11 +56,14 @@ test('guest gallery paginates, sorts, opens detail, likes once, downloads, copie
   await download;
   await page.getByRole('button', { name: 'Salin tautan' }).click();
   await expect.poll(() => page.evaluate(() => (window as Window & { copied?: string }).copied)).toBe(`http://localhost:3000/j/${linkId}/galeri/${photoId}`);
-  await page.route(/https:\/\/(?:api\.)?whatsapp\.com\/.*/, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>WhatsApp composer</title>' }));
+  let composerUrl = '';
+  await page.context().route('https://wa.me/**', async (route) => { composerUrl = route.request().url(); await route.fulfill({ status: 200, contentType: 'text/html', body: '<title>WhatsApp composer</title>' }); });
   const popupPromise = page.waitForEvent('popup');
   await page.getByRole('button', { name: 'WhatsApp' }).click();
   const popup = await popupPromise;
-  await expect(popup).toHaveURL(/whatsapp\.com/);
+  const expectedComposerUrl = `https://wa.me/?text=${encodeURIComponent(`http://localhost:3000/j/${linkId}/galeri/${photoId}`)}`;
+  await expect(popup).toHaveURL(expectedComposerUrl);
+  expect(composerUrl).toBe(expectedComposerUrl);
 });
 
 test('guest remains waiting before reveal and routes expired access to the terminal state', async ({ page }) => {
@@ -74,6 +77,21 @@ test('guest remains waiting before reveal and routes expired access to the termi
   await page.goto(`/j/${linkId}/galeri`);
   await expect(page).toHaveURL(new RegExp(`/j/${linkId}/akhir-acara$`));
   await expect(page.getByRole('heading', { name: 'Masa akses acara selesai' })).toBeVisible();
+});
+
+test('guest server-authorized actions are disabled offline and return after reconnect', async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'onLine', { configurable: true, value: false }); });
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri/${photoId}`);
+  await expect(page.getByRole('button', { name: 'Sukai foto' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Unduh' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Salin tautan' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'WhatsApp' })).toBeDisabled();
+  await expect(page.getByRole('status').filter({ hasText: 'offline' })).toBeVisible();
+
+  await page.evaluate(() => { Object.defineProperty(navigator, 'onLine', { configurable: true, value: true }); window.dispatchEvent(new Event('online')); });
+  await expect(page.getByRole('button', { name: 'Sukai foto' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Unduh' })).toBeEnabled();
 });
 
 for (const width of [320, 375, 390, 430]) {

@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Download, Heart, Link2, MessageCircle, RefreshCw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { useConnectivity } from '@/hooks/use-connectivity';
 import {
   getApiV1GuestMe,
   getApiV1GuestGalleryPhotos,
@@ -28,6 +29,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   const t = useTranslations('guest.gallery');
   const locale = useLocale();
   const router = useRouter();
+  const isOnline = useConnectivity();
   const [state, setState] = useState<State>('loading');
   const [context, setContext] = useState<GuestContext | null>(null);
   const [photos, setPhotos] = useState<GuestGalleryPhoto[]>([]);
@@ -125,6 +127,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   }
 
   async function like(photo: GuestGalleryPhoto) {
+    if (!isOnline || !navigator.onLine) { setMessage(t('offline')); return; }
     if (!photo.actions.can_like || photo.actions.liked_by_me || busy) return;
     setBusy(true);
     setMessage('');
@@ -141,6 +144,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   }
 
   async function share(photo: GuestGalleryPhoto, intent: 'copy' | 'whatsapp') {
+    if (!isOnline || !navigator.onLine) { setMessage(t('offline')); return; }
     if (!photo.actions.can_share || busy) return;
     const shareWindow = intent === 'whatsapp' ? window.open('about:blank', '_blank') : null;
     if (shareWindow) shareWindow.opener = null;
@@ -163,6 +167,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   }
 
   async function download(photo: GuestGalleryPhoto) {
+    if (!isOnline || !navigator.onLine) { setMessage(t('offline')); return; }
     if (!photo.actions.can_download || busy) return;
     setBusy(true);
     setMessage('');
@@ -188,25 +193,26 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   if (state === 'loading') return <main className="mx-auto max-w-5xl px-4 py-8" role="status">{t('loading')}</main>;
   if (state === 'post-event-ended') return <GuestTerminal title={t('postEventTitle')} description={t('postEventDescription')} />;
   if (state === 'ended') return <GuestTerminal title={t('endedTitle')} description={t('endedDescription')} />;
-  if (state === 'hidden') return <main className="mx-auto flex min-h-[75vh] max-w-xl flex-col justify-center px-4 py-8"><section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><h1 className="text-2xl font-bold">{context?.event.event_name}</h1><p className="mt-3 text-[var(--color-muted-foreground)]">{t('waiting')}</p><Button className="mt-5" variant="secondary" onClick={() => void loadFirstPage(sort)} loading={busy}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button></section></main>;
-  if (state === 'error') return <main className="mx-auto max-w-xl px-4 py-8"><p role="alert">{t('error')}</p><Button className="mt-4" onClick={() => void loadFirstPage(sort)} loading={busy}>{t('refresh')}</Button></main>;
+  if (state === 'hidden') return <main className="mx-auto flex min-h-[75vh] max-w-xl flex-col justify-center px-4 py-8"><section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><h1 className="text-2xl font-bold">{context?.event.event_name}</h1><p className="mt-3 text-[var(--color-muted-foreground)]">{t('waiting')}</p><Button className="mt-5" variant="secondary" disabled={!isOnline} onClick={() => void loadFirstPage(sort)} loading={busy}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button></section></main>;
+  if (state === 'error') return <main className="mx-auto max-w-xl px-4 py-8"><p role="alert">{!isOnline ? t('offline') : t('error')}</p><Button className="mt-4" disabled={!isOnline} onClick={() => void loadFirstPage(sort)} loading={busy}>{t('refresh')}</Button></main>;
 
   return <main className={`mx-auto min-h-screen max-w-7xl px-4 pb-8 pt-5 text-[var(--color-foreground)] sm:px-6 ${photoId ? 'bg-black text-white' : ''}`}>
+    {!isOnline && <p role="status" className="mb-4 rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm">{t('offline')}</p>}
     {photoId ? <>
       <header className="mb-4 flex items-center justify-between"><Link ref={backRef} href={guestRoutes.gallery(linkId)} aria-label={t('back')} className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm hover:bg-white/10"><ArrowLeft size={18} aria-hidden="true" />{t('back')}</Link><span className="text-sm text-white/75">{context?.event.event_name}</span></header>
       {!activePhoto ? <div className="grid min-h-[65vh] place-items-center"><p role={message ? 'alert' : 'status'}>{message || t('loading')}</p></div> : <section aria-label={t('viewer')} className="mx-auto grid min-h-[75vh] max-w-5xl place-items-center">
-        <DeliveryImage src={activePhoto.media.url} alt={activePhoto.photographer_display_name ? t('photoAltNamed', { name: activePhoto.photographer_display_name }) : t('photoAlt')} unavailableLabel={t('mediaUnavailable')} loading="eager" className="max-h-[72vh] max-w-full rounded object-contain" />
-        <div className="w-full max-w-3xl py-4"><p className="font-medium">{activePhoto.photographer_display_name || t('anonymous')}</p><time className="mt-1 block text-sm text-white/70" dateTime={activePhoto.created_at}>{dateTime(activePhoto.created_at)}</time><div className="mt-4 flex flex-wrap gap-2">
-          {activePhoto.actions.can_like && <Button variant="secondary" disabled={activePhoto.actions.liked_by_me} loading={busy} onClick={() => void like(activePhoto)} aria-label={activePhoto.actions.liked_by_me ? t('liked') : t('like')}><Heart size={17} aria-hidden="true" fill={activePhoto.actions.liked_by_me ? 'currentColor' : 'none'} />{activePhoto.like_count}</Button>}
-          {activePhoto.actions.can_download && <Button variant="secondary" loading={busy} onClick={() => void download(activePhoto)}><Download size={17} aria-hidden="true" />{t('download')}</Button>}
-          {activePhoto.actions.can_share && <><Button variant="secondary" loading={busy} onClick={() => void share(activePhoto, 'copy')}><Link2 size={17} aria-hidden="true" />{t('copy')}</Button><Button variant="secondary" loading={busy} onClick={() => void share(activePhoto, 'whatsapp')}><MessageCircle size={17} aria-hidden="true" />WhatsApp</Button></>}
+        <DeliveryImage src={activePhoto.media.url} alt={t('photoAltNamed', { name: activePhoto.photographer_display_name })} unavailableLabel={t('mediaUnavailable')} loading="eager" className="max-h-[72vh] max-w-full rounded object-contain" />
+        <div className="w-full max-w-3xl py-4"><p className="font-medium">{activePhoto.photographer_display_name}</p><time className="mt-1 block text-sm text-white/70" dateTime={activePhoto.created_at}>{dateTime(activePhoto.created_at)}</time><div className="mt-4 flex flex-wrap gap-2">
+          {activePhoto.actions.can_like && <Button variant="secondary" disabled={!isOnline || activePhoto.actions.liked_by_me} loading={busy} onClick={() => void like(activePhoto)} aria-label={activePhoto.actions.liked_by_me ? t('liked') : t('like')}><Heart size={17} aria-hidden="true" fill={activePhoto.actions.liked_by_me ? 'currentColor' : 'none'} />{activePhoto.like_count}</Button>}
+          {activePhoto.actions.can_download && <Button variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void download(activePhoto)}><Download size={17} aria-hidden="true" />{t('download')}</Button>}
+          {activePhoto.actions.can_share && <><Button variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void share(activePhoto, 'copy')}><Link2 size={17} aria-hidden="true" />{t('copy')}</Button><Button variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void share(activePhoto, 'whatsapp')}><MessageCircle size={17} aria-hidden="true" />WhatsApp</Button></>}
         </div>{message && <p role="status" className="mt-3 text-sm">{message}</p>}</div>
       </section>}
     </> : <>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p><h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold">{context?.event.event_name ?? t('title')}</h1><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('description')}</p></div><label className="flex min-h-11 items-center gap-2 text-sm">{t('sort')}<select value={sort} onChange={(event) => setSort(event.target.value as GetApiV1GuestGalleryPhotosSort)} className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-foreground)]"><option value="NEWEST">{t('newest')}</option><option value="OLDEST">{t('oldest')}</option><option value="MOST_LIKED">{t('mostLiked')}</option></select></label></header>
       {message && <p role="status" className="mb-4 text-sm">{message}</p>}
-      {photos.length === 0 ? <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center"><h2 className="text-lg font-semibold">{t('empty')}</h2><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('emptyDescription')}</p></section> : <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 lg:columns-4">{photos.map((photo) => <Link key={photo.photo_id} href={guestRoutes.photo(linkId, photo.photo_id)} className="mb-3 block break-inside-avoid overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] sm:mb-4"><DeliveryImage src={photo.media.url} alt={photo.photographer_display_name ? t('photoAltNamed', { name: photo.photographer_display_name }) : t('photoAlt')} unavailableLabel={t('mediaUnavailable')} className="h-auto max-h-[30rem] w-full object-cover" /><span className="block px-3 py-2"><span className="block truncate text-sm font-medium">{photo.photographer_display_name || t('anonymous')}</span><time className="mt-1 block text-xs text-[var(--color-muted-foreground)]" dateTime={photo.created_at}>{dateTime(photo.created_at)}</time>{photo.actions.can_like && <span className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]"><Heart size={13} aria-hidden="true" />{photo.like_count}</span>}</span></Link>)}</div>}
-      {hasMore && <div className="mt-6 text-center"><Button variant="secondary" loading={busy} onClick={() => void loadMore()}>{t('loadMore')}</Button></div>}
+      {photos.length === 0 ? <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center"><h2 className="text-lg font-semibold">{t('empty')}</h2><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('emptyDescription')}</p></section> : <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 lg:columns-4">{photos.map((photo) => <Link key={photo.photo_id} href={guestRoutes.photo(linkId, photo.photo_id)} className="mb-3 block break-inside-avoid overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] sm:mb-4"><DeliveryImage src={photo.media.url} alt={t('photoAltNamed', { name: photo.photographer_display_name })} unavailableLabel={t('mediaUnavailable')} className="h-auto max-h-[30rem] w-full object-cover" /><span className="block px-3 py-2"><span className="block truncate text-sm font-medium">{photo.photographer_display_name}</span><time className="mt-1 block text-xs text-[var(--color-muted-foreground)]" dateTime={photo.created_at}>{dateTime(photo.created_at)}</time>{photo.actions.can_like && <span className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]"><Heart size={13} aria-hidden="true" />{photo.like_count}</span>}</span></Link>)}</div>}
+      {hasMore && <div className="mt-6 text-center"><Button variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void loadMore()}>{t('loadMore')}</Button></div>}
       <p className="sr-only" aria-live="polite">{busy ? t('loading') : ''}</p>
     </>}
   </main>;

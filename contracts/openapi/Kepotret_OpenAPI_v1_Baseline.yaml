@@ -5356,15 +5356,15 @@ components:
         photo_id: *id001
         created_at: *id002
         photographer_display_name:
-          type:
-          - string
-          - 'null'
+          type: string
+          minLength: 1
+          maxLength: 50
         like_count: *id003
         media:
           $ref: '#/components/schemas/MediaDeliveryReference'
         actions:
           $ref: '#/components/schemas/GuestPhotoActions'
-      required: [photo_id, created_at, like_count, media, actions]
+      required: [photo_id, created_at, photographer_display_name, like_count, media, actions]
     ManagementPhotoActions:
       type: object
       additionalProperties: false
@@ -5392,15 +5392,15 @@ components:
           $ref: '#/components/schemas/ModerationStatus'
         created_at: *id002
         photographer_display_name:
-          type:
-          - string
-          - 'null'
+          type: string
+          minLength: 1
+          maxLength: 50
         like_count: *id003
         media:
           $ref: '#/components/schemas/MediaDeliveryReference'
         actions:
           $ref: '#/components/schemas/ManagementPhotoActions'
-      required: [photo_id, moderation_status, created_at, like_count, media, actions]
+      required: [photo_id, moderation_status, created_at, photographer_display_name, like_count, media, actions]
     TrashPhoto:
       type: object
       additionalProperties: false
@@ -5411,16 +5411,16 @@ components:
         created_at: *id002
         deleted_at: *id002
         photographer_display_name:
-          type:
-          - string
-          - 'null'
+          type: string
+          minLength: 1
+          maxLength: 50
         media:
           anyOf:
           - $ref: '#/components/schemas/MediaDeliveryReference'
           - type: 'null'
         can_restore:
           type: boolean
-      required: [photo_id, moderation_status, created_at, deleted_at, media, can_restore]
+      required: [photo_id, moderation_status, created_at, deleted_at, photographer_display_name, media, can_restore]
     PhotoShareLink:
       type: object
       additionalProperties: false
@@ -5433,7 +5433,7 @@ components:
       required: [url, photo_id]
     AlbumGalleryVisibility:
       type: string
-      enum: [GUEST_VISIBLE, HOST_ONLY]
+      enum: [GUEST, HOST_ONLY]
     AlbumModerationMode:
       type: string
       enum: [INSTANT, APPROVAL]

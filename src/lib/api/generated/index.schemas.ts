@@ -468,8 +468,11 @@ export interface GuestPhotoActions {
 export interface GuestGalleryPhoto {
   photo_id: string;
   created_at: string;
-  /** @nullable */
-  photographer_display_name?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  photographer_display_name: string;
   like_count: number;
   media: MediaDeliveryReference;
   actions: GuestPhotoActions;
@@ -491,8 +494,11 @@ export interface ManagementPhoto {
   photo_id: string;
   moderation_status: ModerationStatus;
   created_at: string;
-  /** @nullable */
-  photographer_display_name?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  photographer_display_name: string;
   like_count: number;
   media: MediaDeliveryReference;
   actions: ManagementPhotoActions;
@@ -503,8 +509,11 @@ export interface TrashPhoto {
   moderation_status: ModerationStatus;
   created_at: string;
   deleted_at: string;
-  /** @nullable */
-  photographer_display_name?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  photographer_display_name: string;
   media: MediaDeliveryReference | null;
   can_restore: boolean;
 }
@@ -521,7 +530,7 @@ export type AlbumGalleryVisibility = typeof AlbumGalleryVisibility[keyof typeof 
 
 
 export const AlbumGalleryVisibility = {
-  GUEST_VISIBLE: 'GUEST_VISIBLE',
+  GUEST: 'GUEST',
   HOST_ONLY: 'HOST_ONLY',
 } as const;
 
