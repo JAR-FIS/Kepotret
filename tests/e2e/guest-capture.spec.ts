@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 declare global {
   interface Window { captureTrace?: string[]; revokedCaptureUrls?: string[] }
@@ -39,7 +40,13 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', { configurable: true, get: () => 640 });
     Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', { configurable: true, get: () => 480 });
     HTMLVideoElement.prototype.play = async function () {};
-    HTMLCanvasElement.prototype.toBlob = function (callback, type = 'image/png') { callback(new Blob([new Uint8Array([1, 2, 3])], { type })); };
+    let canvasExports = 0;
+    const nativeToBlob = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (callback, type = 'image/png') {
+      canvasExports += 1;
+      if (canvasExports === 1) callback(new Blob([new Uint8Array([1, 2, 3])], { type }));
+      else nativeToBlob.call(this, callback, type);
+    };
     HTMLCanvasElement.prototype.getContext = (() => ({ drawImage() {} })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
     Object.defineProperty(window, 'createImageBitmap', { configurable: true, value: async () => ({ width: 640, height: 480, close() {} }) });
     Object.defineProperty(window, 'revokedCaptureUrls', { configurable: true, value: [] });
@@ -210,7 +217,7 @@ test('H65 to H68 consent flow creates the guest only after locked consent and ca
   await page.getByRole('button', { name: 'Open camera' }).click();
   await page.getByRole('button', { name: 'Take photo' }).click();
   await page.getByRole('button', { name: 'Use photo' }).click();
-  await expect(page.getByText('Photo saved')).toBeVisible();
+  await expect(page.getByText('Photo saved to the album')).toBeVisible();
   expect(await page.evaluate(() => (window.captureTrace?.indexOf('reserved') ?? -1) < (window.captureTrace?.indexOf('frame-drawn') ?? -1))).toBe(true);
   expect(uploadedType).toBe('image/jpeg');
   expect(recoveryChecks).toBe(1);
@@ -250,17 +257,63 @@ test('ACTIVE commit recovery keeps the same image and attempt retryable without 
   await captureForUploadRecovery(page, state);
   await page.getByRole('button', { name: 'Use photo' }).click();
   await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save to device' })).toHaveCount(0);
   await expect(page.getByRole('img', { name: 'Event photo preview' })).toBeVisible();
   expect(state.reservations).toBe(1);
   expect(state.uploadAuthorizations).toBe(1);
   expect(state.uploadAttemptIds).toEqual([`${attemptId.slice(0, -1)}1`]);
 
   await page.getByRole('button', { name: 'Use photo' }).click();
-  await expect(page.getByText('Photo saved')).toBeVisible();
+  await expect(page.getByText('Photo saved to the album')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save to device' })).toBeVisible();
   expect(await page.evaluate(() => window.revokedCaptureUrls)).toHaveLength(1);
   expect(state.reservations).toBe(1);
   expect(state.uploadAuthorizations).toBe(2);
   expect(state.uploadAttemptIds).toEqual([`${attemptId.slice(0, -1)}1`, `${attemptId.slice(0, -1)}1`]);
+});
+
+test('local JPEG download appears only after COMMITTED and matches the uploaded processed bytes', async ({ page }) => {
+  const state = await prepareGuestPage(page);
+  let uploaded: Buffer | null = null;
+  let mediaRequests = 0;
+  await page.route('https://upload.test/object', async route => {
+    uploaded = route.request().postDataBuffer();
+    await route.fulfill({ status: 200 });
+  });
+  await page.route('**/api/v1/capture-attempts/*/commit', route => route.fulfill({ status: 201, json: { data: { status: 'COMMITTED' } } }));
+  page.on('request', request => { if (request.url().includes('/photos/') || request.url().includes('/media/')) mediaRequests += 1; });
+  await captureForUploadRecovery(page, state);
+  await expect(page.getByRole('button', { name: 'Save to device' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByText('Photo saved to the album')).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save to device' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^kepotret-kepotret-e2e-.*\.jpg$/);
+  const uploadedBytes: Buffer = uploaded ?? Buffer.alloc(0);
+  expect(uploadedBytes.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+  expect(uploaded).not.toEqual(Buffer.from([1, 2, 3]));
+  expect(await readFile(await download.path())).toEqual(uploaded);
+  expect(mediaRequests).toBe(0);
+  expect(state.reservations).toBe(1);
+  expect(page.url()).not.toContain('#fragment-secret');
+  expect(await page.evaluate(async () => ({
+    stored: [...Object.values(localStorage), ...Object.values(sessionStorage)].some(value => value.includes('blob:') || value.includes('data:image/jpeg')),
+    databases: await indexedDB.databases().then(databases => databases.filter(database => database.name?.includes('kepotret-photo')).length),
+  }))).toEqual({ stored: false, databases: 0 });
+  await page.getByRole('button', { name: 'Take another photo' }).click();
+  await expect(page.getByRole('button', { name: 'Save to device' })).toHaveCount(0);
+  expect(await page.evaluate(() => window.revokedCaptureUrls)).toHaveLength(2);
+});
+
+test('a closed capture window still leaves the committed local copy available', async ({ page }) => {
+  const state = await prepareGuestPage(page, { readinessAfterRecovery: 'CLOSED' });
+  await captureForUploadRecovery(page, state);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByText('Photo saved to the album')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save to device' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Take another photo' })).toHaveCount(0);
+  expect(state.recoveryChecks).toBe(1);
 });
 
 test('EXPIRED recovery clears the old photo and uses a new reservation key for the next shutter', async ({ page }) => {

@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Album, ArrowLeft, ChevronUp, Home, Images, MoreHorizontal, Plus, Settings2, UserRound } from 'lucide-react';
+import { Album, ArrowLeft, BookOpen, ChevronUp, Home, Images, MoreHorizontal, Plus, Settings2, UserRound } from 'lucide-react';
 
 import { LocaleControl } from '@/components/ui/locale-control';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -24,23 +25,25 @@ export function HostShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-6 lg:flex">
-        <Link href={hostRoutes.dashboard} className="mb-10 font-[var(--font-display)] text-2xl font-black tracking-tight">Kepotret</Link>
+        <Link href={hostRoutes.dashboard} aria-label="Kepotret" className="mb-10 inline-flex"><span className="rounded bg-white px-2 py-1"><Image src="/brand/logo.svg" alt="" width={116} height={39} priority /></span></Link>
         <nav aria-label={t('nav.label')} className="space-y-1">
           {links.map(({ href, label, icon: Icon }) => {
             const active = href === hostRoutes.albums ? pathname.startsWith('/album') : pathname === href;
             return <Link key={href} aria-current={active ? 'page' : undefined} href={href} className={`flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-medium ${active ? 'bg-[var(--color-muted)]' : 'hover:bg-[var(--color-muted)]'}`}><Icon aria-hidden="true" size={18} />{label}</Link>;
           })}
         </nav>
-        <Link href={hostRoutes.createAlbum} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]"><Plus aria-hidden="true" size={18} />{t('create')}</Link>
+        <Link href="/help/host" className="mt-auto inline-flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-medium hover:bg-[var(--color-muted)]"><BookOpen aria-hidden="true" size={18} />{t('nav.help')}</Link>
+        <Link href={hostRoutes.createAlbum} className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]"><Plus aria-hidden="true" size={18} />{t('create')}</Link>
       </aside>
       <div className="min-w-0 lg:pl-64">
         <header className="sticky top-0 z-10 flex min-h-16 items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)]/95 px-4 backdrop-blur sm:px-6 lg:px-10">
           <div className="flex items-center gap-3">
         {inAlbum && <Link aria-label={t('nav.albums')} href={hostRoutes.albums} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-[var(--color-muted)] lg:hidden"><ArrowLeft aria-hidden="true" size={19} /></Link>}
-            {!inAlbum && <Link href={hostRoutes.dashboard} className="font-[var(--font-display)] text-lg font-black lg:hidden">Kepotret</Link>}
+            {!inAlbum && <Link href={hostRoutes.dashboard} aria-label="Kepotret" className="inline-flex lg:hidden"><span className="rounded bg-white px-1.5 py-1"><Image src="/brand/logo.svg" alt="" width={91} height={30} priority /></span></Link>}
             {inAlbum && <span className="hidden text-sm text-[var(--color-muted-foreground)] lg:block">{t('albumWorkspace')}</span>}
           </div>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <Link href="/help/host" aria-label={t('nav.help')} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-[var(--color-muted)] lg:hidden"><BookOpen aria-hidden="true" size={18} /></Link>
             <LocaleControl label={t('nav.language')} indonesianLabel={t('nav.indonesian')} englishLabel={t('nav.english')} indonesianShort={t('nav.indonesianShort')} englishShort={t('nav.englishShort')} />
             <ThemeToggle lightLabel={t('nav.switchToLight')} darkLabel={t('nav.switchToDark')} />
             <Link href="/akun" aria-label={t('nav.account')} className="hidden size-11 items-center justify-center rounded-full border border-[var(--color-border)] hover:bg-[var(--color-muted)] sm:inline-flex"><UserRound aria-hidden="true" size={18} /></Link>
@@ -89,6 +92,7 @@ function WorkspaceNavigation({
     { href: hostRoutes.recoveryMedia(albumId), label: t('navItems.recoveryMedia') },
   ];
   const moreItems = [
+    { href: '/help/host', label: t('nav.help') },
     { href: hostRoutes.sharing(albumId), label: t('navItems.sharing') },
     { href: hostRoutes.payments(albumId), label: t('navItems.payments') },
     { href: hostRoutes.upgrade(albumId), label: t('navItems.upgrade') },

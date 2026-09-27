@@ -5353,9 +5353,10 @@ components:
           additionalProperties: false
           properties:
             per_guest_limit:
-              type:
-              - integer
-              - 'null'
+              type: integer
+              enum: [5, 10, 30, 50, 70, 100]
+              default: 30
+              description: Server-initialized per-GuestSession limit for new albums. Album quota exhaustion always blocks further capture, even when a GuestSession has remaining allowance.
           required:
           - per_guest_limit
         design:
@@ -5673,10 +5674,10 @@ components:
         share_enabled:
           type: boolean
         per_guest_limit:
-          type:
-          - integer
-          - 'null'
-          enum: [5, 10, 30, 50, 70, 100, null]
+          type: integer
+          enum: [5, 10, 30, 50, 70, 100]
+          default: 30
+          description: Persisted per-GuestSession limit, initialized to 30 by the server for new albums. It cannot exceed currently usable album quota; album quota exhaustion takes precedence over remaining GuestSession allowance.
       required: [revision, visibility, moderation_mode, likes_enabled, downloads_enabled, share_enabled, per_guest_limit]
     AlbumSharing:
       type: object
@@ -6172,6 +6173,7 @@ components:
           - 50
           - 70
           - 100
+          description: Per-GuestSession photo limit. The server rejects a value above the currently usable album quota.
         visibility:
           $ref: '#/components/schemas/AlbumGalleryVisibility'
         moderation_mode:

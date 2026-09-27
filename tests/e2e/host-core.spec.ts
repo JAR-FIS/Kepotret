@@ -55,6 +55,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
   await page.route(`**/api/v1/albums/${albumId}/schedule`, async (route) => {
     if (route.request().method() === 'GET') return route.fulfill({ status: 200, json: { data: schedule } });
     const body = route.request().postDataJSON() as { expected_revision: number; capture_start: string; capture_end: string; reveal_delay_days: 1 | 3 | 5 | 7 };
+    expect(Object.keys(body).sort()).toEqual(['capture_end', 'capture_start', 'expected_revision', 'reveal_delay_days']);
     expect(route.request().headers()['x-csrf-token']).toBe('test-csrf');
     expect(body.expected_revision).toBe(album.setup_revision);
     expect(body.reveal_delay_days).toBe(3);
@@ -64,6 +65,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     album = { ...album, capture_start: body.capture_start, capture_end: body.capture_end, schedule_version: 1, setup_revision: album.setup_revision + 1 };
     return route.fulfill({ status: 200, json: { data: schedule } });
   });
+  await page.route(`**/api/v1/albums/${albumId}/settings`, (route) => route.fulfill({ status: 200, json: { data: { revision: 1, per_guest_limit: 30 } } }));
   await page.route(`**/api/v1/albums/${albumId}/design`, (route) => route.fulfill({ status: 200, json: { data: { cover_asset_id: null, setup_revision: album.setup_revision } } }));
   await page.route(`**/api/v1/albums/${albumId}/setup/package`, async (route) => {
     const body = route.request().postDataJSON() as { expected_revision: number; package_version_id: string | null };
@@ -77,7 +79,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     album_id: albumId, setup_revision: album.setup_revision, complete: true, issues: [],
     snapshot: {
       event_basics: { event_name: album.event_name!, event_location: album.event_location!, event_category_id: categoryId, timezone: album.timezone },
-      schedule, access: { pin_enabled: false }, settings: { per_guest_limit: null },
+      schedule, access: { pin_enabled: false }, settings: { per_guest_limit: 30 },
       design: { cover_asset_id: null, setup_revision: album.setup_revision },
       selected_package_version_id: album.selected_package_version_id, collaborator_count: 0,
     },
@@ -104,15 +106,17 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
   await page.getByRole('button', { name: 'Simpan informasi acara' }).click();
   await expect(page.getByRole('status')).toContainText('Informasi acara berhasil disimpan.');
 
-  await page.getByRole('navigation', { name: 'Persiapan album' }).getByRole('link', { name: /Jadwal & reveal$/ }).click();
+  await page.getByRole('navigation', { name: 'Persiapan album' }).getByRole('link', { name: /Waktu Potret & Reveal$/ }).click();
   const { start, end } = await page.evaluate(() => {
     const format = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T10:00`;
     const startDate = new Date(); startDate.setDate(startDate.getDate() + 2);
     const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 1);
     return { start: format(startDate), end: format(endDate) };
   });
-  await page.getByLabel('Tanggal dan waktu mulai').fill(start);
-  await page.getByLabel('Tanggal dan waktu selesai').fill(end);
+  await page.getByLabel('Tanggal mulai memotret').fill(start.slice(0, 10));
+  await page.getByLabel('Jam mulai memotret').fill(start.slice(11));
+  await page.getByLabel('Tanggal berhenti memotret').fill(end.slice(0, 10));
+  await page.getByLabel('Jam berhenti memotret').fill(end.slice(11));
   await page.getByLabel('Jeda reveal').selectOption('3');
   await page.getByRole('button', { name: 'Simpan jadwal' }).click();
   await expect(page.getByRole('status')).toContainText('Jadwal berhasil disimpan.');
@@ -127,7 +131,11 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
   for (const [step, label] of [['akses', 'Akses & privasi'], ['moderasi', 'Batas & moderasi'], ['desain', 'Desain'], ['kolaborator', 'Kolaborator']]) {
     await page.getByRole('navigation', { name: 'Persiapan album' }).getByRole('link', { name: new RegExp(`${label}$`) }).click();
     await expect(page).toHaveURL(`/album/${albumId}/setup/${step}`);
-    if (step === 'moderasi') await expect(page.getByRole('combobox', { name: 'Batas foto per peserta' }).locator('option')).toHaveCount(7);
+    if (step === 'moderasi') {
+      await expect(page.getByRole('radio')).toHaveCount(6);
+      await expect(page.getByRole('radio', { name: /30/ })).toBeChecked();
+      await expect(page.getByRole('radio', { name: /100/ })).toBeDisabled();
+    }
     if (step === 'desain') await expect(page.getByText('Belum ada sampul yang dipilih.')).toBeVisible();
     if (step === 'kolaborator') await expect(page.getByRole('checkbox')).toHaveCount(3);
   }
@@ -153,7 +161,7 @@ test('Confirm Setup reuses its UUIDv7 for a revision retry and changes it for a 
     album_id: albumId, setup_revision: revision, complete: true, issues: [],
     snapshot: {
       event_basics: { event_name: 'Free event', event_location: 'Jakarta', event_category_id: categoryId, timezone: 'Asia/Jakarta' },
-      schedule: null, access: { pin_enabled: false }, settings: { per_guest_limit: null },
+      schedule: null, access: { pin_enabled: false }, settings: { per_guest_limit: 30 },
       design: { cover_asset_id: null, setup_revision: revision },
       selected_package_version_id: null, collaborator_count: 0,
     },

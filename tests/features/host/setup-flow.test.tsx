@@ -107,8 +107,13 @@ describe('FE-3 setup flow contract surfaces', () => {
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: { ...album, timezone: 'America/Los_Angeles' } } });
     api.getSchedule.mockResolvedValue({ status: 200, data: { data: schedule } });
     renderHost(<ScheduleSetup albumId={albumId} />);
-    expect(await screen.findByLabelText('Tanggal dan waktu mulai')).toHaveValue('2026-10-01T07:00');
-    expect(screen.getByLabelText('Tanggal dan waktu selesai')).toHaveValue('2026-10-02T07:00');
+    expect(await screen.findByLabelText('Tanggal mulai memotret')).toHaveValue('2026-10-01');
+    expect(screen.getByRole('heading', { name: 'Waktu Potret' })).toBeInTheDocument();
+    expect(screen.getByText('Zona waktu acara: America/Los_Angeles')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Waktu foto ditampilkan' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Jam mulai memotret')).toHaveValue('07:00');
+    expect(screen.getByLabelText('Tanggal berhenti memotret')).toHaveValue('2026-10-02');
+    expect(screen.getByLabelText('Jam berhenti memotret')).toHaveValue('07:00');
     expect(screen.getByLabelText('Jeda reveal')).toHaveValue('3');
   });
 
@@ -116,14 +121,55 @@ describe('FE-3 setup flow contract surfaces', () => {
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: { ...album, timezone: 'America/New_York' } } });
     api.putSchedule.mockResolvedValue({ status: 200, data: { data: schedule } });
     renderHost(<ScheduleSetup albumId={albumId} />);
-    await screen.findByLabelText('Tanggal dan waktu mulai');
-    fireEvent.change(screen.getByLabelText('Tanggal dan waktu mulai'), { target: { value: '2026-10-01T10:00' } });
-    fireEvent.change(screen.getByLabelText('Tanggal dan waktu selesai'), { target: { value: '2026-10-02T10:00' } });
+    await screen.findByLabelText('Tanggal mulai memotret');
+    fireEvent.change(screen.getByLabelText('Tanggal mulai memotret'), { target: { value: '2026-10-01' } });
+    fireEvent.change(screen.getByLabelText('Jam mulai memotret'), { target: { value: '10:00' } });
+    fireEvent.change(screen.getByLabelText('Tanggal berhenti memotret'), { target: { value: '2026-10-02' } });
+    fireEvent.change(screen.getByLabelText('Jam berhenti memotret'), { target: { value: '10:00' } });
     fireEvent.change(screen.getByLabelText('Jeda reveal'), { target: { value: '5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan jadwal' }));
     await waitFor(() => expect(api.putSchedule).toHaveBeenCalledWith(albumId, {
       expected_revision: 4, capture_start: '2026-10-01T14:00:00Z', capture_end: '2026-10-02T14:00:00Z', reveal_delay_days: 5,
     }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+  });
+
+  it('uses the refreshed setup revision for two consecutive schedule saves', async () => {
+    api.getAlbum
+      .mockResolvedValueOnce({ status: 200, data: { data: { ...album, setup_revision: 4 } } })
+      .mockResolvedValueOnce({ status: 200, data: { data: { ...album, setup_revision: 5 } } })
+      .mockResolvedValueOnce({ status: 200, data: { data: { ...album, setup_revision: 6 } } });
+    api.getSchedule.mockResolvedValue({ status: 404, data: {} });
+    api.putSchedule.mockResolvedValueOnce({ status: 200, data: { data: { ...schedule, capture_start: '2026-10-01T03:00:00Z', capture_end: '2026-10-02T03:00:00Z' } } });
+    api.putSchedule.mockResolvedValue({ status: 200, data: { data: schedule } });
+    renderHost(<ScheduleSetup albumId={albumId} />);
+
+    await screen.findByLabelText('Tanggal mulai memotret');
+    const startDate = screen.getByLabelText('Tanggal mulai memotret');
+    const startTime = screen.getByLabelText('Jam mulai memotret');
+    const endDate = screen.getByLabelText('Tanggal berhenti memotret');
+    const endTime = screen.getByLabelText('Jam berhenti memotret');
+    const reveal = screen.getByLabelText('Jeda reveal');
+    const save = screen.getByRole('button', { name: 'Simpan jadwal' });
+
+    fireEvent.change(startDate, { target: { value: '2026-10-01' } });
+    fireEvent.change(startTime, { target: { value: '10:00' } });
+    fireEvent.change(endDate, { target: { value: '2026-10-02' } });
+    fireEvent.change(endTime, { target: { value: '10:00' } });
+    fireEvent.change(reveal, { target: { value: '3' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(api.putSchedule).toHaveBeenCalledTimes(1));
+    await screen.findByText('Jadwal berhasil disimpan.');
+
+    fireEvent.change(startDate, { target: { value: '2026-10-03' } });
+    fireEvent.change(endDate, { target: { value: '2026-10-04' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(api.putSchedule).toHaveBeenCalledTimes(2));
+
+    expect(api.putSchedule.mock.calls.map(([id, body]) => [id, body])).toEqual([
+      [albumId, { expected_revision: 4, capture_start: '2026-10-01T03:00:00Z', capture_end: '2026-10-02T03:00:00Z', reveal_delay_days: 3 }],
+      [albumId, { expected_revision: 5, capture_start: '2026-10-03T03:00:00Z', capture_end: '2026-10-04T03:00:00Z', reveal_delay_days: 3 }],
+    ]);
+    expect(api.getAlbum).toHaveBeenCalledTimes(3);
   });
 
   it('rehydrates committed design state and allows clearing the supported cover selection', async () => {

@@ -461,9 +461,24 @@ export type SetupReviewSnapshotAccess = {
   pin_enabled: boolean;
 };
 
+/**
+ * Server-initialized per-GuestSession limit for new albums. Album quota exhaustion always blocks further capture, even when a GuestSession has remaining allowance.
+ */
+export type SetupReviewSnapshotSettingsPerGuestLimit = typeof SetupReviewSnapshotSettingsPerGuestLimit[keyof typeof SetupReviewSnapshotSettingsPerGuestLimit];
+
+
+export const SetupReviewSnapshotSettingsPerGuestLimit = {
+  NUMBER_5: 5,
+  NUMBER_10: 10,
+  NUMBER_30: 30,
+  NUMBER_50: 50,
+  NUMBER_70: 70,
+  NUMBER_100: 100,
+} as const;
+
 export type SetupReviewSnapshotSettings = {
-  /** @nullable */
-  per_guest_limit: number | null;
+  /** Server-initialized per-GuestSession limit for new albums. Album quota exhaustion always blocks further capture, even when a GuestSession has remaining allowance. */
+  per_guest_limit: SetupReviewSnapshotSettingsPerGuestLimit;
 };
 
 export type AlbumScheduleRevealDelayDays = typeof AlbumScheduleRevealDelayDays[keyof typeof AlbumScheduleRevealDelayDays];
@@ -659,9 +674,9 @@ export const AlbumModerationMode = {
 } as const;
 
 /**
- * @nullable
+ * Persisted per-GuestSession limit, initialized to 30 by the server for new albums. It cannot exceed currently usable album quota; album quota exhaustion takes precedence over remaining GuestSession allowance.
  */
-export type AlbumSettingsPerGuestLimit = typeof AlbumSettingsPerGuestLimit[keyof typeof AlbumSettingsPerGuestLimit] | null;
+export type AlbumSettingsPerGuestLimit = typeof AlbumSettingsPerGuestLimit[keyof typeof AlbumSettingsPerGuestLimit];
 
 
 export const AlbumSettingsPerGuestLimit = {
@@ -681,7 +696,7 @@ export interface AlbumSettings {
   likes_enabled: boolean;
   downloads_enabled: boolean;
   share_enabled: boolean;
-  /** @nullable */
+  /** Persisted per-GuestSession limit, initialized to 30 by the server for new albums. It cannot exceed currently usable album quota; album quota exhaustion takes precedence over remaining GuestSession allowance. */
   per_guest_limit: AlbumSettingsPerGuestLimit;
 }
 
@@ -976,6 +991,9 @@ export interface SetupPackageSelectionRequest {
   package_version_id: string | null;
 }
 
+/**
+ * Per-GuestSession photo limit. The server rejects a value above the currently usable album quota.
+ */
 export type AlbumSettingsPatchRequestPerGuestLimit = typeof AlbumSettingsPatchRequestPerGuestLimit[keyof typeof AlbumSettingsPatchRequestPerGuestLimit];
 
 
@@ -991,6 +1009,7 @@ export const AlbumSettingsPatchRequestPerGuestLimit = {
 export interface AlbumSettingsPatchRequest {
   /** @minimum 1 */
   expected_revision: number;
+  /** Per-GuestSession photo limit. The server rejects a value above the currently usable album quota. */
   per_guest_limit?: AlbumSettingsPatchRequestPerGuestLimit;
   visibility?: AlbumGalleryVisibility;
   moderation_mode?: AlbumModerationMode;

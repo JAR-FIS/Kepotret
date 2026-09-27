@@ -18,7 +18,7 @@ describe('gallery settings visibility', () => {
     api.csrf.mockReset();
     api.patch.mockReset();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
-    api.settings.mockResolvedValue({ status: 200, data: { data: { revision: 7, visibility: 'GUEST', moderation_mode: 'APPROVAL', likes_enabled: true, downloads_enabled: false, share_enabled: true, per_guest_limit: null } } });
+    api.settings.mockResolvedValue({ status: 200, data: { data: { revision: 7, visibility: 'GUEST', moderation_mode: 'APPROVAL', likes_enabled: true, downloads_enabled: false, share_enabled: true, per_guest_limit: 30 } } });
     api.csrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'settings-csrf' } } });
     api.patch.mockResolvedValue({ status: 200, data: { data: {} } });
   });
