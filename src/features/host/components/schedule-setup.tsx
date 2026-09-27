@@ -84,6 +84,17 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
         setStart(toEventWallTime(schedule.capture_start, timeZone));
         setEnd(toEventWallTime(schedule.capture_end, timeZone));
         setDelay(schedule.reveal_delay_days);
+        setRevision(null);
+        try {
+          const albumResult = await getApiV1AlbumsAlbumId(albumId);
+          if (albumResult.status === 401) { setState('unauthenticated'); return; }
+          if (albumResult.status === 403) { setState('forbidden'); return; }
+          if (albumResult.status !== 200) { setState('error'); return; }
+          setRevision(albumResult.data.data.setup_revision);
+        } catch {
+          setState('error');
+          return;
+        }
         setError('saved');
       }
       else if (result.status === 401) setState('unauthenticated');

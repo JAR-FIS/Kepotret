@@ -133,6 +133,45 @@ describe('FE-3 setup flow contract surfaces', () => {
     }, { headers: { 'X-CSRF-Token': 'csrf' } }));
   });
 
+  it('uses the refreshed setup revision for two consecutive schedule saves', async () => {
+    api.getAlbum
+      .mockResolvedValueOnce({ status: 200, data: { data: { ...album, setup_revision: 4 } } })
+      .mockResolvedValueOnce({ status: 200, data: { data: { ...album, setup_revision: 5 } } })
+      .mockResolvedValueOnce({ status: 200, data: { data: { ...album, setup_revision: 6 } } });
+    api.getSchedule.mockResolvedValue({ status: 404, data: {} });
+    api.putSchedule.mockResolvedValueOnce({ status: 200, data: { data: { ...schedule, capture_start: '2026-10-01T03:00:00Z', capture_end: '2026-10-02T03:00:00Z' } } });
+    api.putSchedule.mockResolvedValue({ status: 200, data: { data: schedule } });
+    renderHost(<ScheduleSetup albumId={albumId} />);
+
+    await screen.findByLabelText('Tanggal mulai memotret');
+    const startDate = screen.getByLabelText('Tanggal mulai memotret');
+    const startTime = screen.getByLabelText('Jam mulai memotret');
+    const endDate = screen.getByLabelText('Tanggal berhenti memotret');
+    const endTime = screen.getByLabelText('Jam berhenti memotret');
+    const reveal = screen.getByLabelText('Jeda reveal');
+    const save = screen.getByRole('button', { name: 'Simpan jadwal' });
+
+    fireEvent.change(startDate, { target: { value: '2026-10-01' } });
+    fireEvent.change(startTime, { target: { value: '10:00' } });
+    fireEvent.change(endDate, { target: { value: '2026-10-02' } });
+    fireEvent.change(endTime, { target: { value: '10:00' } });
+    fireEvent.change(reveal, { target: { value: '3' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(api.putSchedule).toHaveBeenCalledTimes(1));
+    await screen.findByText('Jadwal berhasil disimpan.');
+
+    fireEvent.change(startDate, { target: { value: '2026-10-03' } });
+    fireEvent.change(endDate, { target: { value: '2026-10-04' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(api.putSchedule).toHaveBeenCalledTimes(2));
+
+    expect(api.putSchedule.mock.calls.map(([id, body]) => [id, body])).toEqual([
+      [albumId, { expected_revision: 4, capture_start: '2026-10-01T03:00:00Z', capture_end: '2026-10-02T03:00:00Z', reveal_delay_days: 3 }],
+      [albumId, { expected_revision: 5, capture_start: '2026-10-03T03:00:00Z', capture_end: '2026-10-04T03:00:00Z', reveal_delay_days: 3 }],
+    ]);
+    expect(api.getAlbum).toHaveBeenCalledTimes(3);
+  });
+
   it('rehydrates committed design state and allows clearing the supported cover selection', async () => {
     const cover: AlbumDesign = { cover_asset_id: '55555555-5555-4555-8555-555555555555', setup_revision: 4 };
     api.getDesign.mockResolvedValueOnce({ status: 200, data: { data: cover } }).mockResolvedValueOnce({ status: 200, data: { data: { cover_asset_id: null, setup_revision: 5 } } });

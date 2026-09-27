@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
@@ -15,6 +15,7 @@ type LoadState = 'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error'
 const FREE_QUOTA = 30;
 
 export function GuestLimitForm({ albumId }: { albumId: string }) {
+  const locale = useLocale();
   const t = useTranslations('host.guestLimit');
   const [revision, setRevision] = useState<number | null>(null);
   const [quota, setQuota] = useState(FREE_QUOTA);
@@ -87,7 +88,7 @@ export function GuestLimitForm({ albumId }: { albumId: string }) {
         return <label key={value} className={`relative flex min-h-20 cursor-pointer flex-col justify-center rounded-[var(--radius-md)] border px-4 py-3 transition-colors ${limit === value ? 'border-[var(--color-foreground)] bg-[var(--color-muted)]' : 'border-[var(--color-border)]'} ${unavailable ? 'cursor-not-allowed opacity-45' : 'hover:border-[var(--color-foreground)]'}`}><input type="radio" name="per-guest-limit" value={value} checked={limit === value} disabled={unavailable} onChange={() => { setLimit(value); setMessage(null); }} className="absolute right-3 top-3 size-4 accent-[var(--color-foreground)]" /><span className="font-[var(--font-display)] text-2xl font-bold">{value}</span><span className="text-xs text-[var(--color-muted-foreground)]">{t('photos')}</span>{value === 30 && !unavailable && <span className="mt-1 text-xs font-semibold">{t('recommended')}</span>}</label>;
       })}
     </div></fieldset>
-    <p className="mt-5 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('quotaNote', { count: quota.toLocaleString() })}</p>
+    <p className="mt-5 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('quotaNote', { count: new Intl.NumberFormat(locale).format(quota) })}</p>
     <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('distinction')}</p>
     {message && <p role="status" className="mt-4 text-sm">{t(message)}{message === 'conflict' && <> <button type="button" onClick={() => { setMessage(null); setState('loading'); setAttempt(value => value + 1); }} className="font-semibold underline">{t('reload')}</button></>}</p>}
     <Button type="submit" loading={pending} disabled={limit === null || limit > quota || revision === null} className="mt-6">{t('save')}</Button>

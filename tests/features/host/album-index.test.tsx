@@ -11,6 +11,7 @@ import { GuestLimitForm } from '@/features/host/components/guest-limit-form';
 import { CollaboratorSetup } from '@/features/host/components/collaborator-setup';
 import { AccessPinForm } from '@/features/host/components/access-pin-form';
 import idMessages from '@/messages/id.json';
+import enMessages from '@/messages/en.json';
 import type { AlbumDetail, AlbumSummary, InvitationSummary } from '@/lib/api/generated/index.schemas';
 
 const draft: AlbumSummary = {
@@ -92,6 +93,16 @@ describe('FE-3 Host album surfaces', () => {
     expect(await screen.findByRole('radio', { name: /^70 foto per sesi$/ })).toBeChecked();
     expect(screen.getAllByRole('radio')).toHaveLength(6);
     for (const radio of screen.getAllByRole('radio')) expect(radio).toBeEnabled();
+  });
+
+  it('formats the album quota using the active app locale', async () => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: { ...draft, quota_total: 10_000 } } });
+    getSettings.mockResolvedValue({ status: 200, data: { data: { revision: 4, per_guest_limit: 30 } } });
+    const { rerender } = renderHost(<GuestLimitForm albumId={draft.album_id} />);
+    expect(await screen.findByText(/10\.000 foto/)).toBeInTheDocument();
+
+    rerender(<NextIntlClientProvider locale="en" messages={enMessages}><GuestLimitForm albumId={draft.album_id} /></NextIntlClientProvider>);
+    expect(await screen.findByText(/10,000 photos/)).toBeInTheDocument();
   });
 
   it.each([409, 422, 429, 503])('shows a recoverable settings error for PATCH %s', async status => {
