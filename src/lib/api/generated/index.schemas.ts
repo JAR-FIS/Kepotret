@@ -117,16 +117,7 @@ export const PaymentType = {
 } as const;
 
 /**
- * Short-lived Media Gateway URL that rechecks current authorization on each request. Never a storage URL or object locator.
- */
-export interface MediaDeliveryReference {
-  /** Short-lived Media Gateway delivery URL. */
-  url: string;
-  expires_at: string;
-}
-
-/**
- * Read-only, currently eligible selection row. It grants no moderation, share, or download action.
+ * Read-only identity projection for currently eligible selected-export rows. It grants no interactive media access, moderation, share, or individual download action. Selected export capability and can_export_zip do not expand any other capability; allow_selected is server-authoritative.
  */
 export interface ExportSelectionPhoto {
   photo_id: string;
@@ -136,7 +127,15 @@ export interface ExportSelectionPhoto {
      * @maxLength 50
      */
   photographer_display_name: string;
-  media: MediaDeliveryReference;
+}
+
+/**
+ * Short-lived Media Gateway URL that rechecks current authorization on each request. Never a storage URL or object locator.
+ */
+export interface MediaDeliveryReference {
+  /** Short-lived Media Gateway delivery URL. */
+  url: string;
+  expires_at: string;
 }
 
 /**

@@ -55,6 +55,10 @@ test('H47/H48 show server transaction snapshots; H49 offers only higher-quota pa
   await page.getByRole('link', { name: 'Detail transaksi' }).click();
   await expect(page).toHaveURL(`/album/${albumId}/pembayaran/${transactionId}`);
   await expect(page.getByText('Plus', { exact: true })).toBeVisible();
+  await expect(page.getByText(transactionId)).toBeVisible();
+  await expect(page.getByText('Upgrade kapasitas')).toBeVisible();
+  await expect(page.getByText('Batas pembayaran', { exact: false })).toBeVisible();
+  await expect(page.getByText('Batas waktu penyedia', { exact: false })).toBeVisible();
 
   await page.route(`**/api/v1/albums/${albumId}/package-options`, route => route.fulfill({ status: 200, json: { data: {
     album_id: albumId, current_quota_total: 100, reserved_count: 4, committed_count: 6,
@@ -66,4 +70,27 @@ test('H47/H48 show server transaction snapshots; H49 offers only higher-quota pa
   await expect(page.getByText('Kapasitas saat ini: 100')).toBeVisible();
   await expect(page.getByText('300', { exact: false })).toBeVisible();
   await expect(page.getByText('Pilih paket')).toBeVisible();
+});
+
+test('checkout preserves 401 and 403 returned by the CSRF endpoint', async ({ page }) => {
+  await page.route('**/api/v1/albums/' + albumId + '/package-options', route => route.fulfill({ status: 200, json: { data: {
+    album_id: albumId, current_quota_total: 30, reserved_count: 0, committed_count: 0,
+    payment_cutoff_at: '2026-10-20T10:00:00Z', server_time: '2026-10-01T10:00:00Z',
+    can_create_checkout: true, checkout_block_reason: null, active_checkout: null,
+    options: [{ package_id: '33333333-3333-4333-8333-333333333333', package_version_id: packageVersionId, code: 'PLUS', name: 'Plus', price_amount: 75000, currency: 'IDR', quota_total: 300 }],
+  } } }));
+  let csrfStatus = 401;
+  await page.route('**/api/v1/security/csrf', route => route.fulfill({ status: csrfStatus, json: { error: { code: csrfStatus === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', message: 'Denied', request_id: 'test' } } }));
+  let paymentRequests = 0;
+  await page.route('**/api/v1/albums/' + albumId + '/payments', route => { paymentRequests += 1; return route.fulfill({ status: 500 }); });
+  await page.goto(`/album/${albumId}/checkout/${packageVersionId}`);
+  await page.getByRole('button', { name: 'Lanjutkan pembayaran' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Lanjutkan pembayaran' }).click();
+  await expect(page.getByText('Sesi perlu diperbarui')).toBeVisible();
+  csrfStatus = 403;
+  await page.goto(`/album/${albumId}/checkout/${packageVersionId}`);
+  await page.getByRole('button', { name: 'Lanjutkan pembayaran' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Lanjutkan pembayaran' }).click();
+  await expect(page.getByText('Akses tidak tersedia')).toBeVisible();
+  expect(paymentRequests).toBe(0);
 });

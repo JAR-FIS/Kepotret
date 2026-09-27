@@ -4868,7 +4868,7 @@ components:
     ExportSelectionPhoto:
       type: object
       additionalProperties: false
-      description: Read-only, currently eligible selection row. It grants no moderation, share, or download action.
+      description: Read-only identity projection for currently eligible selected-export rows. It grants no interactive media access, moderation, share, or individual download action. Selected export capability and can_export_zip do not expand any other capability; allow_selected is server-authoritative.
       properties:
         photo_id:
           type: string
@@ -4880,9 +4880,7 @@ components:
           type: string
           minLength: 1
           maxLength: 50
-        media:
-          $ref: '#/components/schemas/MediaDeliveryReference'
-      required: [photo_id, created_at, photographer_display_name, media]
+      required: [photo_id, created_at, photographer_display_name]
     RecoveryPhoto:
       type: object
       additionalProperties: false
