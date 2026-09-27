@@ -9,9 +9,11 @@ import type {
   BadRequestResponse,
   ConflictResponse,
   ForbiddenResponse,
+  GetApiV1AlbumsAlbumIdRecoveryPhotosParams,
   LifecycleEnvelope,
   NotFoundResponse,
   RateLimitedResponse,
+  RecoveryPhotoListEnvelope,
   UnauthorizedResponse,
   ValidationErrorResponse
 } from '../index.schemas';
@@ -174,6 +176,90 @@ export const postApiV1AlbumsAlbumIdRecoveryAccess = async (albumId: string, opti
 
   const data: postApiV1AlbumsAlbumIdRecoveryAccessResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1AlbumsAlbumIdRecoveryAccessResponse
+}
+
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponse200 = {
+  data: RecoveryPhotoListEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponseSuccess = (getApiV1AlbumsAlbumIdRecoveryPhotosResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponseError = (getApiV1AlbumsAlbumIdRecoveryPhotosResponse401 | getApiV1AlbumsAlbumIdRecoveryPhotosResponse403 | getApiV1AlbumsAlbumIdRecoveryPhotosResponse404 | getApiV1AlbumsAlbumIdRecoveryPhotosResponse409 | getApiV1AlbumsAlbumIdRecoveryPhotosResponse422 | getApiV1AlbumsAlbumIdRecoveryPhotosResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdRecoveryPhotosResponse = (getApiV1AlbumsAlbumIdRecoveryPhotosResponseSuccess | getApiV1AlbumsAlbumIdRecoveryPhotosResponseError)
+
+export const getGetApiV1AlbumsAlbumIdRecoveryPhotosUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdRecoveryPhotosParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/recovery/photos?${stringifiedParams}` : `/api/v1/albums/${albumId}/recovery/photos`
+}
+
+/**
+ * @summary Read available recovery media for the Owner during an active recovery grant.
+ */
+export const getApiV1AlbumsAlbumIdRecoveryPhotos = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdRecoveryPhotosParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdRecoveryPhotosResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdRecoveryPhotosUrl(albumId,params),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdRecoveryPhotosResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdRecoveryPhotosResponse
 }
 
 

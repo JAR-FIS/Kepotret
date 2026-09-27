@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { hostRoutes } from '@/features/host/routes';
 export function SetupReview({ albumId }: { albumId: string }) {
   const t = useTranslations('host.review');
   const shared = useTranslations('host');
+  const router = useRouter();
   const [review, setReview] = useState<SetupReviewData | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error'>('loading');
   const [message, setMessage] = useState<'conflict' | 'validation' | 'error' | null>(null);
@@ -52,7 +54,13 @@ export function SetupReview({ albumId }: { albumId: string }) {
           'Idempotency-Key': crypto.randomUUID(),
         },
       });
-      if (result.status === 200) setConfirmedReadiness(result.data.data.readiness);
+      if (result.status === 200) {
+        const readiness = result.data.data.readiness;
+        setConfirmedReadiness(readiness);
+        if (readiness === 'PAYMENT_PENDING' && snapshot.selected_package_version_id) {
+          router.push(hostRoutes.checkout(albumId, snapshot.selected_package_version_id));
+        }
+      }
       else if (result.status === 401) setState('unauthenticated');
       else if (result.status === 403) setState('forbidden');
       else if (result.status === 409) setMessage('conflict');

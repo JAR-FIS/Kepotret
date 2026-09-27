@@ -20,7 +20,8 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
   let schedule: AlbumSchedule = {
     capture_start: '2026-10-01T03:00:00Z', capture_end: '2026-10-02T03:00:00Z',
     reveal_delay_days: 3 as const, reveal_at: '2026-10-05T03:00:00Z',
-    payment_cutoff_at: '2026-10-02T01:00:00Z', schedule_version: 1,
+    payment_cutoff_at: '2026-10-02T01:00:00Z', timezone: 'Asia/Jakarta', server_time: '2026-09-27T00:00:00Z',
+    can_reschedule: true, earliest_capture_start: null, latest_capture_start: null, schedule_version: 1,
   };
 
   await page.route('**/api/v1/security/csrf', (route) => route.fulfill({ json: { data: { csrf_token: 'test-csrf' } } }));
@@ -59,7 +60,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     expect(body.reveal_delay_days).toBe(3);
     expect(body.capture_start).toMatch(/Z$/);
     expect(body.capture_end).toMatch(/Z$/);
-    schedule = { ...body, reveal_at: body.capture_end, payment_cutoff_at: new Date(Date.parse(body.capture_end) - 120 * 60 * 1000).toISOString(), schedule_version: 1 };
+    schedule = { ...schedule, ...body, reveal_at: body.capture_end, payment_cutoff_at: new Date(Date.parse(body.capture_end) - 120 * 60 * 1000).toISOString(), server_time: '2026-09-27T00:00:00Z', schedule_version: 1 };
     album = { ...album, capture_start: body.capture_start, capture_end: body.capture_end, schedule_version: 1, setup_revision: album.setup_revision + 1 };
     return route.fulfill({ status: 200, json: { data: schedule } });
   });
@@ -82,6 +83,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     },
   } });
   await page.route(`**/api/v1/albums/${albumId}/review`, (route) => route.fulfill({ status: 200, json: review() }));
+  await page.route(`**/api/v1/albums/${albumId}/package-options`, (route) => route.fulfill({ status: 200, json: { data: { album_id: albumId, current_quota_total: 30, reserved_count: 0, committed_count: 0, payment_cutoff_at: schedule.payment_cutoff_at, server_time: '2026-09-27T00:00:00Z', can_create_checkout: true, checkout_block_reason: null, active_checkout: null, options: [{ package_id: '44444444-4444-4444-8444-444444444444', package_version_id: paidPackageId, code: 'GUEST100', name: 'Guest 100', price_amount: 75000, currency: 'IDR', quota_total: 100 }] } } }));
   await page.route(`**/api/v1/albums/${albumId}/confirm-setup`, async (route) => {
     expect(route.request().headers()['x-csrf-token']).toBe('test-csrf');
     expect(route.request().headers()['idempotency-key']).toBeTruthy();
@@ -133,7 +135,9 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
   await page.getByRole('navigation', { name: 'Persiapan album' }).getByRole('link', { name: /Review setup$/ }).click();
   await expect(page.getByText('Server menyatakan setup telah lengkap.')).toBeVisible();
   await page.getByRole('button', { name: 'Konfirmasi setup' }).click();
-  await expect(page.getByRole('status')).toContainText('Server mengembalikan PAYMENT_PENDING');
+  await expect(page).toHaveURL(`/album/${albumId}/checkout/${paidPackageId}`);
+  await expect(page.getByRole('heading', { name: 'Konfirmasi pembayaran' })).toBeVisible();
+  await expect(page.getByText('Kapasitas foto:')).toBeVisible();
 
   for (const width of [320, 375, 390, 430, 768, 1024, 1280]) {
     await page.setViewportSize({ width, height: 900 });

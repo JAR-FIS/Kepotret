@@ -11,7 +11,9 @@ import type {
   EmptyDataEnvelope,
   EntitlementEnvelope,
   ForbiddenResponse,
+  GetApiV1AlbumsAlbumIdPaymentsParams,
   NotFoundResponse,
+  PaymentCheckoutEnvelope,
   PaymentCreateRequest,
   PaymentEnvelope,
   PaymentListEnvelope,
@@ -23,7 +25,7 @@ import type {
 
 
 export type postApiV1AlbumsAlbumIdPaymentsResponse201 = {
-  data: PaymentEnvelope
+  data: PaymentCheckoutEnvelope
   status: 201
 }
 
@@ -171,20 +173,29 @@ export type getApiV1AlbumsAlbumIdPaymentsResponseError = (getApiV1AlbumsAlbumIdP
 
 export type getApiV1AlbumsAlbumIdPaymentsResponse = (getApiV1AlbumsAlbumIdPaymentsResponseSuccess | getApiV1AlbumsAlbumIdPaymentsResponseError)
 
-export const getGetApiV1AlbumsAlbumIdPaymentsUrl = (albumId: string,) => {
+export const getGetApiV1AlbumsAlbumIdPaymentsUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdPaymentsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/albums/${albumId}/payments`
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/payments?${stringifiedParams}` : `/api/v1/albums/${albumId}/payments`
 }
 
 /**
  * @summary Album payment history.
  */
-export const getApiV1AlbumsAlbumIdPayments = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdPaymentsResponse> => {
+export const getApiV1AlbumsAlbumIdPayments = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdPaymentsParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdPaymentsResponse> => {
 
-  const res = await fetch(getGetApiV1AlbumsAlbumIdPaymentsUrl(albumId),
+  const res = await fetch(getGetApiV1AlbumsAlbumIdPaymentsUrl(albumId,params),
   {
       credentials: 'include',
     ...options,

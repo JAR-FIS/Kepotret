@@ -10,13 +10,16 @@ import type {
   ConflictResponse,
   ExportCapabilitiesEnvelope,
   ExportCreateRequest,
+  ExportDownloadEnvelope,
   ExportEnvelope,
   ExportListEnvelope,
+  ExportSelectionPhotoListEnvelope,
   ForbiddenResponse,
+  GetApiV1AlbumsAlbumIdExportSelectionPhotosParams,
+  GetApiV1AlbumsAlbumIdExportsParams,
   GoneResponse,
   NotFoundResponse,
   RateLimitedResponse,
-  StringUrlEnvelope,
   UnauthorizedResponse,
   ValidationErrorResponse
 } from '../index.schemas';
@@ -166,20 +169,29 @@ export type getApiV1AlbumsAlbumIdExportsResponseError = (getApiV1AlbumsAlbumIdEx
 
 export type getApiV1AlbumsAlbumIdExportsResponse = (getApiV1AlbumsAlbumIdExportsResponseSuccess | getApiV1AlbumsAlbumIdExportsResponseError)
 
-export const getGetApiV1AlbumsAlbumIdExportsUrl = (albumId: string,) => {
+export const getGetApiV1AlbumsAlbumIdExportsUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdExportsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/albums/${albumId}/exports`
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/exports?${stringifiedParams}` : `/api/v1/albums/${albumId}/exports`
 }
 
 /**
  * @summary Authorized export history.
  */
-export const getApiV1AlbumsAlbumIdExports = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdExportsResponse> => {
+export const getApiV1AlbumsAlbumIdExports = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdExportsParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdExportsResponse> => {
 
-  const res = await fetch(getGetApiV1AlbumsAlbumIdExportsUrl(albumId),
+  const res = await fetch(getGetApiV1AlbumsAlbumIdExportsUrl(albumId,params),
   {
       credentials: 'include',
     ...options,
@@ -255,7 +267,7 @@ export const getGetApiV1AlbumsAlbumIdExportCapabilitiesUrl = (albumId: string,) 
 }
 
 /**
- * @summary Read operational ZIP selection capability for an album.
+ * @summary Read current actor and lifecycle ZIP export capabilities for an album.
  */
 export const getApiV1AlbumsAlbumIdExportCapabilities = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdExportCapabilitiesResponse> => {
 
@@ -274,6 +286,95 @@ export const getApiV1AlbumsAlbumIdExportCapabilities = async (albumId: string, o
 
   const data: getApiV1AlbumsAlbumIdExportCapabilitiesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdExportCapabilitiesResponse
+}
+
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse200 = {
+  data: ExportSelectionPhotoListEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponseSuccess = (getApiV1AlbumsAlbumIdExportSelectionPhotosResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponseError = (getApiV1AlbumsAlbumIdExportSelectionPhotosResponse400 | getApiV1AlbumsAlbumIdExportSelectionPhotosResponse401 | getApiV1AlbumsAlbumIdExportSelectionPhotosResponse403 | getApiV1AlbumsAlbumIdExportSelectionPhotosResponse404 | getApiV1AlbumsAlbumIdExportSelectionPhotosResponse409 | getApiV1AlbumsAlbumIdExportSelectionPhotosResponse422 | getApiV1AlbumsAlbumIdExportSelectionPhotosResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdExportSelectionPhotosResponse = (getApiV1AlbumsAlbumIdExportSelectionPhotosResponseSuccess | getApiV1AlbumsAlbumIdExportSelectionPhotosResponseError)
+
+export const getGetApiV1AlbumsAlbumIdExportSelectionPhotosUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdExportSelectionPhotosParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/export-selection/photos?${stringifiedParams}` : `/api/v1/albums/${albumId}/export-selection/photos`
+}
+
+/**
+ * @summary Read eligible photo choices only when server permits selected export.
+ */
+export const getApiV1AlbumsAlbumIdExportSelectionPhotos = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdExportSelectionPhotosParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdExportSelectionPhotosResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdExportSelectionPhotosUrl(albumId,params),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdExportSelectionPhotosResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdExportSelectionPhotosResponse
 }
 
 
@@ -358,7 +459,7 @@ export const getApiV1ExportsExportJobId = async (exportJobId: string, options?: 
 
 
 export type getApiV1ExportsExportJobIdDownloadResponse200 = {
-  data: StringUrlEnvelope
+  data: ExportDownloadEnvelope
   status: 200
 }
 

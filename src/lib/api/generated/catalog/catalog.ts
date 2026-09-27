@@ -6,6 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AlbumPackageOptionsEnvelope,
   BadRequestResponse,
   ConflictResponse,
   EventCategoryListEnvelope,
@@ -169,7 +170,7 @@ export const getApiV1EventCategories = async ( options?: RequestInit): Promise<g
 
 
 export type getApiV1AlbumsAlbumIdPackageOptionsResponse200 = {
-  data: PackageOptionListEnvelope
+  data: AlbumPackageOptionsEnvelope
   status: 200
 }
 

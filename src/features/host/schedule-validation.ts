@@ -20,6 +20,27 @@ export function toEventWallTime(instant: string, timeZone: string): string {
     .toString({ smallestUnit: 'minute' });
 }
 
+/** Validates a reschedule proposal against bounds issued by the server, without deriving new bounds in the browser. */
+export function isRescheduleWithinServerBounds(
+  captureStart: string,
+  captureEnd: string,
+  timeZone: string,
+  earliestCaptureStart: string | null,
+  latestCaptureStart: string | null,
+): boolean {
+  if (!captureStart || !captureEnd) return false;
+  try {
+    const start = Temporal.Instant.from(toScheduleTimestamp(captureStart, timeZone));
+    const end = Temporal.Instant.from(toScheduleTimestamp(captureEnd, timeZone));
+    if (earliestCaptureStart && Temporal.Instant.compare(start, Temporal.Instant.from(earliestCaptureStart)) < 0) return false;
+    if (latestCaptureStart && Temporal.Instant.compare(start, Temporal.Instant.from(latestCaptureStart)) > 0) return false;
+    const duration = end.epochMilliseconds - start.epochMilliseconds;
+    return duration > 0 && duration <= 120 * 60 * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
 export function validateSchedule(
   captureStart: string,
   captureEnd: string,
