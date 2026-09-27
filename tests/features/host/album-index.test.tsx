@@ -2,8 +2,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { listAlbums, getAlbum, getCsrf, patchSettings, getInvitations, createInvitation, setPin } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn(), setPin: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin }));
+const { listAlbums, getAlbum, getSettings, getCsrf, patchSettings, getInvitations, createInvitation, setPin } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getSettings: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn(), setPin: vi.fn() }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1AlbumsAlbumIdSettings: getSettings, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin }));
 
 import { AlbumIndex } from '@/features/host/components/album-index';
 import { AlbumOverview } from '@/features/host/components/album-overview';
@@ -28,7 +28,7 @@ function renderHost(node: React.ReactNode) {
 }
 
 describe('FE-3 Host album surfaces', () => {
-  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); });
+  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getSettings.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); });
 
   it('shows an actionable empty dashboard state', async () => {
     listAlbums.mockResolvedValue({ status: 200, data: { data: [], meta: {} } });
@@ -60,18 +60,79 @@ describe('FE-3 Host album surfaces', () => {
     expect(getAlbum).toHaveBeenCalledWith(readyAlbum.album_id);
   });
 
-  it('requires an explicit per-participant limit choice and writes the generated value with the current revision', async () => {
-    getAlbum.mockResolvedValue({ status: 200, data: { data: draft } });
+  it('rehydrates the default and writes only the selected limit with the settings revision', async () => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: { ...draft, quota_total: 100 } } });
+    getSettings.mockResolvedValueOnce({ status: 200, data: { data: { revision: 7, per_guest_limit: 30 } } }).mockResolvedValueOnce({ status: 200, data: { data: { revision: 8, per_guest_limit: 100 } } });
     getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
     patchSettings.mockResolvedValue({ status: 200, data: {} });
     renderHost(<GuestLimitForm albumId={draft.album_id} />);
-    const select = await screen.findByRole('combobox', { name: 'Batas foto per peserta' });
-    expect(Array.from((select as HTMLSelectElement).options).slice(1).map((option) => Number(option.value))).toEqual([5, 10, 30, 50, 70, 100]);
-    expect(select).toHaveValue('');
-    fireEvent.change(select, { target: { value: '100' } });
+    expect(await screen.findByRole('radio', { name: /30/ })).toBeChecked();
+    expect(screen.getAllByRole('radio')).toHaveLength(6);
+    for (const radio of screen.getAllByRole('radio')) expect(radio).toBeEnabled();
+    fireEvent.click(screen.getByRole('radio', { name: /100/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Simpan batas' }));
-    await waitFor(() => expect(patchSettings).toHaveBeenCalledWith(draft.album_id, { expected_revision: 1, per_guest_limit: 100 }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+    await waitFor(() => expect(patchSettings).toHaveBeenCalledWith(draft.album_id, { expected_revision: 7, per_guest_limit: 100 }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+    expect(screen.getByRole('radio', { name: /100/ })).toBeChecked();
     expect(await screen.findByText('Batas foto per peserta berhasil disimpan.')).toBeInTheDocument();
+  });
+
+  it('filters choices above the FREE30 album quota and preserves the saved choice', async () => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: draft } });
+    getSettings.mockResolvedValue({ status: 200, data: { data: { revision: 4, per_guest_limit: 10 } } });
+    renderHost(<GuestLimitForm albumId={draft.album_id} />);
+    expect(await screen.findByRole('radio', { name: /^10 foto per sesi$/ })).toBeChecked();
+    for (const value of [50, 70, 100]) expect(screen.getByRole('radio', { name: new RegExp(`^${value} foto per sesi$`) })).toBeDisabled();
+    expect(screen.getByRole('radio', { name: /30 foto per sesi/ })).toBeEnabled();
+  });
+
+  it('keeps the defined per-session maximum at 100 even for a 10,000-photo album', async () => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: { ...draft, quota_total: 10_000 } } });
+    getSettings.mockResolvedValue({ status: 200, data: { data: { revision: 4, per_guest_limit: 70 } } });
+    renderHost(<GuestLimitForm albumId={draft.album_id} />);
+    expect(await screen.findByRole('radio', { name: /^70 foto per sesi$/ })).toBeChecked();
+    expect(screen.getAllByRole('radio')).toHaveLength(6);
+    for (const radio of screen.getAllByRole('radio')) expect(radio).toBeEnabled();
+  });
+
+  it.each([409, 422, 429, 503])('shows a recoverable settings error for PATCH %s', async status => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: draft } });
+    getSettings.mockResolvedValue({ status: 200, data: { data: { revision: 4, per_guest_limit: 30 } } });
+    getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
+    patchSettings.mockResolvedValue({ status, data: {} });
+    renderHost(<GuestLimitForm albumId={draft.album_id} />);
+    await screen.findByRole('radio', { name: /30/ });
+    fireEvent.click(screen.getByRole('radio', { name: /^5 foto per sesi$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan batas' }));
+    expect(await screen.findByRole('status')).toBeInTheDocument();
+    expect(patchSettings).toHaveBeenCalledWith(draft.album_id, { expected_revision: 4, per_guest_limit: 5 }, { headers: { 'X-CSRF-Token': 'csrf' } });
+    if (status === 409) expect(screen.getByRole('button', { name: 'Muat ulang pengaturan' })).toBeInTheDocument();
+  });
+
+  it.each([401, 403])('shows access state for settings GET %s', async status => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: draft } });
+    getSettings.mockResolvedValue({ status, data: {} });
+    renderHost(<GuestLimitForm albumId={draft.album_id} />);
+    expect(await screen.findByRole('heading')).toBeInTheDocument();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  });
+
+  it.each([401, 403])('shows access state for settings PATCH %s', async status => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: draft } });
+    getSettings.mockResolvedValue({ status: 200, data: { data: { revision: 4, per_guest_limit: 30 } } });
+    getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
+    patchSettings.mockResolvedValue({ status, data: {} });
+    renderHost(<GuestLimitForm albumId={draft.album_id} />);
+    fireEvent.click(await screen.findByRole('radio', { name: /^5 foto per sesi$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan batas' }));
+    expect(await screen.findByRole('heading', { name: status === 401 ? 'Sesi perlu diperbarui' : 'Akses tidak tersedia' })).toBeInTheDocument();
+  });
+
+  it('shows a retryable load error on network failure', async () => {
+    getAlbum.mockRejectedValue(new Error('offline'));
+    getSettings.mockResolvedValue({ status: 200, data: { data: { revision: 4, per_guest_limit: 30 } } });
+    renderHost(<GuestLimitForm albumId={draft.album_id} />);
+    expect(await screen.findByRole('heading', { name: 'Pengaturan belum dapat dimuat' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Coba lagi' })).toBeInTheDocument();
   });
 
   it('submits collaborator permissions as independent contract flags without billing access', async () => {

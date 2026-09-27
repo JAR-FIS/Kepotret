@@ -24,7 +24,6 @@ export function GallerySettings({ albumId }: { albumId: string }) {
       if (result.status !== 200) { setState('error'); return; }
       const current = result.data.data;
       const currentDraft: AlbumSettingsPatchRequest = { expected_revision: current.revision, visibility: current.visibility, moderation_mode: current.moderation_mode, likes_enabled: current.likes_enabled, downloads_enabled: current.downloads_enabled, share_enabled: current.share_enabled };
-      if (current.per_guest_limit !== null) currentDraft.per_guest_limit = current.per_guest_limit;
       setDraft(currentDraft);
       setState('ready');
     } catch { setState('error'); }

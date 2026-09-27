@@ -4,7 +4,7 @@ import type { RefObject } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Camera, Check, Clock3, RotateCcw } from 'lucide-react';
+import { Camera, Check, CircleCheck, Clock3, Download, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { CaptureReadiness, GuestAccessPreview } from '@/lib/api/generated/index.schemas';
 
@@ -96,7 +96,19 @@ export function CaptureReview({ photoUrl, isBusy, onRetake, onUse }: { photoUrl:
   return <div className="mt-5 space-y-4"><Image src={photoUrl} alt={t('previewAlt')} width={600} height={800} unoptimized className="aspect-[3/4] w-full rounded-xl bg-black object-contain" /><div className="flex gap-3"><Button variant="secondary" className="flex-1" loading={isBusy} onClick={onRetake}><RotateCcw size={16} />{t('retake')}</Button><Button className="flex-1" loading={isBusy} onClick={onUse}><Check size={18} />{t('usePhoto')}</Button></div></div>;
 }
 
-export function UploadStatus({ saved, canCapture, onNext }: { saved: boolean; canCapture: boolean; onNext: () => void }) {
+export function UploadStatus() {
   const t = useTranslations('guest');
-  return <div role="status" className="mt-6 rounded-lg bg-[var(--color-muted)] p-4 text-center">{saved ? t('saved') : t('saving')}{saved && canCapture && <Button className="mt-4 w-full" onClick={onNext}>{t('startCamera')}</Button>}</div>;
+  return <div role="status" className="mt-6 rounded-[var(--radius-md)] bg-[var(--color-muted)] p-4 text-center">{t('saving')}</div>;
+}
+
+export function CaptureSuccess({ photoUrl, canCapture, onSave, onNext }: { photoUrl: string | null; canCapture: boolean; onSave: () => void; onNext: () => void }) {
+  const t = useTranslations('guest');
+  return <section className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
+    <span aria-hidden="true" className="pointer-events-none absolute left-3 top-3 size-5 border-l-2 border-t-2 border-[var(--color-primary)]" />
+    <span aria-hidden="true" className="pointer-events-none absolute bottom-3 right-3 size-5 border-b-2 border-r-2 border-[var(--color-primary)]" />
+    <div className="flex items-start gap-3"><span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"><CircleCheck size={23} aria-hidden="true" /></span><div><h2 role="status" className="font-[var(--font-display)] text-xl font-bold">{t('saved')}</h2><p className="mt-1 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('savedSupport')}</p></div></div>
+    {photoUrl && <Image src={photoUrl} alt={t('savedPreviewAlt')} width={600} height={800} unoptimized className="mx-auto mt-5 max-h-80 w-auto max-w-full rounded-[var(--radius-md)] bg-[var(--color-muted)] object-contain" />}
+    {!photoUrl && <p className="mt-5 text-sm text-[var(--color-muted-foreground)]">{t('saveUnavailable')}</p>}
+    <div className="mt-5 grid gap-3 sm:grid-cols-2">{photoUrl && <Button className="w-full" onClick={onSave}><Download size={18} aria-hidden="true" />{t('saveToDevice')}</Button>}{canCapture && <Button variant={photoUrl ? 'secondary' : 'primary'} className="w-full" onClick={onNext}><Camera size={18} aria-hidden="true" />{t('captureAgain')}</Button>}</div>
+  </section>;
 }

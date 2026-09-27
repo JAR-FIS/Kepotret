@@ -107,8 +107,13 @@ describe('FE-3 setup flow contract surfaces', () => {
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: { ...album, timezone: 'America/Los_Angeles' } } });
     api.getSchedule.mockResolvedValue({ status: 200, data: { data: schedule } });
     renderHost(<ScheduleSetup albumId={albumId} />);
-    expect(await screen.findByLabelText('Tanggal dan waktu mulai')).toHaveValue('2026-10-01T07:00');
-    expect(screen.getByLabelText('Tanggal dan waktu selesai')).toHaveValue('2026-10-02T07:00');
+    expect(await screen.findByLabelText('Tanggal mulai memotret')).toHaveValue('2026-10-01');
+    expect(screen.getByRole('heading', { name: 'Waktu Potret' })).toBeInTheDocument();
+    expect(screen.getByText('Zona waktu acara: America/Los_Angeles')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Waktu foto ditampilkan' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Jam mulai memotret')).toHaveValue('07:00');
+    expect(screen.getByLabelText('Tanggal berhenti memotret')).toHaveValue('2026-10-02');
+    expect(screen.getByLabelText('Jam berhenti memotret')).toHaveValue('07:00');
     expect(screen.getByLabelText('Jeda reveal')).toHaveValue('3');
   });
 
@@ -116,9 +121,11 @@ describe('FE-3 setup flow contract surfaces', () => {
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: { ...album, timezone: 'America/New_York' } } });
     api.putSchedule.mockResolvedValue({ status: 200, data: { data: schedule } });
     renderHost(<ScheduleSetup albumId={albumId} />);
-    await screen.findByLabelText('Tanggal dan waktu mulai');
-    fireEvent.change(screen.getByLabelText('Tanggal dan waktu mulai'), { target: { value: '2026-10-01T10:00' } });
-    fireEvent.change(screen.getByLabelText('Tanggal dan waktu selesai'), { target: { value: '2026-10-02T10:00' } });
+    await screen.findByLabelText('Tanggal mulai memotret');
+    fireEvent.change(screen.getByLabelText('Tanggal mulai memotret'), { target: { value: '2026-10-01' } });
+    fireEvent.change(screen.getByLabelText('Jam mulai memotret'), { target: { value: '10:00' } });
+    fireEvent.change(screen.getByLabelText('Tanggal berhenti memotret'), { target: { value: '2026-10-02' } });
+    fireEvent.change(screen.getByLabelText('Jam berhenti memotret'), { target: { value: '10:00' } });
     fireEvent.change(screen.getByLabelText('Jeda reveal'), { target: { value: '5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan jadwal' }));
     await waitFor(() => expect(api.putSchedule).toHaveBeenCalledWith(albumId, {

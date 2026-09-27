@@ -29,10 +29,12 @@ import {
   GuestWelcome,
   OfflineNotice,
   UploadStatus,
+  CaptureSuccess,
 } from './guest-entry-surfaces';
 
 type Stage = 'loading' | 'welcome' | 'join' | 'consent' | 'ready' | 'camera' | 'review' | 'uploading' | 'saved' | 'closed' | 'error';
 type Attempt = { attemptId: string; blob: Blob };
+type CommittedPhoto = { blob: Blob; url: string };
 const MAX_TIMEOUT_CHUNK_MS = 2_147_000_000;
 
 function subscribeOnline(onChange: () => void) {
@@ -75,16 +77,24 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   const [cameraReady, setCameraReady] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [committedPhoto, setCommittedPhoto] = useState<CommittedPhoto | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const linkSecretRef = useRef<string | null>(null);
   const joinKeyRef = useRef<string | null>(null);
   const reservationKeyRef = useRef<string | null>(null);
   const attemptRef = useRef<Attempt | null>(null);
+  const finalJpegRef = useRef<{ attemptId: string; blob: Blob } | null>(null);
   const pendingRef = useRef(false);
   const checkedBoundaryRef = useRef<string | null>(null);
   const checkedRevealRef = useRef(false);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
+
+  const clearCommittedPhoto = useCallback(() => setCommittedPhoto(null), []);
+  const keepCommittedPhoto = useCallback((attemptId: string) => {
+    const final = finalJpegRef.current;
+    if (final?.attemptId === attemptId) setCommittedPhoto({ blob: final.blob, url: URL.createObjectURL(final.blob) });
+  }, []);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -118,7 +128,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const applyReadiness = useCallback((current: CaptureReadiness) => {
     if (current.state === 'CLOSED') {
       stopCamera();
-      setStage('closed');
+      if (stage !== 'saved') setStage('closed');
     } else if (current.state === 'UNAVAILABLE') failAccess();
     else if (stage === 'closed' || (stage === 'camera' && !current.can_capture)) {
       stopCamera();
@@ -175,6 +185,11 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     if (!photoUrl) return;
     return () => URL.revokeObjectURL(photoUrl);
   }, [photoUrl]);
+
+  useEffect(() => {
+    if (!committedPhoto) return;
+    return () => URL.revokeObjectURL(committedPhoto.url);
+  }, [committedPhoto]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -340,6 +355,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
         if (current.state !== 'UNAVAILABLE') setStage(current.state === 'CLOSED' ? 'closed' : 'ready');
         return;
       }
+      clearCommittedPhoto();
       stopCamera();
       streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: mode } } });
       setStage('camera');
@@ -414,7 +430,9 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
         return;
       }
       if (current.data.data.status === 'COMMITTED') {
+        keepCommittedPhoto(attempt.attemptId);
         clearCurrentAttempt();
+        setReadinessFresh(false);
         if (context) await loadReadiness(context.guest_session.album_id).catch(() => null);
         setMessage('');
         setStage('saved');
@@ -427,7 +445,9 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
       if (result.data.data.status === 'RELEASED' || result.data.data.status === 'EXPIRED') {
         await handleTerminalAttempt();
       } else if (result.data.data.status === 'COMMITTED') {
+        keepCommittedPhoto(attempt.attemptId);
         clearCurrentAttempt();
+        setReadinessFresh(false);
         if (context) await loadReadiness(context.guest_session.album_id).catch(() => null);
         setMessage('');
         setStage('saved');
@@ -438,6 +458,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
 
   function clearCurrentAttempt() {
     attemptRef.current = null;
+    finalJpegRef.current = null;
     setAttempt(null);
     setPhotoUrl('');
     reservationKeyRef.current = null;
@@ -476,6 +497,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     try {
       const finalJpeg = await processCapture(attempt.blob);
       if (finalJpeg.type !== 'image/jpeg' || finalJpeg.size > MAX_CAPTURE_BYTES) throw new Error('size');
+      finalJpegRef.current = { attemptId: attempt.attemptId, blob: finalJpeg };
       const csrf = await getApiV1SecurityCsrf();
       if (csrf.status !== 200) throw new GuestRequestError(csrf.status);
       const headers = { 'X-CSRF-Token': csrf.data.data.csrf_token };
@@ -504,7 +526,9 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
         await handleTerminalAttempt();
         return;
       }
+      keepCommittedPhoto(attempt.attemptId);
       clearCurrentAttempt();
+      setReadinessFresh(false);
       if (context) await loadReadiness(context.guest_session.album_id).catch(() => null);
       setStage('saved');
     } catch (error) {
@@ -514,6 +538,17 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   }
 
   const event = preview ?? context?.event;
+  function saveToDevice() {
+    if (!committedPhoto) return;
+    const safeEvent = (event?.event_name ?? 'acara').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'acara';
+    const filename = `kepotret-${safeEvent}-${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`;
+    const link = document.createElement('a');
+    link.href = committedPhoto.url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+  }
   const formatTime = (value?: string | null) => value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: event?.timezone }).format(new Date(value)) : '';
   const nameValid = displayNameLength(displayName) >= 1 && displayNameLength(displayName) <= 50;
   const revealRemaining = readiness?.reveal_at ? Math.max(0, Date.parse(readiness.reveal_at) - Date.parse(readiness.server_time) - elapsedSeconds * 1000) : 0;
@@ -552,7 +587,8 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
           {stage === 'ready' && <div className="mt-6"><CaptureWaitingState readiness={readiness} isOffline={!isOnline} revalidating={onlineRefreshing || !readinessFresh} cameraError={cameraError} onOpenCamera={() => void openCamera()} formatTime={formatTime} /></div>}
           {stage === 'camera' && <CameraViewfinder videoRef={videoRef} isReady={cameraReady} isBusy={busy} isOffline={!isOnline || onlineRefreshing} onSwitch={() => { const next = facing === 'environment' ? 'user' : 'environment'; stopCamera(); setStage('ready'); setCameraReady(false); setFacing(next); void openCamera(next); }} onShutter={() => void shutter()} cameraError={cameraError} />}
           {stage === 'review' && photoUrl && <div className="mt-5">{message && <p role="alert" className="mb-4 text-sm text-[var(--color-destructive)]">{message}</p>}<CaptureReview photoUrl={photoUrl} isBusy={busy} onRetake={() => void retake()} onUse={() => void upload()} /></div>}
-          {(stage === 'uploading' || stage === 'saved') && <UploadStatus saved={stage === 'saved'} canCapture={Boolean(readiness?.can_capture && readinessFresh && isOnline)} onNext={() => setStage('ready')} />}
+          {stage === 'uploading' && <UploadStatus />}
+          {stage === 'saved' && <CaptureSuccess photoUrl={committedPhoto?.url ?? null} canCapture={Boolean(readiness?.state === 'READY' && readiness.can_capture && readinessFresh && isOnline)} onSave={saveToDevice} onNext={() => void openCamera()} />}
           {message && stage !== 'review' && stage !== 'uploading' && <p role="alert" className="mt-4 text-sm text-[var(--color-destructive)]">{message}</p>}
         </>}
       </section>
