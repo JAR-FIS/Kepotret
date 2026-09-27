@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 declare global {
-  interface Window { captureTrace?: string[] }
+  interface Window { captureTrace?: string[]; revokedCaptureUrls?: string[] }
 }
 
 const linkId = '11111111-1111-4111-8111-111111111111';
@@ -25,6 +25,8 @@ type Options = {
   sessionStatuses?: number[];
   guestMeStatuses?: number[];
   reservationStatuses?: number[];
+  recoveryStatuses?: Array<'COMMITTED' | 'ACTIVE' | 'EXPIRED' | 'RELEASED'>;
+  readinessAfterRecovery?: 'READY' | 'WAITING' | 'CLOSED' | 'QUOTA_FULL' | 'GUEST_LIMIT_REACHED' | 'UNAVAILABLE';
 };
 
 async function prepareGuestPage(page: Page, options: Options = {}) {
@@ -39,15 +41,23 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     HTMLVideoElement.prototype.play = async function () {};
     HTMLCanvasElement.prototype.toBlob = function (callback, type = 'image/png') { callback(new Blob([new Uint8Array([1, 2, 3])], { type })); };
     HTMLCanvasElement.prototype.getContext = (() => ({ drawImage() {} })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+    Object.defineProperty(window, 'createImageBitmap', { configurable: true, value: async () => ({ width: 640, height: 480, close() {} }) });
+    Object.defineProperty(window, 'revokedCaptureUrls', { configurable: true, value: [] });
+    const revokeObjectURL = URL.revokeObjectURL.bind(URL);
+    URL.revokeObjectURL = (url) => { window.revokedCaptureUrls?.push(url); revokeObjectURL(url); };
   }, options.cameraDenied ?? false);
 
   let reservations = 0;
   let sessions = 0;
   let guestMeRequests = 0;
   let readinessRequests = 0;
+  let recoveryChecks = 0;
+  let commits = 0;
+  let uploadAuthorizations = 0;
   const reservationKeys: string[] = [];
   const sessionKeys: string[] = [];
   const releaseIds: string[] = [];
+  const uploadAttemptIds: string[] = [];
   await page.route('**/api/v1/guest/access/resolve', (route) => route.fulfill({ status: 200, json: { data: preview } }));
   await page.route('**/api/v1/guest/sessions', (route) => {
     sessions += 1;
@@ -63,8 +73,9 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
   await page.route(`**/api/v1/albums/${albumId}/capture-readiness`, (route) => {
     readinessRequests += 1;
     const nextState = options.readinessSequence?.shift();
-    const state = options.closed ? 'CLOSED' : options.reservationConflict && reservations > 0 ? 'QUOTA_FULL' : nextState ?? 'READY';
-    const data = state === 'WAITING' ? { ...readyReadiness, state, can_capture: false, server_time: '2026-09-27T00:00:00Z', capture_start: '2026-09-27T00:00:02Z' } : { ...readyReadiness, state, can_capture: state === 'READY', album_remaining_count: state === 'QUOTA_FULL' ? 0 : 29 };
+    const state = options.closed ? 'CLOSED' : recoveryChecks > 0 && options.readinessAfterRecovery ? options.readinessAfterRecovery : options.reservationConflict && reservations > 0 ? 'QUOTA_FULL' : nextState ?? 'READY';
+    const waitBoundary = recoveryChecks > 0 && options.readinessAfterRecovery === 'WAITING' ? '2026-10-01T10:00:00Z' : '2026-09-27T00:00:02Z';
+    const data = state === 'WAITING' ? { ...readyReadiness, state, can_capture: false, server_time: '2026-09-27T00:00:00Z', capture_start: waitBoundary } : { ...readyReadiness, state, can_capture: state === 'READY', album_remaining_count: state === 'QUOTA_FULL' ? 0 : 29 };
     return route.fulfill({ status: 200, json: { data } });
   });
   await page.route('**/api/v1/security/csrf', (route) => route.fulfill({ status: 200, json: { data: { csrf_token: 'csrf-e2e' } } }));
@@ -75,13 +86,29 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     if (status !== 201) return route.fulfill({ status, json: { error: { code: 'TEMPORARY', message: 'internal details' } } });
     return route.fulfill({ status, json: { data: { attempt_id: `${attemptId.slice(0, -1)}${reservations}`, album_id: albumId, status: 'ACTIVE', expires_at: '2026-09-27T01:00:00Z' } } });
   });
+  await page.route('**/api/v1/capture-attempts/*/upload-authorization', (route) => {
+    uploadAuthorizations += 1;
+    uploadAttemptIds.push(route.request().url().split('/').at(-2) ?? '');
+    return route.fulfill({ status: 200, json: { data: { upload_url: 'https://upload.test/object', expires_at: '2026-09-27T01:00:00Z', object_key: 'private/test' } } });
+  });
+  await page.route('https://upload.test/object', (route) => route.fulfill({ status: 200 }));
+  await page.route('**/api/v1/capture-attempts/*/commit', (route) => {
+    commits += 1;
+    return route.abort();
+  });
+  await page.route('**/api/v1/capture-attempts/*', (route) => {
+    recoveryChecks += 1;
+    const status = options.recoveryStatuses?.shift() ?? (commits > 0 ? 'COMMITTED' : 'ACTIVE');
+    return route.fulfill({ status: 200, json: { data: { attempt_id: route.request().url().split('/').at(-1), album_id: albumId, status, expires_at: '2026-09-27T01:00:00Z', ...(status === 'COMMITTED' ? { committed_at: '2026-09-27T00:01:00Z' } : {}) } } });
+  });
   await page.route('**/api/v1/capture-attempts/*/release', (route) => {
     releaseIds.push(route.request().url().split('/').at(-2) ?? '');
     return route.fulfill({ status: 200, json: { data: { attempt_id: attemptId, album_id: albumId, status: 'RELEASED', expires_at: '2026-09-27T01:00:00Z' } } });
   });
   return {
     get reservations() { return reservations; }, get sessions() { return sessions; }, get guestMeRequests() { return guestMeRequests; }, get readinessRequests() { return readinessRequests; },
-    reservationKeys, sessionKeys, releaseIds,
+    get recoveryChecks() { return recoveryChecks; }, get commits() { return commits; }, get uploadAuthorizations() { return uploadAuthorizations; },
+    reservationKeys, sessionKeys, releaseIds, uploadAttemptIds,
   };
 }
 
@@ -98,6 +125,15 @@ async function reachJoin(page: Page, state: Awaited<ReturnType<typeof prepareGue
 async function acceptConsent(page: Page) {
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Agree & Continue' }).click();
+}
+
+async function captureForUploadRecovery(page: Page, state: Awaited<ReturnType<typeof prepareGuestPage>>) {
+  await reachJoin(page, state);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Take photo' }).click();
+  await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
 }
 
 test('H65 to H68 consent flow creates the guest only after locked consent and captures through direct upload', async ({ page }) => {
@@ -207,6 +243,117 @@ test('guest/me 503 after successful creation can recover without posting another
   await expect(page.getByRole('button', { name: 'Open camera' })).toBeVisible();
   expect(state.sessions).toBe(1);
   expect(state.guestMeRequests).toBe(2);
+});
+
+test('ACTIVE commit recovery keeps the same image and attempt retryable without another reservation', async ({ page }) => {
+  const state = await prepareGuestPage(page, { recoveryStatuses: ['ACTIVE', 'COMMITTED'] });
+  await captureForUploadRecovery(page, state);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Event photo preview' })).toBeVisible();
+  expect(state.reservations).toBe(1);
+  expect(state.uploadAuthorizations).toBe(1);
+  expect(state.uploadAttemptIds).toEqual([`${attemptId.slice(0, -1)}1`]);
+
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByText('Photo saved')).toBeVisible();
+  expect(await page.evaluate(() => window.revokedCaptureUrls)).toHaveLength(1);
+  expect(state.reservations).toBe(1);
+  expect(state.uploadAuthorizations).toBe(2);
+  expect(state.uploadAttemptIds).toEqual([`${attemptId.slice(0, -1)}1`, `${attemptId.slice(0, -1)}1`]);
+});
+
+test('EXPIRED recovery clears the old photo and uses a new reservation key for the next shutter', async ({ page }) => {
+  const state = await prepareGuestPage(page, { recoveryStatuses: ['EXPIRED'], readinessAfterRecovery: 'READY' });
+  await captureForUploadRecovery(page, state);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByText('The previous photo can no longer be saved. Take a new photo to continue.')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Event photo preview' })).toHaveCount(0);
+  expect(await page.evaluate(() => window.revokedCaptureUrls)).toHaveLength(1);
+  expect(state.reservations).toBe(1);
+  expect(state.releaseIds).toHaveLength(0);
+
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Take photo' }).click();
+  await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
+  expect(state.reservations).toBe(2);
+  expect(state.reservationKeys[1]).not.toBe(state.reservationKeys[0]);
+});
+
+test('RELEASED recovery discards the old photo and allows only a fresh reservation', async ({ page }) => {
+  const state = await prepareGuestPage(page, { recoveryStatuses: ['RELEASED'], readinessAfterRecovery: 'READY' });
+  await captureForUploadRecovery(page, state);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByText('The previous photo can no longer be saved. Take a new photo to continue.')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Event photo preview' })).toHaveCount(0);
+  expect(await page.evaluate(() => window.revokedCaptureUrls)).toHaveLength(1);
+  expect(state.reservations).toBe(1);
+  expect(state.releaseIds).toHaveLength(0);
+
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Take photo' }).click();
+  await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
+  expect(state.reservations).toBe(2);
+  expect(state.reservationKeys[1]).not.toBe(state.reservationKeys[0]);
+});
+
+test('Retake recognizes an already EXPIRED attempt and does not call release again', async ({ page }) => {
+  const state = await prepareGuestPage(page, { recoveryStatuses: ['EXPIRED'], readinessAfterRecovery: 'READY' });
+  await captureForUploadRecovery(page, state);
+  await page.getByRole('button', { name: 'Retake' }).click();
+  await expect(page.getByText('The previous photo can no longer be saved. Take a new photo to continue.')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Event photo preview' })).toHaveCount(0);
+  expect(state.recoveryChecks).toBe(1);
+  expect(state.releaseIds).toHaveLength(0);
+  expect(state.reservations).toBe(1);
+});
+
+test('EXPIRED recovery respects CLOSED and shows H72 without offering another shutter', async ({ page }) => {
+  const state = await prepareGuestPage(page, { recoveryStatuses: ['EXPIRED'], readinessAfterRecovery: 'CLOSED' });
+  await captureForUploadRecovery(page, state);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByText('The photo session is closed')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open camera' })).toHaveCount(0);
+  await expect(page.getByText('The previous photo can no longer be saved. Take a new photo to continue.')).toHaveCount(0);
+  expect(state.reservations).toBe(1);
+  expect(state.releaseIds).toHaveLength(0);
+});
+
+test('EXPIRED recovery respects QUOTA_FULL without reserving again', async ({ page }) => {
+  const state = await prepareGuestPage(page, { recoveryStatuses: ['EXPIRED'], readinessAfterRecovery: 'QUOTA_FULL' });
+  await captureForUploadRecovery(page, state);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'The photo quota for this session has been reached.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open camera' })).toBeDisabled();
+  await expect(page.getByText('The previous photo can no longer be saved. Take a new photo to continue.')).toHaveCount(0);
+  expect(state.reservations).toBe(1);
+});
+
+test('terminal recovery routes WAITING, GUEST_LIMIT_REACHED and UNAVAILABLE from readiness', async ({ page }) => {
+  const waiting = await prepareGuestPage(page, { recoveryStatuses: ['EXPIRED'], readinessAfterRecovery: 'WAITING' });
+  await captureForUploadRecovery(page, waiting);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByText('Photo session begins')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open camera' })).toBeDisabled();
+  await expect(page.getByText('The previous photo can no longer be saved. Take a new photo to continue.')).toBeVisible();
+  expect(waiting.reservations).toBe(1);
+
+  await page.goto('/');
+  const guestLimit = await prepareGuestPage(page, { recoveryStatuses: ['RELEASED'], readinessAfterRecovery: 'GUEST_LIMIT_REACHED' });
+  await captureForUploadRecovery(page, guestLimit);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'The guest photo limit has been reached.' })).toBeVisible();
+  await expect(page.getByText('The previous photo can no longer be saved. Take a new photo to continue.')).toHaveCount(0);
+  expect(guestLimit.reservations).toBe(1);
+
+  await page.goto('/');
+  const unavailable = await prepareGuestPage(page, { recoveryStatuses: ['EXPIRED'], readinessAfterRecovery: 'UNAVAILABLE' });
+  await captureForUploadRecovery(page, unavailable);
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.locator('section p[role="alert"]')).toContainText('This event link or access is unavailable.');
+  expect(unavailable.reservations).toBe(1);
 });
 
 test('Indonesian H67 consent displays approved copy and hides consent version', async ({ page }) => {

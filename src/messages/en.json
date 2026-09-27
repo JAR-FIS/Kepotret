@@ -28,6 +28,7 @@
     "genericError": "We could not complete that request. Check your connection and try again.",
     "retry": "Try again",
     "rateLimited": "There have been too many attempts. Wait a moment and try again.",
+    "previousPhotoUnavailable": "The previous photo can no longer be saved. Take a new photo to continue.",
     "offline": "You are offline. Reconnect to the internet to continue.",
     "offlineBeforeCapture": "An internet connection is required before taking a photo.",
     "cameraUnsupported": "This browser does not support camera access.",

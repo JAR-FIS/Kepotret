@@ -15,7 +15,7 @@ import {
   postApiV1GuestAccessResolve,
   postApiV1GuestSessions,
 } from '@/lib/api/browser';
-import type { CaptureReadiness, GuestAccessPreview, GuestContext } from '@/lib/api/generated/index.schemas';
+import type { CaptureAttemptStatus, CaptureReadiness, GuestAccessPreview, GuestContext } from '@/lib/api/generated/index.schemas';
 import { createUuidV7 } from '@/features/guest/lib/idempotency';
 import { MAX_CAPTURE_BYTES, processCapture } from '@/features/guest/capture/capture-processor';
 import {
@@ -375,17 +375,65 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     if (!attempt) return;
     setBusy(true);
     try {
+      const current = await getApiV1CaptureAttemptsAttemptId(attempt.attemptId);
+      if (current.status !== 200) throw new GuestRequestError(current.status);
+      if (current.data.data.status === 'EXPIRED' || current.data.data.status === 'RELEASED') {
+        await handleTerminalAttempt();
+        return;
+      }
+      if (current.data.data.status === 'COMMITTED') {
+        clearCurrentAttempt();
+        if (context) await loadReadiness(context.guest_session.album_id).catch(() => null);
+        setMessage('');
+        setStage('saved');
+        return;
+      }
       const csrf = await getApiV1SecurityCsrf();
       if (csrf.status !== 200) throw new GuestRequestError(csrf.status);
       const result = await postApiV1CaptureAttemptsAttemptIdRelease(attempt.attemptId, { headers: { 'X-CSRF-Token': csrf.data.data.csrf_token } });
-      if (result.status !== 200 || result.data.data.status !== 'RELEASED') throw new GuestRequestError(result.status);
-      attemptRef.current = null;
-      setAttempt(null);
-      setPhotoUrl('');
-      reservationKeyRef.current = null;
-      setStage('ready');
+      if (result.status !== 200) throw new GuestRequestError(result.status);
+      if (result.data.data.status === 'RELEASED' || result.data.data.status === 'EXPIRED') {
+        await handleTerminalAttempt();
+      } else if (result.data.data.status === 'COMMITTED') {
+        clearCurrentAttempt();
+        if (context) await loadReadiness(context.guest_session.album_id).catch(() => null);
+        setMessage('');
+        setStage('saved');
+      } else throw new Error('attempt-not-released');
     } catch (error) { handleRequestError(error); }
     finally { setBusy(false); }
+  }
+
+  function clearCurrentAttempt() {
+    attemptRef.current = null;
+    setAttempt(null);
+    setPhotoUrl('');
+    reservationKeyRef.current = null;
+  }
+
+  async function handleTerminalAttempt() {
+    clearCurrentAttempt();
+    setReadinessFresh(false);
+    setMessage('');
+    if (!context) {
+      setMessage(t('previousPhotoUnavailable'));
+      setStage('ready');
+      return;
+    }
+    try {
+      const current = await loadReadiness(context.guest_session.album_id);
+      if (current.state === 'CLOSED') {
+        setStage('closed');
+      } else if (current.state === 'UNAVAILABLE') {
+        failAccess();
+      } else {
+        setStage('ready');
+        if (current.state === 'READY' || current.state === 'WAITING') setMessage(t('previousPhotoUnavailable'));
+      }
+    } catch (error) {
+      setStage('ready');
+      handleRequestError(error);
+    }
   }
 
   async function upload() {
@@ -403,19 +451,28 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
       if (authorization.status !== 200) throw new GuestRequestError(authorization.status);
       const put = await fetch(authorization.data.data.upload_url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: finalJpeg });
       if (!put.ok) throw new Error('put');
-      let committed = false;
+      let recoveredStatus: CaptureAttemptStatus;
       try {
         const commit = await postApiV1CaptureAttemptsAttemptIdCommit(attempt.attemptId, {}, { headers });
-        committed = commit.status === 201 && commit.data.data.status === 'COMMITTED';
-      } catch { committed = false; }
-      if (!committed) {
-        const recovered = await getApiV1CaptureAttemptsAttemptId(attempt.attemptId);
-        if (recovered.status !== 200 || recovered.data.data.status !== 'COMMITTED') throw new GuestRequestError(recovered.status);
+        recoveredStatus = commit.status === 201 && commit.data.data.status === 'COMMITTED' ? 'COMMITTED' : 'ACTIVE';
+      } catch {
+        recoveredStatus = 'ACTIVE';
       }
-      attemptRef.current = null;
-      setAttempt(null);
-      setPhotoUrl('');
-      reservationKeyRef.current = null;
+      if (recoveredStatus !== 'COMMITTED') {
+        const recovered = await getApiV1CaptureAttemptsAttemptId(attempt.attemptId);
+        if (recovered.status !== 200) throw new GuestRequestError(recovered.status);
+        recoveredStatus = recovered.data.data.status;
+      }
+      if (recoveredStatus === 'ACTIVE') {
+        setStage('review');
+        setMessage(t('genericError'));
+        return;
+      }
+      if (recoveredStatus === 'EXPIRED' || recoveredStatus === 'RELEASED') {
+        await handleTerminalAttempt();
+        return;
+      }
+      clearCurrentAttempt();
       if (context) await loadReadiness(context.guest_session.album_id).catch(() => null);
       setStage('saved');
     } catch (error) {

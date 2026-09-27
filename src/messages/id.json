@@ -28,6 +28,7 @@
     "genericError": "Kami belum dapat memproses permintaan. Periksa koneksi lalu coba lagi.",
     "retry": "Coba lagi",
     "rateLimited": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
+    "previousPhotoUnavailable": "Foto sebelumnya sudah tidak dapat disimpan. Ambil foto baru untuk melanjutkan.",
     "offline": "Kamu sedang offline. Sambungkan kembali ke internet untuk melanjutkan.",
     "offlineBeforeCapture": "Koneksi internet diperlukan sebelum mengambil foto.",
     "cameraUnsupported": "Peramban ini tidak mendukung kamera.",
