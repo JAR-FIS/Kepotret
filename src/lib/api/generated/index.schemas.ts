@@ -34,6 +34,9 @@ export const AlbumReadiness = {
   READY: 'READY',
 } as const;
 
+/**
+ * Normalized status exposed to ordinary Host payment surfaces.
+ */
 export type PaymentPublicStatus = typeof PaymentPublicStatus[keyof typeof PaymentPublicStatus];
 
 
@@ -91,6 +94,9 @@ export const RevealState = {
   REVEALED: 'REVEALED',
 } as const;
 
+/**
+ * Internal/local payment orchestration status. PROCESSING is not exposed through PaymentTransaction.
+ */
 export type PaymentTransactionStatus = typeof PaymentTransactionStatus[keyof typeof PaymentTransactionStatus];
 
 
@@ -101,6 +107,117 @@ export const PaymentTransactionStatus = {
   FAILURE: 'FAILURE',
   EXPIRED: 'EXPIRED',
 } as const;
+
+export type PaymentType = typeof PaymentType[keyof typeof PaymentType];
+
+
+export const PaymentType = {
+  INITIAL_PURCHASE: 'INITIAL_PURCHASE',
+  UPGRADE: 'UPGRADE',
+} as const;
+
+/**
+ * Read-only identity projection for currently eligible selected-export rows. It grants no interactive media access, moderation, share, or individual download action. Selected export capability and can_export_zip do not expand any other capability; allow_selected is server-authoritative.
+ */
+export interface ExportSelectionPhoto {
+  photo_id: string;
+  created_at: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  photographer_display_name: string;
+}
+
+/**
+ * Short-lived Media Gateway URL that rechecks current authorization on each request. Never a storage URL or object locator.
+ */
+export interface MediaDeliveryReference {
+  /** Short-lived Media Gateway delivery URL. */
+  url: string;
+  expires_at: string;
+}
+
+/**
+ * Owner-only view/download projection for logically available media during an active recovery grant.
+ */
+export interface RecoveryPhoto {
+  photo_id: string;
+  created_at: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  photographer_display_name: string;
+  media: MediaDeliveryReference;
+  can_download: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type AlbumPackageOptionsCheckoutBlockReason = typeof AlbumPackageOptionsCheckoutBlockReason[keyof typeof AlbumPackageOptionsCheckoutBlockReason] | null;
+
+
+export const AlbumPackageOptionsCheckoutBlockReason = {
+  PAYMENT_CUTOFF_REACHED: 'PAYMENT_CUTOFF_REACHED',
+  ACTIVE_CHECKOUT: 'ACTIVE_CHECKOUT',
+  NO_HIGHER_PACKAGE: 'NO_HIGHER_PACKAGE',
+  LIFECYCLE_CLOSED: 'LIFECYCLE_CLOSED',
+} as const;
+
+export interface ActivePaymentCheckout {
+  transaction_id: string;
+  package_version_id: string;
+  status: PaymentPublicStatus;
+  provider_expires_at: string;
+}
+
+export type PackageOptionCurrency = typeof PackageOptionCurrency[keyof typeof PackageOptionCurrency];
+
+
+export const PackageOptionCurrency = {
+  IDR: 'IDR',
+} as const;
+
+export interface PackageOption {
+  package_id: string;
+  package_version_id: string;
+  code: string;
+  name: string;
+  /** @minimum 0 */
+  price_amount: number;
+  currency: PackageOptionCurrency;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     */
+  quota_total: number;
+}
+
+/**
+ * Server-authoritative package eligibility and checkout window for one album.
+ */
+export interface AlbumPackageOptions {
+  album_id: string;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     */
+  current_quota_total: number;
+  /** @minimum 0 */
+  reserved_count: number;
+  /** @minimum 0 */
+  committed_count: number;
+  payment_cutoff_at: string;
+  server_time: string;
+  can_create_checkout: boolean;
+  /** @nullable */
+  checkout_block_reason: AlbumPackageOptionsCheckoutBlockReason;
+  active_checkout: ActivePaymentCheckout | null;
+  /** Server-filtered targets with quota strictly greater than current_quota_total. */
+  options: PackageOption[];
+}
 
 export type ScheduledJobStatus = typeof ScheduledJobStatus[keyof typeof ScheduledJobStatus];
 
@@ -365,6 +482,14 @@ export interface AlbumSchedule {
   reveal_delay_days: AlbumScheduleRevealDelayDays;
   reveal_at: string;
   payment_cutoff_at: string;
+  /** Persisted event timezone. It is locked after the first setup confirmation. */
+  timezone: string;
+  server_time: string;
+  can_reschedule: boolean;
+  /** @nullable */
+  earliest_capture_start: string | null;
+  /** @nullable */
+  latest_capture_start: string | null;
   schedule_version: number;
   /** @nullable */
   first_confirmed_capture_start?: string | null;
@@ -444,15 +569,6 @@ export interface PhotoSummary {
   created_at: string;
   /** @nullable */
   deleted_at?: string | null;
-}
-
-/**
- * Short-lived Media Gateway URL that rechecks current authorization on each request. Never a storage URL or object locator.
- */
-export interface MediaDeliveryReference {
-  /** Short-lived Media Gateway delivery URL. */
-  url: string;
-  expires_at: string;
 }
 
 export interface GuestPhotoActions {
@@ -575,28 +691,6 @@ export interface AlbumSharing {
   can_rotate: boolean;
 }
 
-export type PackageOptionCurrency = typeof PackageOptionCurrency[keyof typeof PackageOptionCurrency];
-
-
-export const PackageOptionCurrency = {
-  IDR: 'IDR',
-} as const;
-
-export interface PackageOption {
-  package_id: string;
-  package_version_id: string;
-  code: string;
-  name: string;
-  /** @minimum 0 */
-  price_amount: number;
-  currency: PackageOptionCurrency;
-  /**
-     * @minimum 1
-     * @maximum 10000
-     */
-  quota_total: number;
-}
-
 export interface EventCategory {
   category_id: string;
   code: string;
@@ -615,6 +709,7 @@ export interface ExportCapabilities {
   /** @minimum 0 */
   eligible_photo_count: number;
   allow_all: boolean;
+  allow_selected: boolean;
 }
 
 export type PaymentTransactionCurrency = typeof PaymentTransactionCurrency[keyof typeof PaymentTransactionCurrency];
@@ -624,18 +719,42 @@ export const PaymentTransactionCurrency = {
   IDR: 'IDR',
 } as const;
 
+/**
+ * Immutable host-facing transaction snapshot. No provider credentials or raw provider data.
+ */
 export interface PaymentTransaction {
   transaction_id: string;
   album_id: string;
-  status: PaymentTransactionStatus;
+  type: PaymentType;
+  status: PaymentPublicStatus;
   package_version_id: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  package_name_snapshot: string;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     */
+  target_quota_total_snapshot: number;
   /** @minimum 0 */
   amount: number;
   currency: PaymentTransactionCurrency;
   payment_cutoff_at: string;
   provider_expires_at: string;
+  created_at: string;
   /** @nullable */
-  paid_at?: string | null;
+  paid_at: string | null;
+}
+
+export interface PaymentCheckout {
+  transaction: PaymentTransaction;
+  /**
+     * Ephemeral backend-approved provider navigation target. Never persist or log this value.
+     * @pattern ^https://
+     */
+  checkout_url: string;
 }
 
 export interface EntitlementSummary {
@@ -668,17 +787,58 @@ export interface ExportJob {
   /** @minimum 0 */
   selected_count: number;
   source_export_revision: number;
+  /**
+     * Server-derived number of processed eligible items; never a client-estimated percentage.
+     * @minimum 0
+     */
+  processed_count: number;
+  /**
+     * Server-derived total work items for this job.
+     * @minimum 0
+     */
+  total_count: number;
+  created_at: string;
+  updated_at: string;
   /** @nullable */
-  output_expires_at?: string | null;
+  output_expires_at: string | null;
 }
+
+/**
+ * Short-lived current-authorized Media Gateway download descriptor; never a raw storage URL.
+ */
+export interface ExportDownloadReference {
+  /**
+     * Short-lived authorized delivery URL. Never persist or log.
+     * @pattern ^https://
+     */
+  url: string;
+  expires_at: string;
+}
+
+export type LifecycleRetentionState = typeof LifecycleRetentionState[keyof typeof LifecycleRetentionState];
+
+
+export const LifecycleRetentionState = {
+  ACTIVE: 'ACTIVE',
+  RECOVERY: 'RECOVERY',
+  PURGE_DUE: 'PURGE_DUE',
+  PURGING: 'PURGING',
+  PURGED: 'PURGED',
+  PURGE_ERROR: 'PURGE_ERROR',
+} as const;
 
 export interface LifecycleProjection {
   album_id: string;
+  retention_state: LifecycleRetentionState;
+  server_time: string;
   /** @nullable */
-  recovery_access_granted_at?: string | null;
+  recovery_access_granted_at: string | null;
   normal_access_end_at: string;
   recovery_end_at: string;
   backup_cleanup_deadline_at: string;
+  can_activate_recovery: boolean;
+  can_open_recovery_media: boolean;
+  can_create_recovery_export: boolean;
 }
 
 export interface SensitiveAccessGrant {
@@ -1111,6 +1271,10 @@ export interface PaymentEnvelope {
   data: PaymentTransaction;
 }
 
+export interface PaymentCheckoutEnvelope {
+  data: PaymentCheckout;
+}
+
 export interface EntitlementEnvelope {
   data: EntitlementSummary;
 }
@@ -1123,12 +1287,22 @@ export interface ExportCapabilitiesEnvelope {
   data: ExportCapabilities;
 }
 
+export interface ExportSelectionPhotoListEnvelope {
+  data: ExportSelectionPhoto[];
+  meta: PaginationMeta;
+}
+
 export interface EventCategoryEnvelope {
   data: EventCategory;
 }
 
 export interface LifecycleEnvelope {
   data: LifecycleProjection;
+}
+
+export interface RecoveryPhotoListEnvelope {
+  data: RecoveryPhoto[];
+  meta: PaginationMeta;
 }
 
 export interface SensitiveGrantEnvelope {
@@ -1195,6 +1369,10 @@ export interface PackageOptionListEnvelope {
   meta: PaginationMeta;
 }
 
+export interface AlbumPackageOptionsEnvelope {
+  data: AlbumPackageOptions;
+}
+
 export interface EventCategoryListEnvelope {
   data: EventCategory[];
   meta: PaginationMeta;
@@ -1248,6 +1426,10 @@ export type StringUrlEnvelopeData = {
 
 export interface StringUrlEnvelope {
   data: StringUrlEnvelopeData;
+}
+
+export interface ExportDownloadEnvelope {
+  data: ExportDownloadReference;
 }
 
 export type UploadAuthorizationEnvelopeData = {
@@ -1319,6 +1501,16 @@ export type ServiceUnavailableResponse = ErrorResponse;
 export type RequestIdParameter = string;
 
 /**
+ * Opaque keyset cursor returned by the previous page.
+ */
+export type CursorParameter = string;
+
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ */
+export type LimitParameter = number;
+
+/**
  * Operation-scoped retry identity. Same key + different payload returns conflict.
  */
 export type IdempotencyKeyParameter = string;
@@ -1384,5 +1576,61 @@ cursor?: string;
  * @maximum 100
  */
 limit?: number;
+};
+
+export type GetApiV1AlbumsAlbumIdPaymentsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AlbumsAlbumIdExportsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AlbumsAlbumIdExportSelectionPhotosParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AlbumsAlbumIdRecoveryPhotosParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
 };
 

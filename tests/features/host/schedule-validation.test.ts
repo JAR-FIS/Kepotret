@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ScheduleWriteRequestRevealDelayDays, type ScheduleWriteRequest } from '@/lib/api/generated/index.schemas';
-import { toEventWallTime, toScheduleTimestamp, validateSchedule } from '@/features/host/schedule-validation';
+import { isRescheduleWithinServerBounds, toEventWallTime, toScheduleTimestamp, validateSchedule } from '@/features/host/schedule-validation';
 
 const zone = 'Asia/Jakarta';
 const now = new Date('2026-01-31T10:00:00Z');
@@ -65,5 +65,15 @@ describe('schedule validation in the saved album timezone', () => {
   it('rejects nonexistent and ambiguous daylight-saving wall times', () => {
     expect(validateSchedule('2026-03-08T02:30', '2026-03-09T02:30', 1, 'America/Los_Angeles', now)).toBe('localTimeInvalid');
     expect(validateSchedule('2026-11-01T01:30', '2026-11-02T01:30', 1, 'America/Los_Angeles', now)).toBe('localTimeInvalid');
+  });
+
+  it('checks reschedule proposals against server-issued bounds and elapsed duration', () => {
+    const earliest = '2026-02-02T18:00:00Z';
+    const latest = '2026-02-10T18:00:00Z';
+    expect(isRescheduleWithinServerBounds('2026-02-02T10:00', '2026-02-03T10:00', 'America/Los_Angeles', earliest, latest)).toBe(true);
+    expect(isRescheduleWithinServerBounds('2026-02-02T09:59', '2026-02-03T10:00', 'America/Los_Angeles', earliest, latest)).toBe(false);
+    expect(isRescheduleWithinServerBounds('2026-02-11T10:00', '2026-02-12T10:00', 'America/Los_Angeles', earliest, latest)).toBe(false);
+    expect(isRescheduleWithinServerBounds('2026-02-02T10:00', '2026-02-07T10:01', 'America/Los_Angeles', earliest, latest)).toBe(false);
+    expect(isRescheduleWithinServerBounds('2026-03-08T02:30', '2026-03-09T02:30', 'America/Los_Angeles', null, null)).toBe(false);
   });
 });

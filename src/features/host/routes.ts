@@ -11,6 +11,17 @@ export const hostRoutes = {
   trash: (albumId: string) => `/album/${encodeURIComponent(albumId)}/galeri/sampah`,
   sharing: (albumId: string) => `/album/${encodeURIComponent(albumId)}/berbagi`,
   preparation: (albumId: string) => `/album/${encodeURIComponent(albumId)}/berbagi/panduan`,
+  checkout: (albumId: string, packageVersionId: string) => `/album/${encodeURIComponent(albumId)}/checkout/${encodeURIComponent(packageVersionId)}`,
+  paymentStatus: (albumId: string, transactionId: string) => `/album/${encodeURIComponent(albumId)}/pembayaran/${encodeURIComponent(transactionId)}/status`,
+  payments: (albumId: string) => `/album/${encodeURIComponent(albumId)}/pembayaran`,
+  payment: (albumId: string, transactionId: string) => `/album/${encodeURIComponent(albumId)}/pembayaran/${encodeURIComponent(transactionId)}`,
+  upgrade: (albumId: string) => `/album/${encodeURIComponent(albumId)}/upgrade`,
+  exports: (albumId: string) => `/album/${encodeURIComponent(albumId)}/ekspor`,
+  export: (albumId: string, exportJobId: string) => `/album/${encodeURIComponent(albumId)}/ekspor/${encodeURIComponent(exportJobId)}`,
+  reschedule: (albumId: string) => `/album/${encodeURIComponent(albumId)}/jadwal-ulang`,
+  lifecycle: (albumId: string) => `/album/${encodeURIComponent(albumId)}/retensi`,
+  recovery: (albumId: string) => `/album/${encodeURIComponent(albumId)}/pemulihan`,
+  recoveryMedia: (albumId: string) => `/album/${encodeURIComponent(albumId)}/pemulihan/media`,
 } as const;
 
 export const setupSteps = [

@@ -20,7 +20,8 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
   let schedule: AlbumSchedule = {
     capture_start: '2026-10-01T03:00:00Z', capture_end: '2026-10-02T03:00:00Z',
     reveal_delay_days: 3 as const, reveal_at: '2026-10-05T03:00:00Z',
-    payment_cutoff_at: '2026-10-02T01:00:00Z', schedule_version: 1,
+    payment_cutoff_at: '2026-10-02T01:00:00Z', timezone: 'Asia/Jakarta', server_time: '2026-09-27T00:00:00Z',
+    can_reschedule: true, earliest_capture_start: null, latest_capture_start: null, schedule_version: 1,
   };
 
   await page.route('**/api/v1/security/csrf', (route) => route.fulfill({ json: { data: { csrf_token: 'test-csrf' } } }));
@@ -59,7 +60,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     expect(body.reveal_delay_days).toBe(3);
     expect(body.capture_start).toMatch(/Z$/);
     expect(body.capture_end).toMatch(/Z$/);
-    schedule = { ...body, reveal_at: body.capture_end, payment_cutoff_at: new Date(Date.parse(body.capture_end) - 120 * 60 * 1000).toISOString(), schedule_version: 1 };
+    schedule = { ...schedule, ...body, reveal_at: body.capture_end, payment_cutoff_at: new Date(Date.parse(body.capture_end) - 120 * 60 * 1000).toISOString(), server_time: '2026-09-27T00:00:00Z', schedule_version: 1 };
     album = { ...album, capture_start: body.capture_start, capture_end: body.capture_end, schedule_version: 1, setup_revision: album.setup_revision + 1 };
     return route.fulfill({ status: 200, json: { data: schedule } });
   });
@@ -82,9 +83,10 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     },
   } });
   await page.route(`**/api/v1/albums/${albumId}/review`, (route) => route.fulfill({ status: 200, json: review() }));
+  await page.route(`**/api/v1/albums/${albumId}/package-options`, (route) => route.fulfill({ status: 200, json: { data: { album_id: albumId, current_quota_total: 30, reserved_count: 0, committed_count: 0, payment_cutoff_at: schedule.payment_cutoff_at, server_time: '2026-09-27T00:00:00Z', can_create_checkout: true, checkout_block_reason: null, active_checkout: null, options: [{ package_id: '44444444-4444-4444-8444-444444444444', package_version_id: paidPackageId, code: 'GUEST100', name: 'Guest 100', price_amount: 75000, currency: 'IDR', quota_total: 100 }] } } }));
   await page.route(`**/api/v1/albums/${albumId}/confirm-setup`, async (route) => {
     expect(route.request().headers()['x-csrf-token']).toBe('test-csrf');
-    expect(route.request().headers()['idempotency-key']).toBeTruthy();
+    expect(route.request().headers()['idempotency-key']).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     expect(route.request().postDataJSON()).toEqual({ expected_setup_revision: album.setup_revision });
     album = { ...album, readiness: 'PAYMENT_PENDING', confirmed_setup_revision: album.setup_revision, confirmed_schedule_version: album.schedule_version, confirmed_package_version_id: paidPackageId, setup_confirmed_at: new Date().toISOString() };
     return route.fulfill({ status: 200, json: { data: album } });
@@ -133,11 +135,53 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
   await page.getByRole('navigation', { name: 'Persiapan album' }).getByRole('link', { name: /Review setup$/ }).click();
   await expect(page.getByText('Server menyatakan setup telah lengkap.')).toBeVisible();
   await page.getByRole('button', { name: 'Konfirmasi setup' }).click();
-  await expect(page.getByRole('status')).toContainText('Server mengembalikan PAYMENT_PENDING');
+  await expect(page).toHaveURL(`/album/${albumId}/checkout/${paidPackageId}`);
+  await expect(page.getByRole('heading', { name: 'Konfirmasi pembayaran' })).toBeVisible();
+  await expect(page.getByText('Kapasitas foto:')).toBeVisible();
 
   for (const width of [320, 375, 390, 430, 768, 1024, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
     expect(dimensions.content, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport);
   }
+});
+
+test('Confirm Setup reuses its UUIDv7 for a revision retry and changes it for a new FREE revision', async ({ page }) => {
+  let revision = 5;
+  const keys: string[] = [];
+  const review = () => ({ data: {
+    album_id: albumId, setup_revision: revision, complete: true, issues: [],
+    snapshot: {
+      event_basics: { event_name: 'Free event', event_location: 'Jakarta', event_category_id: categoryId, timezone: 'Asia/Jakarta' },
+      schedule: null, access: { pin_enabled: false }, settings: { per_guest_limit: null },
+      design: { cover_asset_id: null, setup_revision: revision },
+      selected_package_version_id: null, collaborator_count: 0,
+    },
+  } });
+  await page.route(`**/api/v1/albums/${albumId}/review`, route => route.fulfill({ status: 200, json: review() }));
+  await page.route('**/api/v1/security/csrf', route => route.fulfill({ status: 200, json: { data: { csrf_token: 'test-csrf' } } }));
+  await page.route(`**/api/v1/albums/${albumId}/confirm-setup`, route => {
+    expect(route.request().headers()['x-csrf-token']).toBe('test-csrf');
+    expect(route.request().postDataJSON()).toEqual({ expected_setup_revision: revision });
+    keys.push(route.request().headers()['idempotency-key'] ?? '');
+    return route.fulfill(keys.length < 3
+      ? { status: 503, json: { error: { code: 'TEMPORARY_UNAVAILABLE' } } }
+      : { status: 200, json: { data: { readiness: 'READY' } } });
+  });
+
+  await page.goto(`/album/${albumId}/setup/review`);
+  await page.getByRole('button', { name: 'Konfirmasi setup' }).click();
+  await expect(page.locator('section p[role="alert"]')).toContainText('Setup belum dapat dikonfirmasi');
+  await page.reload();
+  await page.getByRole('button', { name: 'Konfirmasi setup' }).click();
+  await expect(page.locator('section p[role="alert"]')).toContainText('Setup belum dapat dikonfirmasi');
+  revision = 6;
+  await page.reload();
+  await page.getByRole('button', { name: 'Konfirmasi setup' }).click();
+  await expect(page.getByText('Server menetapkan album FREE30 sebagai siap.')).toBeVisible();
+
+  expect(keys).toHaveLength(3);
+  expect(keys[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  expect(keys[1]).toBe(keys[0]);
+  expect(keys[2]).not.toBe(keys[0]);
 });

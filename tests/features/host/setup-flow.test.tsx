@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({
   getAlbum: vi.fn(), getCategories: vi.fn(), getCsrf: vi.fn(), patchAlbum: vi.fn(),
   getSchedule: vi.fn(), putSchedule: vi.fn(), getDesign: vi.fn(), patchDesign: vi.fn(),
-  getPackages: vi.fn(), putPackage: vi.fn(), getReview: vi.fn(), confirmSetup: vi.fn(),
+  getPackages: vi.fn(), putPackage: vi.fn(), getReview: vi.fn(), confirmSetup: vi.fn(), routerPush: vi.fn(),
 }));
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: api.routerPush }) }));
 
 vi.mock('@/lib/api/browser', () => ({
   getApiV1AlbumsAlbumId: api.getAlbum,
@@ -44,7 +46,8 @@ const album: AlbumDetail = {
 
 const schedule: AlbumSchedule = {
   capture_start: '2026-10-01T14:00:00Z', capture_end: '2026-10-02T14:00:00Z', reveal_delay_days: 3,
-  reveal_at: '2026-10-05T14:00:00Z', payment_cutoff_at: '2026-10-02T12:00:00Z', schedule_version: 1,
+  reveal_at: '2026-10-05T14:00:00Z', payment_cutoff_at: '2026-10-02T12:00:00Z', timezone: 'Asia/Jakarta',
+  server_time: '2026-09-27T00:00:00Z', can_reschedule: true, earliest_capture_start: null, latest_capture_start: null, schedule_version: 1,
 };
 
 const completeReview: SetupReviewData = {
@@ -163,10 +166,14 @@ describe('FE-3 setup flow contract surfaces', () => {
     ['READY', 'Server menetapkan album FREE30 sebagai siap.'],
     ['PAYMENT_PENDING', 'Server mengembalikan PAYMENT_PENDING untuk paket berbayar.'],
   ] as const)('confirms setup and displays only the returned %s readiness', async (readiness, message) => {
+    if (readiness === 'PAYMENT_PENDING') {
+      api.getReview.mockResolvedValue({ status: 200, data: { data: { ...completeReview, snapshot: { ...completeReview.snapshot, selected_package_version_id: packageOption.package_version_id } } } });
+    }
     api.confirmSetup.mockResolvedValue({ status: 200, data: { data: { ...album, readiness } } });
     renderHost(<SetupReview albumId={albumId} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Konfirmasi setup' }));
     await waitFor(() => expect(api.confirmSetup).toHaveBeenCalledWith(albumId, { expected_setup_revision: 7 }, expect.objectContaining({ headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf', 'Idempotency-Key': expect.any(String) }) })));
     expect(await screen.findByText(message)).toBeInTheDocument();
+    if (readiness === 'PAYMENT_PENDING') expect(api.routerPush).toHaveBeenCalledWith(`/album/${albumId}/checkout/${packageOption.package_version_id}`);
   });
 });

@@ -1,0 +1,212 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ErrorState } from '@/components/ui/error-state';
+import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
+import { LoadingState } from '@/components/ui/loading-state';
+import { DeliveryImage } from '@/features/gallery/components/delivery-image';
+import { hostRoutes } from '@/features/host/routes';
+import { createUuidV7 } from '@/features/guest/lib/idempotency';
+import { intentKey } from '@/features/host/lib/intent-key';
+import { useConnectivity } from '@/hooks/use-connectivity';
+import { isRescheduleWithinServerBounds, toEventWallTime, toScheduleTimestamp } from '@/features/host/schedule-validation';
+import {
+  getApiV1AlbumsAlbumIdPackageOptions, getApiV1AlbumsAlbumIdPayments, postApiV1AlbumsAlbumIdPayments,
+  getApiV1PaymentsTransactionId, getApiV1AlbumsAlbumIdEntitlement,
+  getApiV1AlbumsAlbumIdExports, getApiV1AlbumsAlbumIdExportCapabilities,
+  getApiV1AlbumsAlbumIdExportSelectionPhotos, postApiV1AlbumsAlbumIdExports,
+  getApiV1ExportsExportJobId, getApiV1ExportsExportJobIdDownload,
+  getApiV1AlbumsAlbumIdLifecycle, postApiV1AlbumsAlbumIdRecoveryAccess,
+  getApiV1AlbumsAlbumIdRecoveryPhotos, getApiV1AlbumsAlbumIdSchedule,
+  postApiV1AlbumsAlbumIdReschedule, getApiV1SecurityCsrf,
+  getApiV1AlbumsAlbumIdPhotosPhotoIdDownload,
+} from '@/lib/api/browser';
+import type { AlbumPackageOptions, AlbumSchedule, ExportCapabilities, ExportJob, ExportSelectionPhoto, LifecycleProjection, PaymentTransaction, RecoveryPhoto } from '@/lib/api/generated/index.schemas';
+
+type LoadState = 'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error';
+function State({ state, retry, children }: { state: LoadState; retry: () => void; children: React.ReactNode }) {
+  const t = useTranslations('host');
+  if (state === 'loading') return <LoadingState label={t('loading')} />;
+  if (state === 'unauthenticated') return <ReauthState title={t('reauthTitle')} description={t('reauthDescription')} />;
+  if (state === 'forbidden') return <ForbiddenState title={t('forbiddenTitle')} description={t('forbiddenDescription')} />;
+  if (state === 'error') return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={t('retry')} onRetry={retry} />;
+  return <>{children}</>;
+}
+function statusState(status: number): LoadState { return status === 401 ? 'unauthenticated' : status === 403 ? 'forbidden' : status >= 200 && status < 300 ? 'ready' : 'error'; }
+function apiErrorCode(data: unknown): string | undefined {
+  if (typeof data !== 'object' || data === null || !('error' in data)) return undefined;
+  const error = data.error;
+  return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string' ? error.code : undefined;
+}
+function Card({ children }: { children: React.ReactNode }) { return <section className="mb-5 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">{children}</section>; }
+function money(amount: number, locale: string, currency = 'IDR') { return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount); }
+function stamp(value: string, locale: string, timeZone?: string) { return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', ...(timeZone ? { timeZone } : {}) }).format(new Date(value)); }
+class CsrfFailure extends Error { constructor(readonly status: number) { super(`csrf:${status}`); } }
+async function csrfHeaders(idempotencyKey: string) {
+  const response = await getApiV1SecurityCsrf();
+  if (response.status !== 200) throw new CsrfFailure(response.status);
+  return { 'X-CSRF-Token': response.data.data.csrf_token, 'Idempotency-Key': idempotencyKey };
+}
+function stableKey(kind: string, id: string) {
+  if (typeof window === 'undefined') return createUuidV7();
+  const slot = `kepotret:${kind}:${id}`;
+  let value = sessionStorage.getItem(slot);
+  if (!value) { value = createUuidV7(); sessionStorage.setItem(slot, value); }
+  return value;
+}
+export function CheckoutPage({ albumId, packageVersionId }: { albumId: string; packageVersionId: string }) {
+  const t = useTranslations('host.commerce'); const locale = useLocale(); const online = useConnectivity();
+  const [data, setData] = useState<AlbumPackageOptions | null>(null); const [state, setState] = useState<LoadState>('loading'); const [busy, setBusy] = useState(false); const [confirm, setConfirm] = useState(false); const [error, setError] = useState(''); const [conflict, setConflict] = useState<'setup'|'active'|'generic'|null>(null); const [attempt, setAttempt] = useState(0);
+  useEffect(() => { let live = true; void getApiV1AlbumsAlbumIdPackageOptions(albumId).then(r => { if (!live) return; setState(statusState(r.status)); if (r.status === 200) setData(r.data.data); }).catch(() => live && setState('error')); return () => { live = false; }; }, [albumId, attempt]);
+  const pkg = data?.options.find(x => x.package_version_id === packageVersionId);
+  async function create() { if (!online || busy || !data?.can_create_checkout || !pkg) return; setBusy(true); setError('');try { const slot=`kepotret:payment:${albumId}:${packageVersionId}`; const headers = await csrfHeaders(stableKey('payment', `${albumId}:${packageVersionId}`)); const r = await postApiV1AlbumsAlbumIdPayments(albumId, { package_version_id: packageVersionId }, { headers }); if (r.status === 201) { sessionStorage.removeItem(slot); const url = new URL(r.data.data.checkout_url); if (url.protocol !== 'https:') throw new Error('url'); window.location.assign(url.href); return; } if (r.status === 401) { setState('unauthenticated'); return; } if (r.status === 403) { setState('forbidden'); return; } if (r.status === 409) { const code=apiErrorCode(r.data);setConflict(code==='SETUP_RECONFIRM_REQUIRED'?'setup':code==='ACTIVE_CHECKOUT_EXISTS'||code==='ACTIVE_CHECKOUT'?'active':'generic');setError(t(code==='SETUP_RECONFIRM_REQUIRED'?'setupChanged':'checkoutConflict'));setAttempt(x => x + 1); return; } setError(r.status === 429 || r.status === 503 ? t('temporaryError') : t('createError')); } catch (e) { if (e instanceof CsrfFailure && e.status === 401) setState('unauthenticated'); else if (e instanceof CsrfFailure && e.status === 403) setState('forbidden'); else setError(e instanceof CsrfFailure && e.status === 429 ? t('temporaryError') : t('createError')); } finally { setBusy(false); setConfirm(false); } }
+  return <State state={state} retry={() => { setState('loading'); setAttempt(x => x + 1); }}>{data && <Card>{pkg ? <><h2 className="text-xl font-semibold">{pkg.name}</h2><p className="mt-2">{t('quota')}: {pkg.quota_total.toLocaleString(locale)}</p><p className="mt-1 text-2xl font-bold">{money(pkg.price_amount, locale, pkg.currency)}</p><p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t('cutoff')}: {stamp(data.payment_cutoff_at, locale)}</p>{!data.can_create_checkout&&<p role="status" className="mt-3">{data.checkout_block_reason?t(`blockReason.${data.checkout_block_reason}`):t('unavailable')}</p>}{data.active_checkout && <p className="mt-3">{t('activeCheckout')} <Link className="underline" href={hostRoutes.paymentStatus(albumId, data.active_checkout.transaction_id)}>{t('viewStatus')}</Link></p>}{!online&&<p role="status" className="mt-3">{t('offline')}</p>}{error && <p role="alert" className="mt-3">{error}</p>}{conflict==='setup'&&<Link className="mt-3 inline-block underline" href={hostRoutes.setup(albumId,'review')}>{t('reviewSetup')}</Link>}{conflict==='active'&&data.active_checkout&&<Link className="mt-3 inline-block underline" href={hostRoutes.paymentStatus(albumId,data.active_checkout.transaction_id)}>{t('viewStatus')}</Link>}<Button className="mt-5" disabled={!online || busy || !data.can_create_checkout} loading={busy} onClick={() => setConfirm(true)}>{t('continuePayment')}</Button></> : <p role="status">{data.checkout_block_reason?t(`blockReason.${data.checkout_block_reason}`):t('unavailable')}</p>}</Card>}<ConfirmDialog open={confirm} title={t('confirmTitle')} description={t('confirmSummary', { packageName: pkg?.name ?? '', quota: pkg?.quota_total.toLocaleString(locale) ?? '', price: pkg ? money(pkg.price_amount, locale, pkg.currency) : '', cutoff: data ? stamp(data.payment_cutoff_at, locale) : '' })} confirmLabel={t('continuePayment')} cancelLabel={t('cancel')} disabled={!online||busy} onCancel={() => setConfirm(false)} onConfirm={() => void create()} /></State>;
+}
+
+export function UpgradePage({ albumId }: { albumId: string }) {
+  const t = useTranslations('host.commerce'); const locale=useLocale(); const [data, setData] = useState<AlbumPackageOptions | null>(null); const [state, setState] = useState<LoadState>('loading');
+  useEffect(() => { let live = true; void getApiV1AlbumsAlbumIdPackageOptions(albumId).then(r => { if (!live) return; setState(statusState(r.status)); if (r.status === 200) setData(r.data.data); }).catch(() => live && setState('error')); return () => { live = false; }; }, [albumId]);
+  return <State state={state} retry={() => setState('loading')}>{data && <><Card><p>{t('currentQuota')}: {data.current_quota_total.toLocaleString(locale)}</p><p className="mt-2">{t('cutoff')}: {stamp(data.payment_cutoff_at,locale)}</p>{!data.can_create_checkout&&<p role="status" className="mt-2">{data.checkout_block_reason?t(`blockReason.${data.checkout_block_reason}`):t('unavailable')}</p>}</Card>{data.active_checkout && <Card><p>{t('activeCheckout')}</p><Link className="underline" href={hostRoutes.paymentStatus(albumId, data.active_checkout.transaction_id)}>{t('viewStatus')}</Link></Card>}<div className="grid gap-4 md:grid-cols-2">{data.options.filter(p => p.quota_total > data.current_quota_total).map(p => <Card key={p.package_version_id}><h2 className="font-semibold">{p.name}</h2><p>{t('quota')}: {p.quota_total.toLocaleString(locale)}</p><p className="mt-2 text-xl font-bold">{money(p.price_amount,locale,p.currency)}</p>{data.can_create_checkout?<Link className="mt-4 inline-block underline" href={hostRoutes.checkout(albumId, p.package_version_id)}>{t('selectUpgrade')}</Link>:<p className="mt-4 text-sm text-[var(--color-muted-foreground)]">{data.checkout_block_reason?t(`blockReason.${data.checkout_block_reason}`):t('unavailable')}</p>}</Card>)}</div>{!data.options.length && <p>{t('noUpgrade')}</p>}</>}</State>;
+}
+
+export function PaymentStatusPage({ albumId, transactionId }: { albumId: string; transactionId: string }) {
+  const t = useTranslations('host.commerce'); const locale=useLocale(); const [payment, setPayment] = useState<PaymentTransaction | null>(null); const [state, setState] = useState<LoadState>('ready'); const [quota, setQuota] = useState<number | null>(null); const [attempt, setAttempt] = useState(0);
+  const refresh = useCallback(async (): Promise<'pending' | 'stop' | 'retry' | 'slow-retry'> => {
+    const r = await getApiV1PaymentsTransactionId(transactionId);
+    setState(statusState(r.status));
+    if (r.status === 200) {
+      if (r.data.data.album_id !== albumId) { setState('error'); return 'stop'; }
+      setPayment(r.data.data);
+      if (r.data.data.status === 'SUCCESS') {
+        try {
+          const e = await getApiV1AlbumsAlbumIdEntitlement(albumId);
+          if (e.status === 200) setQuota(e.data.data.quota_total);
+        } catch { /* Payment remains terminal even if the quota projection is unavailable. */ }
+      }
+      return r.data.data.status === 'PENDING' ? 'pending' : 'stop';
+    }
+    if (r.status === 429) return 'slow-retry';
+    return r.status >= 500 ? 'retry' : 'stop';
+  }, [albumId, transactionId]);
+  useEffect(() => {
+    let live = true; let busy = false; let terminal = false; let timer: ReturnType<typeof setTimeout>; let interval = 0;
+    const poll = async () => {
+      if (!live || busy || terminal) return;
+      if (document.hidden || !navigator.onLine) { timer = setTimeout(poll, 5000); return; }
+      busy = true;
+      let outcome: 'pending' | 'stop' | 'retry' | 'slow-retry';
+      try { outcome = await refresh(); } catch { setState('error'); outcome = 'retry'; }
+      busy = false;
+      if (!live) return;
+      if (outcome === 'stop') { terminal = true; return; }
+      const delays = [2000, 4000, 8000, 15000, 30000];
+      timer = setTimeout(poll, outcome === 'slow-retry' ? 30000 : delays[Math.min(interval, delays.length - 1)]);
+      interval += 1;
+    };
+    void poll();
+    const focus = () => { if (!document.hidden && !terminal) { clearTimeout(timer); void poll(); } };
+    const online = () => { if (!terminal) { clearTimeout(timer); void poll(); } };
+    window.addEventListener('focus', focus); window.addEventListener('online', online);
+    return () => { live = false; clearTimeout(timer); window.removeEventListener('focus', focus); window.removeEventListener('online', online); };
+  }, [refresh, attempt]);
+  return state==='ready'&&!payment ? <Card><p className="text-xl font-semibold">{t('verifyingTitle')}</p><p role="status" className="mt-3">{t('verifying')}</p></Card> : <State state={state} retry={() => { setState('ready'); setAttempt(x => x + 1); }}>{payment && <Card><p className="text-xl font-semibold">{t(`paymentStatus.${payment.status}`)}</p><p className="mt-3">{payment.package_name_snapshot} · {payment.target_quota_total_snapshot.toLocaleString(locale)}</p><p>{money(payment.amount,locale,payment.currency)}</p><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('createdAt')}: {stamp(payment.created_at,locale)}</p>{payment.status === 'SUCCESS' && quota !== null && <p className="mt-4 font-semibold">{t('quota')}: {quota.toLocaleString(locale)}</p>}{payment.status === 'PENDING' && <p role="status" className="mt-4">{t('verifying')}</p>}<Link className="mt-5 inline-block underline" href={hostRoutes.payments(albumId)}>{t('history')}</Link></Card>}</State>;
+}
+
+export function PaymentHistoryPage({ albumId, transactionId }: { albumId: string; transactionId?: string }) {
+  const t = useTranslations('host.commerce'); const locale=useLocale(); const [rows, setRows] = useState<PaymentTransaction[]>([]); const [state, setState] = useState<LoadState>('loading'); const [next, setNext] = useState<string | undefined>();
+  const load = useCallback(async (after?: string) => { const r = await getApiV1AlbumsAlbumIdPayments(albumId, { limit: 25, ...(after ? { cursor: after } : {}) }); setState(statusState(r.status)); if (r.status === 200) { const list = r.data.data; setRows(v => after ? [...v, ...list.filter(x => !v.some(y => y.transaction_id === x.transaction_id))] : list); setNext(r.data.meta.next_cursor ?? undefined); } }, [albumId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- This effect loads the server-owned transaction view.
+  useEffect(() => { if (!transactionId) { void load(); return; } let live = true; void getApiV1PaymentsTransactionId(transactionId).then(r => { if (!live) return; setState(statusState(r.status)); if (r.status === 200) { if (r.data.data.album_id !== albumId) setState('error'); else setRows([r.data.data]); } }); return () => { live = false; }; }, [load, albumId, transactionId]);
+  const detail = rows.find(x => x.transaction_id === transactionId);
+  return <State state={state} retry={() => { setState('loading'); void load(); }}>{transactionId && !detail && <p>{t('detailLoading')}</p>}{(detail ? [detail] : rows).map(p => <Card key={p.transaction_id}>{detail ? <><h2 className="font-semibold">{t('detailTitle')}</h2><dl className="mt-3 grid gap-3 sm:grid-cols-2">{[[t('transactionId'),p.transaction_id],[t('transactionType'),t(`type.${p.type}`)],[t('packageSnapshot'),p.package_name_snapshot],[t('quota'),p.target_quota_total_snapshot.toLocaleString(locale)],[t('amount'),money(p.amount,locale,p.currency)],[t('paymentStatusLabel'),t(`paymentStatus.${p.status}`)],[t('createdAt'),stamp(p.created_at,locale)],[t('cutoff'),stamp(p.payment_cutoff_at,locale)],[t('providerExpiry'),stamp(p.provider_expires_at,locale)],...(p.paid_at?[[t('paidAt'),stamp(p.paid_at,locale)]]:[])].map(([label,value])=><div key={label}><dt className="text-sm text-[var(--color-muted-foreground)]">{label}</dt><dd>{value}</dd></div>)}</dl></>:<><h2 className="font-semibold">{p.package_name_snapshot}</h2><p>{t(`type.${p.type}`)} · {p.target_quota_total_snapshot.toLocaleString(locale)} · {money(p.amount,locale,p.currency)}</p><p>{t(`paymentStatus.${p.status}`)} · {stamp(p.created_at,locale)}</p><Link className="mt-3 inline-block underline" href={hostRoutes.payment(albumId, p.transaction_id)}>{t('detailLink')}</Link></>}</Card>)}{!transactionId && next && <Button variant="secondary" onClick={() => void load(next)}>{t('loadMore')}</Button>}</State>;
+}
+
+export function ExportCenterPage({ albumId }: { albumId: string }) {
+  const t = useTranslations('host.export'); const locale=useLocale(); const online = useConnectivity(); const router = useRouter();
+  const [caps, setCaps] = useState<ExportCapabilities | null>(null); const [rows, setRows] = useState<ExportJob[]>([]); const [photos, setPhotos] = useState<ExportSelectionPhoto[]>([]); const [selected, setSelected] = useState<string[]>([]); const [state, setState] = useState<LoadState>('loading'); const [mode, setMode] = useState<'ALL'|'SELECTED'>('ALL'); const [confirm, setConfirm] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [attempt,setAttempt]=useState(0); const [next,setNext]=useState<string|undefined>(); const [photoNext,setPhotoNext]=useState<string|undefined>(); const [photoBusy,setPhotoBusy]=useState(false);
+  const load = useCallback(async (cursor?: string) => { const [c,h]=await Promise.all([getApiV1AlbumsAlbumIdExportCapabilities(albumId),getApiV1AlbumsAlbumIdExports(albumId,{limit:25,...(cursor?{cursor}:{})})]); const s=statusState(c.status); setState(s); if(c.status===200)setCaps(c.data.data); if(h.status===200){setRows(v=>cursor?[...v,...h.data.data.filter(row=>!v.some(x=>x.export_job_id===row.export_job_id))]:h.data.data);setNext(h.data.meta.next_cursor??undefined);} },[albumId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetches current capability and history projections.
+  useEffect(()=>{void load().catch(()=>setState('error'));},[load,attempt]);
+  useEffect(()=>{let live=true;if(mode==='SELECTED'&&caps?.allow_selected){void getApiV1AlbumsAlbumIdExportSelectionPhotos(albumId,{limit:Math.min(caps.max_photos_per_job,100)}).then(r=>{if(live&&r.status===200){setPhotos(r.data.data);setPhotoNext(r.data.meta.next_cursor??undefined)}});}return()=>{live=false};},[mode,caps,albumId]);
+  async function loadMoreSelection(){if(!photoNext||photoBusy||!caps)return;setPhotoBusy(true);try{const r=await getApiV1AlbumsAlbumIdExportSelectionPhotos(albumId,{limit:Math.min(caps.max_photos_per_job,100),cursor:photoNext});if(r.status===200){setPhotos(v=>[...v,...r.data.data.filter(p=>!v.some(x=>x.photo_id===p.photo_id))]);setPhotoNext(r.data.meta.next_cursor??undefined)}}finally{setPhotoBusy(false)}}
+  async function create(){if(!caps||busy||!online)return;setBusy(true);setError('');try{const identity=mode==='ALL'?'ALL':`SELECTED:${[...selected].sort().join(',')}`;const slot=`export:${albumId}`;const key=intentKey(slot,identity);const headers=await csrfHeaders(key);const r=await postApiV1AlbumsAlbumIdExports(albumId,{mode,...(mode==='SELECTED'?{photo_ids:[...selected].sort()}:{})},{headers});if(r.status===201){sessionStorage.removeItem(`kepotret:${slot}`);router.push(hostRoutes.export(albumId,r.data.data.export_job_id));return;}if(r.status===401)setState('unauthenticated');else if(r.status===403)setState('forbidden');else setError(r.status===429?t('rateLimited'):t('createError'));}catch(e){if(e instanceof CsrfFailure&&e.status===401)setState('unauthenticated');else if(e instanceof CsrfFailure&&e.status===403)setState('forbidden');else setError(e instanceof CsrfFailure&&e.status===429?t('rateLimited'):t('createError'));}finally{setBusy(false);setConfirm(false);}}
+  const permitted=!!caps&&(mode==='ALL'?caps.allow_all:caps.allow_selected&&selected.length>0&&selected.length<=caps.max_photos_per_job);
+  return <State state={state} retry={()=>{setState('loading');setAttempt(x=>x+1)}}>{caps&&<><Card><p>{t('eligibleCount', {count:caps.eligible_photo_count})}</p><fieldset className="mt-4 flex gap-5"><label><input type="radio" checked={mode==='ALL'} onChange={()=>{sessionStorage.removeItem(`kepotret:export:${albumId}`);setMode('ALL');setPhotos([]);setSelected([]);setPhotoNext(undefined)}}/> {t('all')}</label><label><input type="radio" disabled={!caps.allow_selected} checked={mode==='SELECTED'} onChange={()=>{sessionStorage.removeItem(`kepotret:export:${albumId}`);setMode('SELECTED')}}/> {t('selected')}</label></fieldset>{mode==='SELECTED'&&caps.allow_selected&&<div className="mt-4 max-h-64 space-y-2 overflow-y-auto">{photos.map(p=><label key={p.photo_id} className="flex gap-3"><input type="checkbox" checked={selected.includes(p.photo_id)} disabled={!selected.includes(p.photo_id)&&selected.length>=caps.max_photos_per_job} onChange={e=>{sessionStorage.removeItem(`kepotret:export:${albumId}`);setSelected(v=>e.target.checked?[...v,p.photo_id]:v.filter(x=>x!==p.photo_id))}}/>{p.photographer_display_name} · {stamp(p.created_at,locale)}</label>)}{photoNext&&<Button variant="secondary" disabled={photoBusy} loading={photoBusy} onClick={()=>void loadMoreSelection()}>{t('loadMoreSelection')}</Button>}</div>}<p className="mt-4 text-sm text-[var(--color-muted-foreground)]">{t('allScope')}</p>{error&&<p role="alert">{error}</p>}<Button className="mt-4" disabled={!online||!permitted||busy} loading={busy} onClick={()=>setConfirm(true)}>{t('create')}</Button></Card><h2 className="mb-3 text-xl font-semibold">{t('history')}</h2>{rows.map(j=><Card key={j.export_job_id}><p>{j.mode} · {t(`status.${j.status}`)}</p><p>{j.processed_count} / {j.total_count}</p><Link className="underline" href={hostRoutes.export(albumId,j.export_job_id)}>{t('viewJob')}</Link></Card>)}{next&&<Button variant="secondary" onClick={()=>void load(next)}>{t('loadMore')}</Button>}</>}<ConfirmDialog open={confirm} title={t('confirmTitle')} description={t('confirmDescription')} confirmLabel={t('create')} cancelLabel={t('cancel')} disabled={busy} onCancel={()=>setConfirm(false)} onConfirm={()=>void create()}/></State>;
+}
+
+export function ExportJobPage({ albumId, exportJobId }: { albumId: string; exportJobId: string }) {
+  const t=useTranslations('host.export');const locale=useLocale();const online=useConnectivity();const router=useRouter();const [job,setJob]=useState<ExportJob|null>(null);const [caps,setCaps]=useState<ExportCapabilities|null>(null);const [state,setState]=useState<LoadState>('loading');const [attempt,setAttempt]=useState(0);const [error,setError]=useState('');const [retryConfirm,setRetryConfirm]=useState(false);const [busy,setBusy]=useState(false);
+  const refresh=useCallback(async():Promise<'pending'|'stop'|'retry'|'slow-retry'>=>{
+    const r=await getApiV1ExportsExportJobId(exportJobId);
+    setState(statusState(r.status));
+    if(r.status===200){
+      if(r.data.data.album_id!==albumId){setState('error');return 'stop'}
+      setJob(r.data.data);
+      return r.data.data.status==='QUEUED'||r.data.data.status==='RUNNING'?'pending':'stop';
+    }
+    if(r.status===429)return 'slow-retry';
+    return r.status>=500?'retry':'stop';
+  },[albumId,exportJobId]);
+  useEffect(()=>{
+    let live=true;let busy=false;let terminal=false;let timer:ReturnType<typeof setTimeout>;let retries=0;
+    const poll=async()=>{
+      if(!live||busy||terminal)return;
+      if(document.hidden||!navigator.onLine){timer=setTimeout(poll,5000);return}
+      busy=true;
+      let outcome:'pending'|'stop'|'retry'|'slow-retry';
+      try{outcome=await refresh()}catch{setState('error');outcome='retry'}
+      busy=false;
+      if(!live)return;
+      if(outcome==='stop'){terminal=true;return}
+      retries=outcome==='pending'?0:Math.min(retries+1,3);
+      timer=setTimeout(poll,outcome==='pending'?4000:outcome==='slow-retry'?30000:[8000,15000,30000,30000][retries]);
+    };
+    void poll();
+    const focus=()=>{if(!document.hidden&&!terminal){clearTimeout(timer);void poll()}};
+    const onlineEvent=()=>{if(!terminal){clearTimeout(timer);void poll()}};
+    window.addEventListener('focus',focus);window.addEventListener('online',onlineEvent);
+    return()=>{live=false;clearTimeout(timer);window.removeEventListener('focus',focus);window.removeEventListener('online',onlineEvent)};
+  },[refresh,attempt]);
+  useEffect(()=>{let live=true;void getApiV1AlbumsAlbumIdExportCapabilities(albumId).then(r=>{if(live&&r.status===200)setCaps(r.data.data)});return()=>{live=false}},[albumId]);
+  async function download(){if(!online){setError(t('offline'));return}setError('');try{const r=await getApiV1ExportsExportJobIdDownload(exportJobId);if(r.status===401){setState('unauthenticated');return}if(r.status===403){setState('forbidden');return}if(r.status===410){setError(t('artifactExpired'));return}if(r.status===429){setError(t('rateLimited'));return}if(r.status!==200){setError(t('downloadError'));return}const u=new URL(r.data.data.url);if(u.protocol!=='https:')throw new Error();window.location.assign(u.href)}catch{setError(t('downloadError'))}}
+  async function retryAll(){if(!online||busy)return;setBusy(true);try{const headers=await csrfHeaders(stableKey('export-retry',exportJobId));const r=await postApiV1AlbumsAlbumIdExports(albumId,{mode:'ALL'},{headers});if(r.status===201){sessionStorage.removeItem(`kepotret:export-retry:${exportJobId}`);router.push(hostRoutes.export(albumId,r.data.data.export_job_id))}else if(r.status===401)setState('unauthenticated');else if(r.status===403)setState('forbidden');else setError(r.status===429?t('rateLimited'):t('createError'))}catch(e){if(e instanceof CsrfFailure&&e.status===401)setState('unauthenticated');else if(e instanceof CsrfFailure&&e.status===403)setState('forbidden');else setError(e instanceof CsrfFailure&&e.status===429?t('rateLimited'):t('createError'))}finally{setBusy(false);setRetryConfirm(false)}}
+  return <State state={state} retry={()=>{setState('loading');setAttempt(x=>x+1)}}>{job&&<Card><p className="text-xl font-semibold">{t(`status.${job.status}`)}</p><p className="mt-3">{job.mode} · {job.processed_count} / {job.total_count}</p>{job.output_expires_at&&<p>{t('expires')}: {stamp(job.output_expires_at,locale)}</p>}{['FAILED','INVALIDATED','EXPIRED'].includes(job.status)&&<p className="mt-3" role="status">{t(`terminal.${job.status}`)}</p>}{job.status==='READY'&&<Button className="mt-4" disabled={!online} onClick={()=>void download()}>{t('download')}</Button>}{!online&&job.status==='READY'&&<p className="mt-2" role="status">{t('offline')}</p>}{error&&<p role="alert">{error}</p>}{['FAILED','INVALIDATED','EXPIRED'].includes(job.status)&&job.mode==='ALL'&&caps?.allow_all&&<Button className="mt-4" disabled={!online||busy} onClick={()=>setRetryConfirm(true)}>{t('retryExport')}</Button>}{['FAILED','INVALIDATED','EXPIRED'].includes(job.status)&&job.mode==='SELECTED'&&<Link className="mt-4 inline-block underline" href={hostRoutes.exports(albumId)}>{t('reselect')}</Link>}</Card>}<ConfirmDialog open={retryConfirm} title={t('retryConfirmTitle')} description={t('retryConfirmDescription')} confirmLabel={t('retryExport')} cancelLabel={t('cancel')} disabled={busy} onCancel={()=>setRetryConfirm(false)} onConfirm={()=>void retryAll()}/></State>;
+}
+
+export function LifecyclePage({ albumId }: { albumId: string }) {
+  const t=useTranslations('host.lifecycle');const locale=useLocale();const online=useConnectivity();const [life,setLife]=useState<LifecycleProjection|null>(null);const [state,setState]=useState<LoadState>('loading');const [confirm,setConfirm]=useState(false);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [attempt,setAttempt]=useState(0);
+  const load=useCallback(async()=>{const r=await getApiV1AlbumsAlbumIdLifecycle(albumId);setState(statusState(r.status));if(r.status===200)setLife(r.data.data)},[albumId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Lifecycle is loaded from the authoritative API projection.
+  useEffect(()=>{void load()},[load,attempt]);
+  useEffect(()=>{const onOnline=()=>{void load()};window.addEventListener('online',onOnline);return()=>window.removeEventListener('online',onOnline)},[load]);
+  async function activate(){if(!online||busy)return;setBusy(true);setError('');try{const headers=await csrfHeaders(stableKey('recovery',albumId));const r=await postApiV1AlbumsAlbumIdRecoveryAccess(albumId,{headers});if(r.status===200){sessionStorage.removeItem(`kepotret:recovery:${albumId}`);setLife(r.data.data)}else if(r.status===401)setState('unauthenticated');else if(r.status===403)setState('forbidden');else {setError(r.status===429?t('rateLimited'):t('operationError'));setAttempt(x=>x+1)}}catch(e){if(e instanceof CsrfFailure&&e.status===401)setState('unauthenticated');else if(e instanceof CsrfFailure&&e.status===403)setState('forbidden');else setError(e instanceof CsrfFailure&&e.status===429?t('rateLimited'):t('operationError'))}finally{setBusy(false);setConfirm(false)}}
+  return <State state={state} retry={()=>{setState('loading');setAttempt(x=>x+1)}}>{life&&<Card><h2 className="text-xl font-semibold">{t(`state.${life.retention_state}`)}</h2><p className="mt-4">{t('serverTime')}: {stamp(life.server_time,locale)}</p><p>{t('normalEnd')}: {stamp(life.normal_access_end_at,locale)}</p><p>{t('recoveryEnd')}: {stamp(life.recovery_end_at,locale)}</p><p>{t('backupEnd')}: {stamp(life.backup_cleanup_deadline_at,locale)}</p>{['PURGE_DUE','PURGING','PURGED','PURGE_ERROR'].includes(life.retention_state)?<p role="status" className="mt-4">{t('cleanupOnly')}</p>:life.can_activate_recovery&&<><Button className="mt-5" disabled={!online||busy} onClick={()=>setConfirm(true)}>{t('activate')}</Button>{!online&&<p role="status" className="mt-2">{t('offline')}</p>}</>}{life.retention_state==='RECOVERY'&&life.can_open_recovery_media&&<Link className="ml-4 underline" href={hostRoutes.recoveryMedia(albumId)}>{t('openMedia')}</Link>}{error&&<p role="alert" className="mt-3">{error}</p>}</Card>}<ConfirmDialog open={confirm} title={t('confirmTitle')} description={t('confirmDescription')} confirmLabel={t('activate')} cancelLabel={t('cancel')} disabled={!online||busy} onCancel={()=>setConfirm(false)} onConfirm={()=>void activate()}/></State>;
+}
+
+export function RecoveryMediaPage({ albumId }: { albumId: string }) {
+  const t=useTranslations('host.lifecycle');const x=useTranslations('host.export');const locale=useLocale();const online=useConnectivity();const [rows,setRows]=useState<RecoveryPhoto[]>([]);const [life,setLife]=useState<LifecycleProjection|null>(null);const [caps,setCaps]=useState<ExportCapabilities|null>(null);const [state,setState]=useState<LoadState>('loading');const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [attempt,setAttempt]=useState(0);const [next,setNext]=useState<string|undefined>();const [pageBusy,setPageBusy]=useState(false);
+  const load=useCallback(async()=>{const [p,l,c]=await Promise.all([getApiV1AlbumsAlbumIdRecoveryPhotos(albumId,{limit:25}),getApiV1AlbumsAlbumIdLifecycle(albumId),getApiV1AlbumsAlbumIdExportCapabilities(albumId)]);setState(statusState(p.status));if(p.status===200){setRows(p.data.data);setNext(p.data.meta.next_cursor??undefined)}if(l.status===200)setLife(l.data.data);if(c.status===200)setCaps(c.data.data)},[albumId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Loads recovery media and server capability projections.
+  useEffect(()=>{void load().catch(()=>setState('error'))},[load,attempt]);
+  async function makeZip(){if(!online||life?.retention_state!=='RECOVERY'||!life.can_open_recovery_media||!life.can_create_recovery_export)return;setBusy(true);try{const headers=await csrfHeaders(stableKey('recovery-export',albumId));const r=await postApiV1AlbumsAlbumIdExports(albumId,{mode:'ALL'},{headers});if(r.status===201){sessionStorage.removeItem(`kepotret:recovery-export:${albumId}`);window.location.assign(hostRoutes.export(albumId,r.data.data.export_job_id))}else if(r.status===401)setState('unauthenticated');else if(r.status===403)setState('forbidden');else setError(x('createError'))}catch(e){if(e instanceof CsrfFailure&&e.status===401)setState('unauthenticated');else if(e instanceof CsrfFailure&&e.status===403)setState('forbidden');else setError(e instanceof CsrfFailure&&e.status===429?x('rateLimited'):x('createError'))}finally{setBusy(false)}}
+  async function downloadPhoto(photoId:string){if(!online){setError(t('offline'));return}try{const r=await getApiV1AlbumsAlbumIdPhotosPhotoIdDownload(albumId,photoId);if(r.status===401){setState('unauthenticated');return}if(r.status===403){setState('forbidden');return}if(r.status===410){setError(t('downloadGone'));return}if(r.status===429){setError(t('rateLimited'));return}if(r.status!==200){setError(t('downloadError'));return}const u=new URL(r.data.data.url);if(u.protocol!=='https:')throw new Error('unsafe delivery url');window.location.assign(u.href)}catch{setError(t('downloadError'))}}
+  async function loadMore(){if(!next||pageBusy)return;setPageBusy(true);try{const r=await getApiV1AlbumsAlbumIdRecoveryPhotos(albumId,{limit:25,cursor:next});if(r.status===200){setRows(v=>[...v,...r.data.data.filter(p=>!v.some(x=>x.photo_id===p.photo_id))]);setNext(r.data.meta.next_cursor??undefined)}}finally{setPageBusy(false)}}
+  const usable=life?.retention_state==='RECOVERY'&&life.can_open_recovery_media;
+  return <State state={state} retry={()=>{setState('loading');setAttempt(v=>v+1)}}>{life&&<Card><p>{t(`state.${life.retention_state}`)} · {t('recoveryEnd')}: {stamp(life.recovery_end_at,locale)}</p>{!usable&&<p role="status" className="mt-3">{['PURGE_DUE','PURGING','PURGED','PURGE_ERROR'].includes(life.retention_state)?t('cleanupOnly'):t('recoveryUnavailable')}</p>}{usable&&life.can_create_recovery_export&&caps?.allow_all&&<Button className="mt-4" disabled={!online||busy} loading={busy} onClick={()=>void makeZip()}>{x('recoveryZip')}</Button>}{usable&&!online&&<p role="status" className="mt-2">{t('offline')}</p>}</Card>}{usable&&rows.map(p=><Card key={p.photo_id}><p>{p.photographer_display_name} · {stamp(p.created_at,locale)}</p><DeliveryImage src={p.media.url} alt={t('photoPreview',{name:p.photographer_display_name})} unavailableLabel={t('mediaUnavailable')} className="mt-3 max-h-96 w-full rounded object-contain"/>{p.can_download&&<Button variant="secondary" className="mt-3" disabled={!online} onClick={()=>void downloadPhoto(p.photo_id)}>{t('downloadMedia')}</Button>}</Card>)}{usable&&next&&<Button variant="secondary" disabled={pageBusy} loading={pageBusy} onClick={()=>void loadMore()}>{t('loadMore')}</Button>}{!online&&usable&&<p role="status">{t('offline')}</p>}{error&&<p role="alert">{error}</p>}</State>;
+}
+
+export function ReschedulePage({ albumId }: { albumId: string }) {
+  const t=useTranslations('host.lifecycle');const commerce=useTranslations('host.commerce');const locale=useLocale();const online=useConnectivity();const [schedule,setSchedule]=useState<AlbumSchedule|null>(null);const [billing,setBilling]=useState<AlbumPackageOptions|null>(null);const [state,setState]=useState<LoadState>('loading');const [start,setStart]=useState('');const [end,setEnd]=useState('');const [days,setDays]=useState('1');const [confirm,setConfirm]=useState(false);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [attempt,setAttempt]=useState(0);
+  const [,setLifecycleProjection]=useState<LifecycleProjection|null>(null);const [,setEntitlementProjection]=useState<number|null>(null);
+  const load=useCallback(async()=>{const [r,b,l,e]=await Promise.all([getApiV1AlbumsAlbumIdSchedule(albumId),getApiV1AlbumsAlbumIdPackageOptions(albumId),getApiV1AlbumsAlbumIdLifecycle(albumId),getApiV1AlbumsAlbumIdEntitlement(albumId)]);setState(statusState(r.status));if(r.status===200){setSchedule(r.data.data);setStart(toEventWallTime(r.data.data.capture_start,r.data.data.timezone));setEnd(toEventWallTime(r.data.data.capture_end,r.data.data.timezone));setDays(String(r.data.data.reveal_delay_days))}if(b.status===200)setBilling(b.data.data);if(l.status===200)setLifecycleProjection(l.data.data);if(e.status===200)setEntitlementProjection(e.data.data.quota_total)},[albumId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetches and projects the current server schedule.
+  useEffect(()=>{void load()},[load,attempt]);
+  const within=useMemo(()=>!!schedule?.can_reschedule&&isRescheduleWithinServerBounds(start,end,schedule.timezone,schedule.earliest_capture_start,schedule.latest_capture_start),[schedule,start,end]);
+  async function save(){if(!schedule||!within||busy||!online)return;setBusy(true);setError('');try{const headers=await csrfHeaders(stableKey('reschedule',albumId));const r=await postApiV1AlbumsAlbumIdReschedule(albumId,{expected_schedule_version:schedule.schedule_version,capture_start:toScheduleTimestamp(start,schedule.timezone),capture_end:toScheduleTimestamp(end,schedule.timezone),reveal_delay_days:Number(days) as 1|3|5|7},{headers});if(r.status===200){sessionStorage.removeItem(`kepotret:reschedule:${albumId}`);setSchedule(r.data.data);setConfirm(false);await load()}else if(r.status===409){setError(t('stale'));setConfirm(false);const current=await getApiV1AlbumsAlbumIdSchedule(albumId);if(current.status===200)setSchedule(current.data.data)}else if(r.status===401)setState('unauthenticated');else if(r.status===403)setState('forbidden');else setError(r.status===429?t('rateLimited'):t('saveError'))}catch(e){if(e instanceof CsrfFailure&&e.status===401)setState('unauthenticated');else if(e instanceof CsrfFailure&&e.status===403)setState('forbidden');else setError(e instanceof CsrfFailure&&e.status===429?t('rateLimited'):t('saveError'))}finally{setBusy(false)}}
+  return <State state={state} retry={()=>{setState('loading');setAttempt(x=>x+1)}}>{schedule&&<Card><p>{t('timezone')}: {schedule.timezone}</p>{billing?.active_checkout&&<p className="mt-2 rounded bg-[var(--color-muted)] p-3">{commerce('activeCheckout')} <Link className="underline" href={hostRoutes.paymentStatus(albumId,billing.active_checkout.transaction_id)}>{commerce('viewStatus')}</Link></p>}<label className="mt-4 block">{t('captureStart')}<input aria-label={t('captureStart')} className="mt-1 block rounded border p-2 text-black" type="datetime-local" value={start} min={schedule.earliest_capture_start ? toEventWallTime(schedule.earliest_capture_start,schedule.timezone) : undefined} max={schedule.latest_capture_start ? toEventWallTime(schedule.latest_capture_start,schedule.timezone) : undefined} onChange={e=>setStart(e.target.value)}/></label><label className="mt-4 block">{t('captureEnd')}<input aria-label={t('captureEnd')} className="mt-1 block rounded border p-2 text-black" type="datetime-local" value={end} onChange={e=>setEnd(e.target.value)}/></label><label className="mt-4 block">{t('revealDelay')}<select className="mt-1 block rounded border p-2 text-black" value={days} onChange={e=>setDays(e.target.value)}>{[1,3,5,7].map(d=><option key={d} value={d}>{d}</option>)}</select></label><section aria-label={t('proposalReview')} className="mt-5 rounded-[var(--radius-md)] bg-[var(--color-muted)] p-4"><h2 className="font-semibold">{t('proposalReview')}</h2><dl className="mt-3 grid gap-3 sm:grid-cols-2"><div><dt className="text-sm text-[var(--color-muted-foreground)]">{t('currentSchedule')}</dt><dd>{toEventWallTime(schedule.capture_start,schedule.timezone)} – {toEventWallTime(schedule.capture_end,schedule.timezone)} · D+{schedule.reveal_delay_days}</dd></div><div><dt className="text-sm text-[var(--color-muted-foreground)]">{t('proposedSchedule')}</dt><dd>{within ? `${toEventWallTime(toScheduleTimestamp(start,schedule.timezone),schedule.timezone)} – ${toEventWallTime(toScheduleTimestamp(end,schedule.timezone),schedule.timezone)}` : `${start || '—'} – ${end || '—'}`} · D+{days}</dd></div></dl></section><p className="mt-4 text-sm">{t('cutoff')}: {stamp(schedule.payment_cutoff_at,locale,schedule.timezone)} · {schedule.reschedule_cutoff_at&&`${t('lockedCutoff')}: ${stamp(schedule.reschedule_cutoff_at,locale,schedule.timezone)} · `}{t('previewOnly')}</p>{!online&&<p role="status" className="mt-2">{t('offline')}</p>}{error&&<p role="alert">{error}</p>}<Button className="mt-5" disabled={!within||!online||busy} onClick={()=>setConfirm(true)}>{t('reviewChange')}</Button></Card>}<ConfirmDialog open={confirm} title={t('rescheduleConfirmTitle')} description={billing?.active_checkout?t('reschedulePendingConfirmDescription'):t('rescheduleConfirmDescription')} confirmLabel={t('save')} cancelLabel={t('cancel')} disabled={!online||busy} onCancel={()=>setConfirm(false)} onConfirm={()=>void save()}/></State>;
+}

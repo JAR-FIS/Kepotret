@@ -2718,9 +2718,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PackageOptionListEnvelope'
+                $ref: '#/components/schemas/AlbumPackageOptionsEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Owner
+      x-kepotret-rules:
+      - Returns current entitlement counters and server_time/payment_cutoff_at; the browser does not calculate checkout eligibility.
+      - Options are higher-quota upgrade targets only; initial purchase still uses the confirmed setup package snapshot.
+      - At or after payment_cutoff_at, can_create_checkout is false and the response provides a locked block reason.
       parameters:
       - name: album_id
         in: path
@@ -2760,7 +2764,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentEnvelope'
+                $ref: '#/components/schemas/PaymentCheckoutEnvelope'
       x-kepotret-protection: Idempotency + CSRF
       x-kepotret-auth: Owner
       parameters:
@@ -2783,6 +2787,7 @@ paths:
       - Initial paid target must match current confirmed setup snapshot; stale/missing snapshot returns SETUP_RECONFIRM_REQUIRED.
       - At most one active PENDING/PROCESSING local checkout per album.
       - Upgrade target quota must be greater than current quota; no downgrade V1.
+      - server_now must be strictly before payment_cutoff_at; provider_expires_at must not exceed payment_cutoff_at.
       - Midtrans network calls occur outside database transactions.
     get:
       tags:
@@ -2822,6 +2827,8 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
   /api/v1/payments/{transaction_id}:
     get:
       tags:
@@ -3022,11 +3029,13 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
   /api/v1/albums/{album_id}/export-capabilities:
     get:
       tags:
       - Export
-      summary: Read operational ZIP selection capability for an album.
+      summary: Read current actor and lifecycle ZIP export capabilities for an album.
       operationId: get_api_v1_albums_album_id_export_capabilities
       security:
       - UserCookie: []
@@ -3061,6 +3070,50 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/export-selection/photos:
+    get:
+      tags:
+      - Export
+      summary: Read eligible photo choices only when server permits selected export.
+      operationId: get_api_v1_albums_album_id_export_selection_photos
+      security:
+      - UserCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Eligible photo choices for this actor; no moderation or download actions are granted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSelectionPhotoListEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Owner / current actor only when allow_selected is true
+      x-kepotret-rules:
+      - Current lifecycle, operational hold, actor permission, and export eligibility are checked by the server.
+      - This read-only projection grants no gallery moderation, sharing, or individual download capability.
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
   /api/v1/exports/{export_job_id}:
     get:
       tags:
@@ -3130,7 +3183,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StringUrlEnvelope'
+                $ref: '#/components/schemas/ExportDownloadEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Requester with current permission
       parameters:
@@ -3145,6 +3198,7 @@ paths:
       - Current permission/lifecycle/export_revision rechecked at delivery.
       - Expired artifact returns EXPORT_EXPIRED/Gone; READY TTL max 24h and capped by lifecycle.
       - Recovery D+30..D+37 is Owner-only.
+      - The response expiry is the earlier of the artifact expiry and applicable lifecycle end.
   /api/v1/albums/{album_id}/lifecycle:
     get:
       tags:
@@ -3225,6 +3279,49 @@ paths:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/IdempotencyKey'
       - $ref: '#/components/parameters/CsrfToken'
+  /api/v1/albums/{album_id}/recovery/photos:
+    get:
+      tags:
+      - Lifecycle
+      summary: Read available recovery media for the Owner during an active recovery grant.
+      operationId: get_api_v1_albums_album_id_recovery_photos
+      security:
+      - UserCookie: []
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Available non-purged recovery media; no management actions are exposed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryPhotoListEnvelope'
+      x-kepotret-protection: Current Owner session + explicit recovery grant + RECOVERY retention state
+      x-kepotret-auth: Owner only
+      x-kepotret-rules:
+      - Guest and WO/EO access is closed during recovery.
+      - Never include soft-deleted or purged media that is not logically available for recovery.
+      - The projection grants view only; no share, restore, moderation, or reschedule action is implied.
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
   /api/v1/ai/assistant:
     post:
       tags:
@@ -4721,6 +4818,7 @@ components:
       - SUCCESS
       - FAILURE
       - EXPIRED
+      description: Normalized status exposed to ordinary Host payment surfaces.
     ExportStatus:
       type: string
       enum:
@@ -4761,6 +4859,105 @@ components:
       - SUCCESS
       - FAILURE
       - EXPIRED
+      description: Internal/local payment orchestration status. PROCESSING is not exposed through PaymentTransaction.
+    PaymentType:
+      type: string
+      enum:
+      - INITIAL_PURCHASE
+      - UPGRADE
+    ExportSelectionPhoto:
+      type: object
+      additionalProperties: false
+      description: Read-only identity projection for currently eligible selected-export rows. It grants no interactive media access, moderation, share, or individual download action. Selected export capability and can_export_zip do not expand any other capability; allow_selected is server-authoritative.
+      properties:
+        photo_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        photographer_display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required: [photo_id, created_at, photographer_display_name]
+    RecoveryPhoto:
+      type: object
+      additionalProperties: false
+      description: Owner-only view/download projection for logically available media during an active recovery grant.
+      properties:
+        photo_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        photographer_display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        media:
+          $ref: '#/components/schemas/MediaDeliveryReference'
+        can_download:
+          type: boolean
+      required: [photo_id, created_at, photographer_display_name, media, can_download]
+    AlbumPackageOptions:
+      type: object
+      additionalProperties: false
+      description: Server-authoritative package eligibility and checkout window for one album.
+      properties:
+        album_id:
+          type: string
+          format: uuid
+        current_quota_total:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        reserved_count:
+          type: integer
+          minimum: 0
+        committed_count:
+          type: integer
+          minimum: 0
+        payment_cutoff_at:
+          type: string
+          format: date-time
+        server_time:
+          type: string
+          format: date-time
+        can_create_checkout:
+          type: boolean
+        checkout_block_reason:
+          type:
+          - string
+          - 'null'
+          enum: [PAYMENT_CUTOFF_REACHED, ACTIVE_CHECKOUT, NO_HIGHER_PACKAGE, LIFECYCLE_CLOSED, null]
+        active_checkout:
+          anyOf:
+          - $ref: '#/components/schemas/ActivePaymentCheckout'
+          - type: 'null'
+        options:
+          type: array
+          description: Server-filtered targets with quota strictly greater than current_quota_total.
+          items:
+            $ref: '#/components/schemas/PackageOption'
+      required: [album_id, current_quota_total, reserved_count, committed_count, payment_cutoff_at, server_time, can_create_checkout, checkout_block_reason, active_checkout, options]
+    ActivePaymentCheckout:
+      type: object
+      additionalProperties: false
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+        package_version_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/PaymentPublicStatus'
+        provider_expires_at:
+          type: string
+          format: date-time
+      required: [transaction_id, package_version_id, status, provider_expires_at]
     ScheduledJobStatus:
       type: string
       enum:
@@ -5216,6 +5413,22 @@ components:
           - 7
         reveal_at: *id002
         payment_cutoff_at: *id002
+        timezone:
+          type: string
+          description: Persisted event timezone. It is locked after the first setup confirmation.
+        server_time: *id002
+        can_reschedule:
+          type: boolean
+        earliest_capture_start:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        latest_capture_start:
+          type:
+          - string
+          - 'null'
+          format: date-time
         schedule_version: *id003
         first_confirmed_capture_start:
           type:
@@ -5237,6 +5450,11 @@ components:
       - reveal_delay_days
       - reveal_at
       - payment_cutoff_at
+      - timezone
+      - server_time
+      - can_reschedule
+      - earliest_capture_start
+      - latest_capture_start
       - schedule_version
     CollaboratorPermissions:
       type: object
@@ -5535,19 +5753,32 @@ components:
           minimum: 0
         allow_all:
           type: boolean
+        allow_selected:
+          type: boolean
       required:
       - max_photos_per_job
       - eligible_photo_count
       - allow_all
+      - allow_selected
     PaymentTransaction:
       type: object
       additionalProperties: false
       properties:
         transaction_id: *id001
         album_id: *id001
+        type:
+          $ref: '#/components/schemas/PaymentType'
         status:
-          $ref: '#/components/schemas/PaymentTransactionStatus'
+          $ref: '#/components/schemas/PaymentPublicStatus'
         package_version_id: *id001
+        package_name_snapshot:
+          type: string
+          minLength: 1
+          maxLength: 100
+        target_quota_total_snapshot:
+          type: integer
+          minimum: 1
+          maximum: 10000
         amount:
           type: integer
           minimum: 0
@@ -5557,6 +5788,7 @@ components:
           - IDR
         payment_cutoff_at: *id002
         provider_expires_at: *id002
+        created_at: *id002
         paid_at:
           type:
           - string
@@ -5565,12 +5797,30 @@ components:
       required:
       - transaction_id
       - album_id
+      - type
       - status
       - package_version_id
+      - package_name_snapshot
+      - target_quota_total_snapshot
       - amount
       - currency
+      - created_at
       - payment_cutoff_at
       - provider_expires_at
+      - paid_at
+      description: Immutable host-facing transaction snapshot. No provider credentials or raw provider data.
+    PaymentCheckout:
+      type: object
+      additionalProperties: false
+      properties:
+        transaction:
+          $ref: '#/components/schemas/PaymentTransaction'
+        checkout_url:
+          type: string
+          format: uri
+          pattern: '^https://'
+          description: Ephemeral backend-approved provider navigation target. Never persist or log this value.
+      required: [transaction, checkout_url]
     EntitlementSummary:
       type: object
       additionalProperties: false
@@ -5610,6 +5860,16 @@ components:
           type: integer
           minimum: 0
         source_export_revision: *id003
+        processed_count:
+          type: integer
+          minimum: 0
+          description: Server-derived number of processed eligible items; never a client-estimated percentage.
+        total_count:
+          type: integer
+          minimum: 0
+          description: Server-derived total work items for this job.
+        created_at: *id002
+        updated_at: *id002
         output_expires_at:
           type:
           - string
@@ -5622,11 +5882,34 @@ components:
       - mode
       - selected_count
       - source_export_revision
+      - processed_count
+      - total_count
+      - created_at
+      - updated_at
+      - output_expires_at
+    ExportDownloadReference:
+      type: object
+      additionalProperties: false
+      description: Short-lived current-authorized Media Gateway download descriptor; never a raw storage URL.
+      properties:
+        url:
+          type: string
+          format: uri
+          pattern: '^https://'
+          description: Short-lived authorized delivery URL. Never persist or log.
+        expires_at: *id002
+      required: [url, expires_at]
+    LifecycleRetentionState:
+      type: string
+      enum: [ACTIVE, RECOVERY, PURGE_DUE, PURGING, PURGED, PURGE_ERROR]
     LifecycleProjection:
       type: object
       additionalProperties: false
       properties:
         album_id: *id001
+        retention_state:
+          $ref: '#/components/schemas/LifecycleRetentionState'
+        server_time: *id002
         recovery_access_granted_at:
           type:
           - string
@@ -5635,11 +5918,23 @@ components:
         normal_access_end_at: *id002
         recovery_end_at: *id002
         backup_cleanup_deadline_at: *id002
+        can_activate_recovery:
+          type: boolean
+        can_open_recovery_media:
+          type: boolean
+        can_create_recovery_export:
+          type: boolean
       required:
       - album_id
+      - retention_state
+      - server_time
       - normal_access_end_at
       - recovery_end_at
       - backup_cleanup_deadline_at
+      - recovery_access_granted_at
+      - can_activate_recovery
+      - can_open_recovery_media
+      - can_create_recovery_export
     SensitiveAccessGrant:
       type: object
       additionalProperties: false
@@ -6338,6 +6633,13 @@ components:
           $ref: '#/components/schemas/PaymentTransaction'
       required:
       - data
+    PaymentCheckoutEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/PaymentCheckout'
+      required: [data]
     EntitlementEnvelope:
       type: object
       additionalProperties: false
@@ -6362,6 +6664,17 @@ components:
           $ref: '#/components/schemas/ExportCapabilities'
       required:
       - data
+    ExportSelectionPhotoListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportSelectionPhoto'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
     EventCategoryEnvelope:
       type: object
       additionalProperties: false
@@ -6378,6 +6691,17 @@ components:
           $ref: '#/components/schemas/LifecycleProjection'
       required:
       - data
+    RecoveryPhotoListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoveryPhoto'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
     SensitiveGrantEnvelope:
       type: object
       additionalProperties: false
@@ -6524,6 +6848,13 @@ components:
       required:
       - data
       - meta
+    AlbumPackageOptionsEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AlbumPackageOptions'
+      required: [data]
     EventCategoryListEnvelope:
       type: object
       additionalProperties: false
@@ -6640,6 +6971,13 @@ components:
           - url
       required:
       - data
+    ExportDownloadEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/ExportDownloadReference'
+      required: [data]
     UploadAuthorizationEnvelope:
       type: object
       additionalProperties: false
@@ -6737,6 +7075,24 @@ components:
         type: string
         format: uuid
       description: Optional client correlation UUID; server may replace invalid values.
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+      description: Opaque keyset cursor returned by the previous page.
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+      description: Maximum page size; defaults to 25 and is capped at 100.
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -6753,7 +7109,7 @@ components:
         type: string
       description: Required for state-changing browser-cookie requests.
 x-kepotret-checkpoint: 7
-x-kepotret-physical-table-count: 42
+x-kepotret-physical-table-count: 44
 x-kepotret-upstream-baselines:
   prd: v0.5 Final
   bpmn_use_case: v0.5 Final
