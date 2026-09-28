@@ -8,7 +8,7 @@ async function adminSession(page: Page) {
   await page.route(`**/api/v1/admin/albums/${albumId}`, route => route.fulfill({ status: 200, json: albumDetail }));
 }
 
-test('FE-8 H91 requires reason and step-up before creating an album-scoped view-only grant, then revoke closes it', async ({ page }) => {
+test('FE-8 H91 requires reason and step-up before creating an album-scoped view-only grant, then revoke closes it @release-critical @cross-browser', async ({ page }) => {
   await adminSession(page);
   let grantRequests = 0;
   let revokeRequests = 0;

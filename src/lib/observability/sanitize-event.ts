@@ -1,9 +1,9 @@
-const privateKeyPattern = /authorization|cookie|csrf|token|password|secret|photo|image|media|upload|attachment|payment|pin|ticket|request|response|body|blob|buffer|bytes|base64|payload|gen.?ai/i;
+const privateKeyPattern = /authorization|cookie|csrf|token|password|secret|photo|image|media|upload|attachment|payment|pin|passcode|totp|otp|mfa|api.?key|ticket|request|response|body|blob|buffer|bytes|base64|payload|gen.?ai/i;
 const urlPattern = /(?:https?|blob):\/\/[^\s"'<>]+/gi;
 const dataUrlPattern = /data:[^,\s]+;base64,[a-z\d+/=]+/gi;
 const bearerPattern = /\bBearer\s+[a-z\d._~+/=-]+/gi;
-const sensitiveQueryPattern = /([?&](?:token|access_token|refresh_token|ticket|pin|password|secret|signature|authorization)=)[^&#\s]*/gi;
-const sensitiveLabelPattern = /\b(?:pin|password|passcode|csrf(?:_token)?|access[_-]?token|refresh[_-]?token|media[_-]?ticket|authorization)\b\s*[:=]\s*[^\s,;]+/gi;
+const sensitiveQueryPattern = /([?&](?:token|access_token|refresh_token|ticket|pin|password|passcode|totp|otp|mfa|api[_-]?key|secret|signature|authorization)=)[^&#\s]*/gi;
+const sensitiveLabelPattern = /\b(?:pin|password|passcode|totp|otp|mfa|api[_-]?key|csrf(?:_token)?|access[_-]?token|refresh[_-]?token|media[_-]?ticket|authorization)\b\s*[:=]\s*[^\s,;]+/gi;
 const base64Pattern = /\b[a-z\d+/]{512,}={0,2}\b/gi;
 
 function scrubString(value: string): string {

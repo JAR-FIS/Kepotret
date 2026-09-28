@@ -25,6 +25,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:critical": "playwright test --project=chromium --grep @release-critical",
     "api:generate": "orval --config ./orval.config.ts",
     "api:check": "node ./scripts/check-openapi.mjs"
   },

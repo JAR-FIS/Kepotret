@@ -5,7 +5,7 @@ const jobId = '77777777-7777-4777-8777-777777777777';
 const photoId = '88888888-8888-4888-8888-888888888888';
 const readyJob = { export_job_id: jobId, album_id: albumId, status: 'READY', mode: 'ALL', selected_count: 1, source_export_revision: 1, processed_count: 1, total_count: 1, created_at: '2026-10-01T10:00:00Z', updated_at: '2026-10-01T10:01:00Z', output_expires_at: '2026-10-02T10:01:00Z' };
 
-test('H50 and H51 create an ALL export with CSRF, show server progress and request a short-lived download descriptor', async ({ page }) => {
+test('H50 and H51 create an ALL export with CSRF, show server progress and request a short-lived download descriptor @release-critical', async ({ page }) => {
   await page.route(`**/api/v1/albums/${albumId}/export-capabilities`, route => route.fulfill({ status: 200, json: { data: { max_photos_per_job: 500, eligible_photo_count: 3, allow_all: true, allow_selected: false } } }));
   await page.route(`**/api/v1/albums/${albumId}/exports**`, async route => {
     if (route.request().method() === 'GET') return route.fulfill({ status: 200, json: { data: [], meta: { has_more: false, next_cursor: null } } });

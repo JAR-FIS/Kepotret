@@ -143,7 +143,7 @@ async function captureForUploadRecovery(page: Page, state: Awaited<ReturnType<ty
   await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
 }
 
-test('H65 to H68 consent flow creates the guest only after locked consent and captures through direct upload', async ({ page }) => {
+test('H65 to H68 consent flow creates the guest only after locked consent and captures through direct upload @release-critical', async ({ page }) => {
   await page.context().addCookies([{ name: 'kepotret-locale', value: 'en', domain: 'localhost', path: '/' }]);
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => new MediaStream() } });

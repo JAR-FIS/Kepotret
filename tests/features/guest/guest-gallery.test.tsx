@@ -66,6 +66,32 @@ describe('guest gallery', () => {
     await waitFor(() => expect(api.list).toHaveBeenLastCalledWith({ sort: 'MOST_LIKED', limit: 24 }));
   });
 
+  it('retains at most 240 lazy thumbnails after paging through a large gallery', async () => {
+    api.list.mockImplementation(({ cursor }: { cursor?: string }) => {
+      const index = cursor ? Number(cursor) : 0;
+      const photos = Array.from({ length: 24 }, (_, offset) => ({
+        ...photo,
+        photo_id: `photo-${index * 24 + offset}`,
+        photographer_display_name: `Guest ${index * 24 + offset}`,
+      }));
+      return Promise.resolve(page(photos, index < 10 ? String(index + 1) : null));
+    });
+    const { container } = renderGallery({ linkId: 'link-1' });
+    await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(24));
+    expect(api.list).toHaveBeenCalledTimes(1);
+    expect(api.list).toHaveBeenCalledWith({ sort: 'NEWEST', limit: 24 });
+    expect(Array.from(container.querySelectorAll('img')).every((image) => image.getAttribute('loading') === 'lazy')).toBe(true);
+
+    for (let index = 1; index <= 10; index += 1) {
+      fireEvent.click(await screen.findByRole('button', { name: 'Load more photos' }));
+      await waitFor(() => expect(api.list).toHaveBeenCalledTimes(index + 1));
+      await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(Math.min((index + 1) * 24, 240)));
+    }
+    expect(container.textContent).not.toContain('Guest 0');
+    expect(container.textContent).toContain('Guest 263');
+    expect(screen.queryByRole('button', { name: 'Load more photos' })).not.toBeInTheDocument();
+  }, 20_000);
+
   it('likes once from server state and exposes no unlike control', async () => {
     api.like.mockResolvedValue({ status: 200, data: { data: { ...photo, like_count: 3, actions: { ...photo.actions, liked_by_me: true } } } });
     renderGallery({ linkId: 'link-1', photoId: 'photo-1' });

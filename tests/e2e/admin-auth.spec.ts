@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('FE-8 H20 uses the dedicated Admin CSRF and sends a valid password challenge to H21', async ({ page }) => {
+test('FE-8 H20 uses the dedicated Admin CSRF and sends a valid password challenge to H21 @cross-browser', async ({ page }) => {
   const csrfCalls: string[] = [];
   const loginBodies: Array<{ email?: string; password?: string }> = [];
   await page.route('**/api/v1/admin/security/csrf', async route => {
@@ -15,10 +15,18 @@ test('FE-8 H20 uses the dedicated Admin CSRF and sends a valid password challeng
   await page.route('**/api/v1/auth/**', route => { ordinaryAuthCalls += 1; return route.fulfill({ status: 401, json: { error: { code: 'UNAUTHENTICATED' } } }); });
 
   await page.goto('/admin/masuk');
+  await page.waitForLoadState('networkidle');
   await expect(page.getByRole('heading', { name: /superadmin sign in|masuk sebagai superadmin/i })).toBeVisible();
   await expect(page.getByRole('link', { name: /google|sign up|forgot/i })).toHaveCount(0);
-  await page.getByLabel(/email/i).fill('admin@example.test');
-  await page.getByLabel(/password|kata sandi/i).fill('example-password');
+  const email = page.getByLabel(/email/i);
+  const password = page.getByLabel(/password|kata sandi/i);
+  await email.fill('admin@example.test');
+  await password.fill('example-password');
+  // WebKit can hydrate the server-rendered form between fills; restore any field it reset.
+  if (await email.inputValue() !== 'admin@example.test') await email.fill('admin@example.test');
+  if (await password.inputValue() !== 'example-password') await password.fill('example-password');
+  await expect(email).toHaveValue('admin@example.test');
+  await expect(password).toHaveValue('example-password');
   await page.getByRole('button', { name: /continue to mfa|lanjutkan ke verifikasi mfa/i }).click();
   await expect(page).toHaveURL(/\/admin\/mfa$/);
   expect(csrfCalls).toHaveLength(1);
@@ -27,7 +35,7 @@ test('FE-8 H20 uses the dedicated Admin CSRF and sends a valid password challeng
   expect(await page.evaluate(() => `${localStorage.length}:${sessionStorage.length}`)).toBe('0:0');
 });
 
-test('FE-8 Admin workspace authorizes from AdminSession, not ordinary User auth', async ({ page }) => {
+test('FE-8 Admin workspace authorizes from AdminSession, not ordinary User auth @cross-browser', async ({ page }) => {
   let ordinarySessionCalls = 0;
   await page.route('**/api/v1/admin/auth/me', route => route.fulfill({ status: 200, json: { data: { admin_user_id: '11111111-1111-4111-8111-111111111111', email: 'operator@example.test', display_name: 'Operator', mfa_verified: true, session_expires_at: '2026-12-31T00:00:00Z', step_up_expires_at: null } } }));
   await page.route('**/api/v1/admin/overview', route => route.fulfill({ status: 200, json: { data: { total_users: 0, suspended_users: 0, total_albums: 0, draft_albums: 0, payment_pending_albums: 0, ready_albums: 0, committed_photos: 0, reserved_photos: 0, pending_payments: 0, processing_payments: 0, successful_payments: 0, failed_payments: 0, open_issues: 0, acknowledged_issues: 0, active_holds: 0, generated_at: '2026-09-28T00:00:00Z' } } }));

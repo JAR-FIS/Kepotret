@@ -39,6 +39,16 @@ describe('sanitizeSentryEvent', () => {
     });
     expect(sentryPrivacyOptions.tracesSampleRate).toBe(0);
   });
+
+  it('removes MFA codes and API keys from diagnostic fields and messages', () => {
+    const result = sanitizeSentryEvent({
+      message: 'TOTP=123456; api_key=provider-secret',
+      extra: { otpCode: '654321', mfaChallenge: 'private', apiKey: 'another-secret', safeCode: 'MFA step failed' },
+    }) as Record<string, unknown>;
+    expect(result.message).not.toContain('123456');
+    expect(result.message).not.toContain('provider-secret');
+    expect(result.extra).toEqual({ safeCode: 'MFA step failed' });
+  });
 });
 
 describe('Sentry opt-in', () => {

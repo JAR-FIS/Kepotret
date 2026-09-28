@@ -33,7 +33,7 @@ test('H17 maps invalid, expired, used and revoked invitations safely and preserv
   await expect(page.getByRole('heading', { name: 'Undangan belum dapat diperiksa' })).toBeVisible();
 });
 
-test('H17 retries a recoverable resolve with the same in-memory secret after clearing the URL fragment', async ({ page }) => {
+test('H17 retries a recoverable resolve with the same in-memory secret after clearing the URL fragment @release-critical', async ({ page }) => {
   const resolveBodies: Array<{ invitation_secret?: string }> = [];
   let previewRequests = 0;
   let retryClicked = false;
