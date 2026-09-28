@@ -12,17 +12,19 @@ test('FE-8 H91 requires reason and step-up before creating an album-scoped view-
   await adminSession(page);
   let grantRequests = 0;
   let revokeRequests = 0;
+  let mediaRequests = 0;
+  const grantExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
   await page.route('**/api/v1/admin/security/csrf', route => route.fulfill({ status: 200, json: { data: { csrf_token: 'admin-csrf' } } }));
   await page.route('**/api/v1/admin/auth/step-up', route => route.fulfill({ status: 200, json: { data: { verified_at: '2026-09-28T10:00:00Z', expires_at: '2026-09-28T10:10:00Z' } } }));
   await page.route(`**/api/v1/admin/albums/${albumId}/sensitive-access-grants`, async route => {
     grantRequests += 1;
     expect(route.request().postDataJSON()).toEqual({ reason: 'Review reported photo' });
-    await route.fulfill({ status: 201, json: { data: { grant_id: 'grant-1', album_id: albumId, reason: 'Review reported photo', expires_at: '2026-09-28T10:15:00Z', view_only: true } } });
+    await route.fulfill({ status: 201, json: { data: { grant_id: 'grant-1', album_id: albumId, reason: 'Review reported photo', expires_at: grantExpiresAt, view_only: true } } });
   });
-  await page.route(`**/api/v1/admin/albums/${albumId}/sensitive-media**`, route => route.fulfill({ status: 200, json: { data: [], meta: { has_more: false, next_cursor: null } } }));
+  await page.route(`**/api/v1/admin/albums/${albumId}/sensitive-media**`, route => { mediaRequests += 1; return route.fulfill({ status: 200, json: { data: [], meta: { has_more: false, next_cursor: null } } }); });
   await page.route('**/api/v1/admin/sensitive-access-grants/grant-1', async route => {
     revokeRequests += 1;
-    await route.fulfill({ status: 200, json: { data: { grant_id: 'grant-1', album_id: albumId, reason: 'Review reported photo', expires_at: '2026-09-28T10:15:00Z', view_only: true } } });
+    await route.fulfill({ status: 200, json: { data: { grant_id: 'grant-1', album_id: albumId, reason: 'Review reported photo', expires_at: grantExpiresAt, view_only: true } } });
   });
 
   await page.goto(`/admin/albums/${albumId}`);
@@ -35,8 +37,9 @@ test('FE-8 H91 requires reason and step-up before creating an album-scoped view-
   const createDialog = page.getByRole('dialog');
   await expect(createDialog).toContainText(/temporary|sementara/i);
   await createDialog.getByRole('button', { name: /Confirm|Konfirmasi/i }).click();
+  await expect.poll(() => grantRequests).toBe(1);
+  await expect.poll(() => mediaRequests).toBe(1);
   await expect(page.getByText('grant-1')).toBeVisible();
-  expect(grantRequests).toBe(1);
   await page.getByRole('button', { name: /Revoke access and close workspace|Cabut akses dan tutup workspace/i }).click();
   const revokeDialog = page.getByRole('dialog');
   await revokeDialog.getByRole('button', { name: /Confirm|Konfirmasi/i }).click();
