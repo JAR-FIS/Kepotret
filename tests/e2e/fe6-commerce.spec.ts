@@ -35,7 +35,7 @@ test('H37 uses server checkout eligibility and sends CSRF with a stable UUIDv7 b
   expect(idempotencyKey).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
 
-test('H38 ignores provider return query parameters and shows only the server payment status', async ({ page }) => {
+test('H38 ignores provider return query parameters and shows only the server payment status @release-critical', async ({ page }) => {
   let entitlementRequests = 0;
   await page.route(`**/api/v1/albums/${albumId}/entitlement`, route => { entitlementRequests += 1; return route.fulfill({ status: 200, json: { data: { album_id: albumId, quota_total: 999, source: 'PURCHASE' } } }); });
   await page.route('**/api/v1/payments/' + transactionId, route => route.fulfill({ status: 200, json: { data: {

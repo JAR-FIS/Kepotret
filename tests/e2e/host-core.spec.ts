@@ -6,7 +6,7 @@ const categoryId = '22222222-2222-4222-8222-222222222222';
 const paidPackageId = '33333333-3333-4333-8333-333333333333';
 let album: AlbumDetail;
 
-test('Host completes the FE-3 setup flow using generated-contract-compatible API responses', async ({ page }) => {
+test('Host completes the FE-3 setup flow using generated-contract-compatible API responses @release-critical', async ({ page }) => {
   album = {
     album_id: albumId, event_name: null, event_location: null, event_category_id: null,
     timezone: 'Asia/Jakarta', capture_start: null, capture_end: null,

@@ -38,7 +38,7 @@ async function mockGuest(page: import('@playwright/test').Page, state: 'REVEALED
   await page.route('https://media.test/download/**', (route) => route.fulfill({ status: 200, contentType: 'application/octet-stream', headers: { 'content-disposition': 'attachment; filename="photo.jpg"' }, body: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) }));
 }
 
-test('guest gallery paginates, sorts, opens detail, likes once, downloads, copies and shares the current deep link', async ({ page }) => {
+test('guest gallery paginates, sorts, opens detail, likes once, downloads, copies and shares the current deep link @release-critical', async ({ page }) => {
   await mockGuest(page);
   await page.goto(`/j/${linkId}/galeri`);
   await expect(page.getByRole('heading', { name: 'FE5 Gallery E2E' })).toBeVisible();
