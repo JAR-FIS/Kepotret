@@ -30,7 +30,7 @@ function renderHost(node: React.ReactNode) {
 }
 
 describe('FE-3 Host album surfaces', () => {
-  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getSettings.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); });
+  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getSettings.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); sessionStorage.clear(); });
 
   it('shows an actionable empty dashboard state', async () => {
     listAlbums.mockResolvedValue({ status: 200, data: { data: [], meta: {} } });
@@ -60,6 +60,45 @@ describe('FE-3 Host album surfaces', () => {
     renderHost(<AlbumOverview albumId={readyAlbum.album_id} />);
     expect(await screen.findByText('27')).toBeInTheDocument();
     expect(getAlbum).toHaveBeenCalledWith(readyAlbum.album_id);
+  });
+
+  it.each([
+    ['Owner', { relationship: 'OWNER', permission_version: null, collaborator_permissions: null }, true, true],
+    ['moderation collaborator', { relationship: 'COLLABORATOR', permission_version: 4, collaborator_permissions: { can_setup: false, can_moderate: true, can_export_zip: false } }, true, false],
+    ['all-false collaborator', { relationship: 'COLLABORATOR', permission_version: 4, collaborator_permissions: { can_setup: false, can_moderate: false, can_export_zip: false } }, false, false],
+    ['setup-only collaborator', { relationship: 'COLLABORATOR', permission_version: 4, collaborator_permissions: { can_setup: true, can_moderate: false, can_export_zip: false } }, false, true],
+  ] as const)('shows H62 Gallery and draft setup links from server actor access for %s', async (_label, actorAccess, galleryVisible, setupVisible) => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: { ...readyAlbum, readiness: 'DRAFT', actor_access: actorAccess } } });
+    renderHost(<AlbumOverview albumId={readyAlbum.album_id} />);
+    const sharing = await screen.findByRole('link', { name: 'Berbagi & QR' });
+    expect(sharing).toHaveAttribute('href', `/album/${readyAlbum.album_id}/berbagi`);
+    const gallery = screen.queryByRole('link', { name: 'Galeri album' });
+    if (galleryVisible) expect(gallery).toHaveAttribute('href', `/album/${readyAlbum.album_id}/galeri`);
+    else expect(gallery).not.toBeInTheDocument();
+    const setup = screen.queryByRole('link', { name: 'Lanjutkan setup album' });
+    if (setupVisible) expect(setup).toHaveAttribute('href', `/album/${readyAlbum.album_id}/setup/acara`);
+    else expect(setup).not.toBeInTheDocument();
+  });
+
+  it('renders Forbidden for a revoked album relationship without treating the ordinary User session as invalid', async () => {
+    getAlbum.mockResolvedValue({ status: 403, data: {} });
+    renderHost(<AlbumOverview albumId={readyAlbum.album_id} />);
+    expect(await screen.findByRole('heading', { name: 'Akses tidak tersedia' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Berbagi & QR' })).not.toBeInTheDocument();
+  });
+
+  it('keeps My Albums and Assigned Albums server-filtered for the same User', async () => {
+    const owned = { ...draft, event_name: 'Owned album' };
+    const assigned = { ...draft, album_id: '33333333-3333-4333-8333-333333333333', event_name: 'Assigned album', actor_access: { relationship: 'COLLABORATOR' as const, permission_version: 2, collaborator_permissions: { can_setup: false, can_moderate: false, can_export_zip: true } } };
+    listAlbums.mockImplementation(async ({ relationship }: { relationship: string }) => ({ status: 200, data: { data: relationship === 'OWNER' ? [owned] : [assigned], meta: { has_more: false, next_cursor: null } } }));
+    const { AssignedAlbums } = await import('@/features/collaboration/components/assigned-albums');
+    renderHost(<><AlbumIndex /><AssignedAlbums /></>);
+    expect(await screen.findByText('Owned album')).toBeInTheDocument();
+    expect(await screen.findByText('Assigned album')).toBeInTheDocument();
+    expect(listAlbums).toHaveBeenCalledWith({ relationship: 'OWNER', limit: 25 });
+    expect(listAlbums).toHaveBeenCalledWith({ relationship: 'COLLABORATOR', limit: 25 });
+    expect(screen.getAllByText('Owned album')).toHaveLength(1);
+    expect(screen.getAllByText('Assigned album')).toHaveLength(1);
   });
 
   it('rehydrates the default and writes only the selected limit with the settings revision', async () => {
@@ -160,6 +199,49 @@ describe('FE-3 Host album surfaces', () => {
     await waitFor(() => expect(createInvitation).toHaveBeenCalledWith(draft.album_id, { email: invitation.email, can_setup: true, can_moderate: false, can_export_zip: true }, { headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf', 'Idempotency-Key': expect.any(String) }) }));
     expect(await screen.findByText(invitation.email)).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /billing|payment|pembayaran/i })).not.toBeInTheDocument();
+  });
+
+  it('reuses invite idempotency only for the same normalized intent and clears it after 201', async () => {
+    const invite = (email: string): InvitationSummary => ({ invitation_id: '22222222-2222-4222-8222-222222222222', email, status: 'PENDING', created_at: '2026-09-27T00:00:00Z', expires_at: '2026-10-01T00:00:00Z', accepted_at: null, revoked_at: null, permissions: { can_setup: true, can_moderate: true, can_export_zip: true } });
+    getInvitations.mockResolvedValue({ status: 200, data: { data: [], meta: { has_more: false, next_cursor: null } } });
+    getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
+    createInvitation.mockResolvedValueOnce({ status: 503, data: {} })
+      .mockResolvedValueOnce({ status: 503, data: {} })
+      .mockResolvedValueOnce({ status: 503, data: {} })
+      .mockResolvedValueOnce({ status: 201, data: { data: invite('planner@example.com') } })
+      .mockResolvedValueOnce({ status: 201, data: { data: invite('second@example.com') } });
+    renderHost(<CollaboratorSetup albumId={draft.album_id} />);
+    const email = await screen.findByRole('textbox', { name: 'Email kolaborator' });
+    fireEvent.change(email, { target: { value: 'Planner@Example.com' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Setup album' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ekspor ZIP' }));
+    const submit = screen.getByRole('button', { name: 'Buat undangan' });
+    fireEvent.click(submit);
+    await waitFor(() => expect(createInvitation).toHaveBeenCalledTimes(1));
+    fireEvent.click(submit);
+    await waitFor(() => expect(createInvitation).toHaveBeenCalledTimes(2));
+    const keyFrom = (index: number) => createInvitation.mock.calls[index]?.[2]?.headers?.['Idempotency-Key'] as string;
+    expect(keyFrom(0)).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(createInvitation.mock.calls[0]?.[1]).toEqual({ email: 'planner@example.com', can_setup: true, can_moderate: false, can_export_zip: true });
+    expect(keyFrom(1)).toBe(keyFrom(0));
+
+    fireEvent.change(email, { target: { value: 'other@example.com' } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(createInvitation).toHaveBeenCalledTimes(3));
+    expect(keyFrom(2)).not.toBe(keyFrom(0));
+
+    fireEvent.change(email, { target: { value: 'planner@example.com' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Moderasi foto' }));
+    fireEvent.click(submit);
+    await waitFor(() => expect(createInvitation).toHaveBeenCalledTimes(4));
+    expect(keyFrom(3)).not.toBe(keyFrom(0));
+    expect(createInvitation.mock.calls[3]?.[1]).toEqual({ email: 'planner@example.com', can_setup: true, can_moderate: true, can_export_zip: true });
+    expect(sessionStorage.getItem(`kepotret:collaborator-invite:${draft.album_id}`)).toBeNull();
+
+    fireEvent.change(email, { target: { value: 'second@example.com' } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(createInvitation).toHaveBeenCalledTimes(5));
+    expect(keyFrom(4)).not.toBe(keyFrom(3));
   });
 
   it('sets an optional album PIN through the generated endpoint and clears the sensitive input after success', async () => {

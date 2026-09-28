@@ -209,6 +209,15 @@ describe('FE-3 setup flow contract surfaces', () => {
     expect(screen.getByRole('button', { name: 'Konfirmasi setup' })).toBeDisabled();
   });
 
+  it('allows a collaborator to view setup review but never to finalize it', async () => {
+    api.getAlbum.mockResolvedValue({ status: 200, data: { data: { ...album, actor_access: { relationship: 'COLLABORATOR', permission_version: 3, collaborator_permissions: { can_setup: true, can_moderate: false, can_export_zip: false } } } } });
+    renderHost(<SetupReview albumId={albumId} />);
+    expect(await screen.findByText('Server menyatakan setup telah lengkap.')).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent('Hanya Pemilik album yang dapat mengonfirmasi setup akhir.');
+    expect(screen.queryByRole('button', { name: 'Konfirmasi setup' })).not.toBeInTheDocument();
+    expect(api.confirmSetup).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['READY', 'Server menetapkan album FREE30 sebagai siap.'],
     ['PAYMENT_PENDING', 'Server mengembalikan PAYMENT_PENDING untuk paket berbayar.'],

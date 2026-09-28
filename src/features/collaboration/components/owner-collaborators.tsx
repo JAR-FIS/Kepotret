@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, UserRound } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ export function OwnerCollaborators({ albumId }: { albumId: string }) {
   const t = useTranslations('collaboration.owner');
   const shared = useTranslations('collaboration');
   const host = useTranslations('host');
+  const locale = useLocale();
   const online = useConnectivity();
   const [state, setState] = useState<State>('loading');
   const [rows, setRows] = useState<CollaboratorSummary[]>([]);
@@ -130,7 +131,7 @@ export function OwnerCollaborators({ albumId }: { albumId: string }) {
         const draft = drafts[row.user_id] ?? row.permissions;
         const changed = permissions.some((key) => draft[key] !== row.permissions[key]);
         return <li key={row.user_id} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="break-words text-lg font-semibold">{row.display_name || row.email}</p>{row.display_name && <p className="mt-1 break-all text-sm text-[var(--color-muted-foreground)]">{row.email}</p>}<p className="mt-2 text-xs text-[var(--color-muted-foreground)]">{t('joined', { date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(row.joined_at)) })}</p></div><span className="rounded-full bg-[var(--color-muted)] px-3 py-1 text-xs font-semibold">{t('permissionVersion', { version: row.permission_version })}</span></div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="break-words text-lg font-semibold">{row.display_name || row.email}</p>{row.display_name && <p className="mt-1 break-all text-sm text-[var(--color-muted-foreground)]">{row.email}</p>}<p className="mt-2 text-xs text-[var(--color-muted-foreground)]">{t('joined', { date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(row.joined_at)) })}</p></div><span className="rounded-full bg-[var(--color-muted)] px-3 py-1 text-xs font-semibold">{t('permissionVersion', { version: row.permission_version })}</span></div>
           <fieldset className="mt-5 grid gap-2 md:grid-cols-3"><legend className="mb-3 text-sm font-semibold">{t('permissionMatrix')}</legend>{permissions.map((key) => <label key={key} className="flex min-h-16 items-start gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] p-3"><input type="checkbox" checked={draft[key]} disabled={!online || busyId === row.user_id} onChange={(event) => setDrafts((current) => ({ ...current, [row.user_id]: { ...draft, [key]: event.target.checked } }))} className="mt-1 size-5 shrink-0 accent-[var(--color-foreground)]" /><span><span className="block text-sm font-semibold">{shared(`capabilities.${key}`)}</span><span className="mt-1 block text-xs leading-5 text-[var(--color-muted-foreground)]">{t(`permissionHelp.${key}`)}</span></span></label>)}</fieldset>
           <p className="mt-4 text-xs leading-5 text-[var(--color-muted-foreground)]">{t('ownerOnly')}</p>
           <div className="mt-4 flex flex-wrap gap-2"><Button type="button" disabled={!changed || !online || busyId === row.user_id} loading={busyId === row.user_id} onClick={() => void updatePermissions(row)}>{t('savePermissions')}</Button><Button type="button" variant="danger" disabled={!online || !!busyId} onClick={() => setRevokeTarget(row)}>{t('revoke')}</Button></div>

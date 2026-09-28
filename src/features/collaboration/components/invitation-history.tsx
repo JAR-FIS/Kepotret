@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Mail } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ export function InvitationHistory({ albumId }: { albumId: string }) {
   const t = useTranslations('collaboration.history');
   const common = useTranslations('collaboration');
   const host = useTranslations('host');
+  const locale = useLocale();
   const online = useConnectivity();
   const [state, setState] = useState<State>('loading');
   const [rows, setRows] = useState<InvitationSummary[]>([]);
@@ -89,7 +90,7 @@ export function InvitationHistory({ albumId }: { albumId: string }) {
     {message && <p role="status" className="text-sm text-[var(--color-muted-foreground)]">{message}</p>}
     {!rows.length ? <EmptyState title={t('emptyTitle')} description={t('emptyDescription')} icon={<Mail size={25} />} /> : <ul className="space-y-3">
       {rows.map((row) => <li key={row.invitation_id} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="break-all text-lg font-semibold">{row.email}</p><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('created', { date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(row.created_at)) })} · {t('expires', { date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(row.expires_at))})}</p>{row.accepted_at && <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t('accepted', { date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(row.accepted_at)) })}</p>}{row.revoked_at && <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t('revokedAt', { date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(row.revoked_at)) })}</p>}</div><span className="inline-flex w-fit rounded-full bg-[var(--color-muted)] px-3 py-1 text-xs font-bold">{t(`status.${row.status}`)}</span></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="break-all text-lg font-semibold">{row.email}</p><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('created', { date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(row.created_at)) })} · {t('expires', { date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(row.expires_at))})}</p>{row.accepted_at && <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t('accepted', { date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(row.accepted_at)) })}</p>}{row.revoked_at && <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t('revokedAt', { date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(row.revoked_at)) })}</p>}</div><span className="inline-flex w-fit rounded-full bg-[var(--color-muted)] px-3 py-1 text-xs font-bold">{t(`status.${row.status}`)}</span></div>
         <ul className="mt-3 flex flex-wrap gap-2">{permissions.filter((key) => row.permissions[key]).map((key) => <li key={key} className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs">{common(`capabilities.${key}`)}</li>)}</ul>
         {row.status === 'PENDING' && <Button type="button" variant="danger" disabled={!online || busy} className="mt-4" onClick={() => setRevokeTarget(row)}>{t('revoke')}</Button>}
       </li>)}

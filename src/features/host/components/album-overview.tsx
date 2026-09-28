@@ -40,9 +40,11 @@ export function AlbumOverview({ albumId }: { albumId: string }) {
 
   const summary = album;
   const isOwner = album.actor_access.relationship === 'OWNER';
+  const canModerate = album.actor_access.relationship === 'COLLABORATOR'
+    && album.actor_access.collaborator_permissions?.can_moderate === true;
   const formatTime = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(value));
   return <div className="space-y-5">
-    <nav aria-label={t('nav.albumLabel')} className="grid gap-3 sm:grid-cols-2"><Link href={hostRoutes.gallery(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('gallery.title')}<ArrowRight aria-hidden="true" size={17} /></Link><Link href={hostRoutes.sharing(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('sharing.title')}<ArrowRight aria-hidden="true" size={17} /></Link></nav>
+    <nav aria-label={t('nav.albumLabel')} className="grid gap-3 sm:grid-cols-2">{(isOwner || canModerate) && <Link href={hostRoutes.gallery(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('gallery.title')}<ArrowRight aria-hidden="true" size={17} /></Link>}<Link href={hostRoutes.sharing(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('sharing.title')}<ArrowRight aria-hidden="true" size={17} /></Link></nav>
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-[var(--font-display)] text-xl font-bold">{t(`detail.${album.readiness === 'READY' ? 'ready' : album.readiness === 'PAYMENT_PENDING' ? 'paymentPending' : 'draft'}`)}</h2><AlbumStatus album={summary} label={t(`albums.${albumStatusKey(summary)}`)} /></div>
       <p className="mt-4 text-xl font-semibold">{album.event_name ?? t('detail.eventNameMissing')}</p>

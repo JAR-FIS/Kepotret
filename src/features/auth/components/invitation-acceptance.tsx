@@ -49,17 +49,21 @@ export function InvitationAcceptance({ invitationId, locale }: { invitationId: s
         if (fragment) {
           const resolved = await postApiV1CollaboratorInvitationsInvitationIdResolve(invitationId, { invitation_secret: fragment });
           if (!active) return;
+          window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
           if (resolved.status === 404) { setState('invalid'); return; }
           if (resolved.status === 410) { setState(apiErrorCode(resolved.data) === 'INVITATION_USED' || apiErrorCode(resolved.data) === 'INVITATION_REVOKED' ? 'used' : 'expired'); return; }
           if (resolved.status !== 200) { setState('error'); return; }
           currentPreview = resolved.data.data;
-          window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
         } else {
           const current = await getApiV1CollaboratorInvitationsInvitationIdPreview(invitationId);
           if (!active) return;
           if (current.status === 404) { setState('invalid'); return; }
-          if (current.status === 410) { setState('expired'); return; }
-          if (current.status !== 200) { setState('invalid'); return; }
+          if (current.status === 410) {
+            const code = apiErrorCode(current.data);
+            setState(code === 'INVITATION_USED' || code === 'INVITATION_REVOKED' ? 'used' : 'expired');
+            return;
+          }
+          if (current.status !== 200) { setState('error'); return; }
           currentPreview = current.data.data;
         }
 
