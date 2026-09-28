@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ManagementPhoto, TrashPhoto } from '@/lib/api/generated/index.schemas';
 
 const api = vi.hoisted(() => ({
-  list: vi.fn(), detail: vi.fn(), trash: vi.fn(), csrf: vi.fn(), approve: vi.fn(), hide: vi.fn(), unhide: vi.fn(), remove: vi.fn(), restore: vi.fn(), shareLink: vi.fn(), download: vi.fn(),
+  album: vi.fn(), list: vi.fn(), detail: vi.fn(), trash: vi.fn(), csrf: vi.fn(), approve: vi.fn(), hide: vi.fn(), unhide: vi.fn(), remove: vi.fn(), restore: vi.fn(), shareLink: vi.fn(), download: vi.fn(),
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }) }));
 vi.mock('@/lib/api/browser', () => ({
+  getApiV1AlbumsAlbumId: api.album,
   getApiV1AlbumsAlbumIdPhotos: api.list,
   getApiV1AlbumsAlbumIdPhotosPhotoId: api.detail,
   getApiV1AlbumsAlbumIdPhotosTrash: api.trash,
@@ -41,6 +42,7 @@ function renderManager(props: { albumId: string; photoId?: string; trash?: boole
 describe('host gallery management', () => {
   beforeEach(() => {
     Object.values(api).forEach((mock) => mock.mockReset());
+    api.album.mockResolvedValue({ status: 200, data: { data: { actor_access: { relationship: 'OWNER', permission_version: 0, collaborator_permissions: null } } } });
     api.list.mockResolvedValue({ status: 200, data: { data: [pendingPhoto], meta: { has_more: false, next_cursor: null } } });
     api.detail.mockResolvedValue({ status: 200, data: { data: pendingPhoto } });
     api.trash.mockResolvedValue({ status: 200, data: { data: [], meta: { has_more: false, next_cursor: null } } });

@@ -66,6 +66,15 @@ paths:
       x-kepotret-auth: Public
       parameters:
       - $ref: '#/components/parameters/RequestId'
+      - name: return_to
+        in: query
+        required: false
+        description: Allowlisted frontend-relative return path. Never include invitation secrets or OAuth credentials.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: '^/(?!/)[^#]*$'
   /api/v1/auth/google/callback:
     get:
       tags:
@@ -573,6 +582,14 @@ paths:
       x-kepotret-auth: User session
       parameters:
       - $ref: '#/components/parameters/RequestId'
+      - name: relationship
+        in: query
+        required: false
+        description: Server-side album relationship filter for the current User. Omit to list both relationships.
+        schema:
+          $ref: '#/components/schemas/AlbumActorRelationship'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
   /api/v1/albums/{album_id}:
     get:
       tags:
@@ -1397,6 +1414,8 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
   /api/v1/albums/{album_id}/collaborator-invitations:
     post:
       tags:
@@ -1482,6 +1501,90 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /api/v1/collaborator-invitations/{invitation_id}/resolve:
+    post:
+      tags:
+      - Collaboration
+      summary: Resolve a one-time invitation secret and establish short-lived continuation context.
+      operationId: post_api_v1_collaborator_invitations_invitation_id_resolve
+      security: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Safe preview; sets short-lived Secure HttpOnly SameSite=Lax invitation continuation cookie.
+          headers:
+            Set-Cookie:
+              description: Opaque short-lived invitation continuation context. Never readable by JavaScript.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationPreviewEnvelope'
+      x-kepotret-protection: Rate limit; invitation secret in request body only
+      x-kepotret-auth: Public possession proof
+      x-kepotret-rules:
+      - Validate invitation id, secret hash, one-time state, and expiry before issuing continuation context.
+      - Continuation is not membership and does not freeze invitation state; accept revalidates all state.
+      - Never return or log the raw invitation secret.
+      parameters:
+      - name: invitation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationResolveRequest'
+  /api/v1/collaborator-invitations/{invitation_id}/preview:
+    get:
+      tags:
+      - Collaboration
+      summary: Return current safe invitation preview using the short-lived continuation context.
+      operationId: get_api_v1_collaborator_invitations_invitation_id_preview
+      security:
+      - InvitationContinuationCookie: []
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Current safe invitation state; never returns the raw secret or full target email.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationPreviewEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Short-lived invitation continuation context
+      parameters:
+      - name: invitation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
   /api/v1/collaborator-invitations/{invitation_id}/accept:
     post:
       tags:
@@ -1490,6 +1593,7 @@ paths:
       operationId: post_api_v1_collaborator_invitations_invitation_id_accept
       security:
       - UserCookie: []
+        InvitationContinuationCookie: []
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1501,6 +1605,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
@@ -1512,7 +1618,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/CollaboratorEnvelope'
       x-kepotret-protection: CSRF
-      x-kepotret-auth: User session + invite secret
+      x-kepotret-auth: Ordinary User session + current invitation continuation context
+      x-kepotret-rules:
+      - Revalidate pending status, expiry, one-time state, album validity, verified Google email match, and current User identity.
+      - Atomically consume the invitation, create active membership, copy the three independent flags, and establish permission_version.
       parameters:
       - name: invitation_id
         in: path
@@ -4742,6 +4851,11 @@ components:
       type: apiKey
       in: cookie
       name: __Host-kepotret_session
+    InvitationContinuationCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-kepotret_invitation_continuation
+      description: Short-lived Secure HttpOnly SameSite=Lax invitation continuation; not an authenticated session or membership.
     GuestCookie:
       type: apiKey
       in: cookie
@@ -4811,6 +4925,25 @@ components:
       - PAYMENT_PENDING
       - READY
       description: Public readiness dimension; capture/reveal state remain separate.
+    AlbumActorRelationship:
+      type: string
+      enum: [OWNER, COLLABORATOR]
+      description: Current server-derived relationship between the authenticated User and one album.
+    AlbumActorAccess:
+      type: object
+      additionalProperties: false
+      description: Current relationship and collaborator permission snapshot. Server recalculates from current membership on each authorized request; rendered access never freezes authorization. OWNER has null collaborator_permissions and permission_version. COLLABORATOR requires both values; Owner rights are not represented as collaborator flags.
+      properties:
+        relationship:
+          $ref: '#/components/schemas/AlbumActorRelationship'
+        collaborator_permissions:
+          oneOf:
+          - $ref: '#/components/schemas/CollaboratorPermissions'
+          - type: 'null'
+        permission_version:
+          type: [integer, 'null']
+          minimum: 0
+      required: [relationship, collaborator_permissions, permission_version]
     PaymentPublicStatus:
       type: string
       enum:
@@ -5117,6 +5250,8 @@ components:
       additionalProperties: false
       properties:
         album_id: *id001
+        actor_access:
+          $ref: '#/components/schemas/AlbumActorAccess'
         readiness:
           $ref: '#/components/schemas/AlbumReadiness'
         capture_state:
@@ -5159,6 +5294,7 @@ components:
           minimum: 0
       required:
       - album_id
+      - actor_access
       - readiness
       - capture_state
       - reveal_state
@@ -5176,6 +5312,8 @@ components:
       additionalProperties: false
       properties:
         album_id: *id001
+        actor_access:
+          $ref: '#/components/schemas/AlbumActorAccess'
         event_name:
           type:
           - string
@@ -5261,6 +5399,7 @@ components:
       - readiness
       - capture_state
       - reveal_state
+      - actor_access
       - setup_revision
       - schedule_version
       - access_version
@@ -5370,6 +5509,7 @@ components:
           type: integer
           minimum: 0
       required:
+      - album_id
       - event_basics
       - schedule
       - access
@@ -5468,18 +5608,30 @@ components:
       - can_setup
       - can_moderate
       - can_export_zip
+    InvitationStatus:
+      type: string
+      enum: [PENDING, ACCEPTED, REVOKED, EXPIRED]
     CollaboratorSummary:
       type: object
       additionalProperties: false
       properties:
         user_id: *id001
+        display_name:
+          type: [string, 'null']
+        email:
+          type: string
+          format: email
         permission_version: *id003
         permissions:
           $ref: '#/components/schemas/CollaboratorPermissions'
+        joined_at: *id002
       required:
       - user_id
+      - display_name
+      - email
       - permission_version
       - permissions
+      - joined_at
     InvitationSummary:
       type: object
       additionalProperties: false
@@ -5489,12 +5641,42 @@ components:
           type: string
         permissions:
           $ref: '#/components/schemas/CollaboratorPermissions'
+        status:
+          $ref: '#/components/schemas/InvitationStatus'
+        created_at: *id002
         expires_at: *id002
+        accepted_at:
+          type: [string, 'null']
+          format: date-time
+        revoked_at:
+          type: [string, 'null']
+          format: date-time
       required:
       - invitation_id
       - email
       - permissions
+      - status
+      - created_at
       - expires_at
+      - accepted_at
+      - revoked_at
+    InvitationPreview:
+      type: object
+      additionalProperties: false
+      description: Minimal safe context after invitation-secret proof or through its short-lived continuation. Email is masked and the raw secret is never returned.
+      properties:
+        invitation_id: *id001
+        album_id: *id001
+        event_name:
+          type: [string, 'null']
+        permissions:
+          $ref: '#/components/schemas/CollaboratorPermissions'
+        expires_at: *id002
+        status:
+          $ref: '#/components/schemas/InvitationStatus'
+        invited_email_hint:
+          type: [string, 'null']
+      required: [invitation_id, album_id, event_name, permissions, expires_at, status, invited_email_hint]
     CaptureAttempt:
       type: object
       additionalProperties: false
@@ -6321,14 +6503,27 @@ components:
       - can_setup
       - can_moderate
       - can_export_zip
+    InvitationResolveRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        invitation_secret:
+          type: string
+          minLength: 32
+          maxLength: 2048
+      required: [invitation_secret]
     CollaboratorPermissionPatchRequest:
       type: object
       additionalProperties: false
       properties:
+        expected_permission_version:
+          type: integer
+          minimum: 0
         can_setup: *id004
         can_moderate: *id004
         can_export_zip: *id004
       required:
+      - expected_permission_version
       - can_setup
       - can_moderate
       - can_export_zip
@@ -6568,6 +6763,13 @@ components:
           $ref: '#/components/schemas/InvitationSummary'
       required:
       - data
+    InvitationPreviewEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/InvitationPreview'
+      required: [data]
     CaptureAttemptEnvelope:
       type: object
       additionalProperties: false

@@ -39,9 +39,12 @@ export function AlbumOverview({ albumId }: { albumId: string }) {
   if (state === 'error' || !album) return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={t('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
 
   const summary = album;
+  const isOwner = album.actor_access.relationship === 'OWNER';
+  const canModerate = album.actor_access.relationship === 'COLLABORATOR'
+    && album.actor_access.collaborator_permissions?.can_moderate === true;
   const formatTime = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(value));
   return <div className="space-y-5">
-    <nav aria-label={t('nav.albumLabel')} className="grid gap-3 sm:grid-cols-2"><Link href={hostRoutes.gallery(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('gallery.title')}<ArrowRight aria-hidden="true" size={17} /></Link><Link href={hostRoutes.sharing(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('sharing.title')}<ArrowRight aria-hidden="true" size={17} /></Link></nav>
+    <nav aria-label={t('nav.albumLabel')} className="grid gap-3 sm:grid-cols-2">{(isOwner || canModerate) && <Link href={hostRoutes.gallery(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('gallery.title')}<ArrowRight aria-hidden="true" size={17} /></Link>}<Link href={hostRoutes.sharing(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('sharing.title')}<ArrowRight aria-hidden="true" size={17} /></Link></nav>
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-[var(--font-display)] text-xl font-bold">{t(`detail.${album.readiness === 'READY' ? 'ready' : album.readiness === 'PAYMENT_PENDING' ? 'paymentPending' : 'draft'}`)}</h2><AlbumStatus album={summary} label={t(`albums.${albumStatusKey(summary)}`)} /></div>
       <p className="mt-4 text-xl font-semibold">{album.event_name ?? t('detail.eventNameMissing')}</p>
@@ -49,9 +52,9 @@ export function AlbumOverview({ albumId }: { albumId: string }) {
       <p className="mt-4 text-xs text-[var(--color-muted-foreground)]">{t('detail.id')}</p><p className="mt-1 break-all font-mono text-sm">{album.album_id}</p>
       <div className="mt-6 border-t border-[var(--color-border)] pt-5"><p className="text-sm font-semibold">{album.capture_state === 'OPEN' ? t('detail.captureOpen') : album.capture_state === 'CLOSED' ? t('detail.captureClosed') : t('detail.notStarted')}</p></div>
       {album.capture_start && album.capture_end && <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{formatTime(album.capture_start)} – {formatTime(album.capture_end)} ({album.timezone})</p>}
-      {album.quota_total !== null && album.committed_count !== null && <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t('albums.quota', { committed: album.committed_count, quota: album.quota_total })}</p>}
+      {isOwner && album.quota_total !== null && album.committed_count !== null && <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t('albums.quota', { committed: album.committed_count, quota: album.quota_total })}</p>}
     </section>
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><h2 className="text-sm font-semibold">{t('detail.guestCount')}</h2><p className="mt-2 font-[var(--font-display)] text-3xl font-bold">{album.guest_count_final ?? '—'}</p>{album.guest_count_final == null && <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('detail.guestCountUnavailable')}</p>}</section>
-    {album.readiness === 'DRAFT' && <Link href={hostRoutes.setup(albumId, 'acara')}><Button type="button">{t('detail.setup')}<ArrowRight aria-hidden="true" size={17} /></Button></Link>}
+    {(isOwner || (album.actor_access.relationship === 'COLLABORATOR' && album.actor_access.collaborator_permissions?.can_setup)) && album.readiness === 'DRAFT' && <Link href={hostRoutes.setup(albumId, 'acara')}><Button type="button">{t('detail.setup')}<ArrowRight aria-hidden="true" size={17} /></Button></Link>}
   </div>;
 }

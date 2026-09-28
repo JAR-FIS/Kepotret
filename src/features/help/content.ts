@@ -4,15 +4,16 @@ export type TutorialStep = { id: string; title: string; body: string; note?: str
 export type TutorialSection = { id: string; title: string; lead: string; steps: TutorialStep[] };
 
 type HelpContent = {
-  navigation: { home: string; host: string; albums: string; language: string; indonesian: string; english: string; switchToLight: string; switchToDark: string };
-  landing: { eyebrow: string; title: string; description: string; guideLabel: string; guideTitle: string; guideDescription: string; guideAction: string; quickTitle: string; quickDescription: string; createAction: string; albumsAction: string };
+  navigation: { home: string; host: string; collaborator: string; albums: string; language: string; indonesian: string; english: string; switchToLight: string; switchToDark: string };
+  landing: { eyebrow: string; title: string; description: string; guideLabel: string; guideTitle: string; guideDescription: string; guideAction: string; collaboratorTitle: string; collaboratorDescription: string; collaboratorAction: string; quickTitle: string; quickDescription: string; createAction: string; albumsAction: string };
   host: { eyebrow: string; title: string; description: string; contents: string; progress: string; back: string; start: string; sections: TutorialSection[]; finishTitle: string; finishDescription: string; finishAction: string };
+  collaborator: { eyebrow: string; title: string; description: string; back: string; sections: { title: string; body: string }[] };
 };
 
 export const helpContent: Record<HelpLocale, HelpContent> = {
   id: {
-    navigation: { home: 'Pusat bantuan', host: 'Panduan Host', albums: 'Album saya', language: 'Bahasa', indonesian: 'Bahasa Indonesia', english: 'Bahasa Inggris', switchToLight: 'Ganti ke tema terang', switchToDark: 'Ganti ke tema gelap' },
-    landing: { eyebrow: 'BANTUAN KEPOTRET', title: 'Siapkan album, bagikan momen.', description: 'Panduan singkat yang mengikuti alur nyata Kepotret, dari membuat album hingga mengelola foto setelah acara.', guideLabel: 'MULAI DI SINI', guideTitle: 'Panduan untuk Host', guideDescription: 'Pelajari Waktu Potret, batas foto, QR, pengaturan album, galeri, pembayaran, dan pemulihan dalam langkah yang mudah diikuti.', guideAction: 'Buka panduan Host', quickTitle: 'Sudah punya album?', quickDescription: 'Buka ruang kerja untuk melanjutkan persiapan atau melihat album yang sudah dibuat.', createAction: 'Buat album', albumsAction: 'Lihat album saya' },
+    navigation: { home: 'Pusat bantuan', host: 'Panduan Host', collaborator: 'Panduan kolaborator', albums: 'Album saya', language: 'Bahasa', indonesian: 'Bahasa Indonesia', english: 'Bahasa Inggris', switchToLight: 'Ganti ke tema terang', switchToDark: 'Ganti ke tema gelap' },
+    landing: { eyebrow: 'BANTUAN KEPOTRET', title: 'Siapkan album, bagikan momen.', description: 'Panduan singkat yang mengikuti alur nyata Kepotret, dari membuat album hingga mengelola foto setelah acara.', guideLabel: 'MULAI DI SINI', guideTitle: 'Panduan untuk Host', guideDescription: 'Pelajari Waktu Potret, batas foto, QR, pengaturan album, galeri, pembayaran, dan pemulihan dalam langkah yang mudah diikuti.', guideAction: 'Buka panduan Host', collaboratorTitle: 'Panduan kolaborator', collaboratorDescription: 'Pelajari cara menerima undangan, melihat album yang ditugaskan, dan memahami izin di setiap album.', collaboratorAction: 'Buka panduan kolaborator', quickTitle: 'Sudah punya album?', quickDescription: 'Buka ruang kerja untuk melanjutkan persiapan atau melihat album yang sudah dibuat.', createAction: 'Buat album', albumsAction: 'Lihat album saya' },
     host: {
       eyebrow: 'PANDUAN HOST', title: 'Dari album baru hingga momen terakhir.', description: 'Ikuti alur ini sesuai kebutuhan acaramu. Setiap tindakan di ruang kerja tetap mengikuti status album, izin, dan keputusan server.', contents: 'Isi panduan', progress: '19 langkah dalam 5 bagian', back: 'Pusat bantuan', start: 'Mulai buat album',
       sections: [
@@ -47,10 +48,16 @@ export const helpContent: Record<HelpLocale, HelpContent> = {
         ] },
       ], finishTitle: 'Siap melanjutkan?', finishDescription: 'Buka album yang sudah ada atau buat album baru. Panduan ini dapat kamu buka kembali dari ruang kerja Host.', finishAction: 'Lihat album saya',
     },
+    collaborator: { eyebrow: 'PANDUAN KOLABORATOR', title: 'Bekerja bersama dengan akses yang jelas.', description: 'Kolaborasi ditetapkan per album. Kamu masuk dengan akun biasa dan tidak memerlukan akun khusus WO/EO.', back: 'Pusat bantuan', sections: [
+      { title: 'Menerima undangan', body: 'Buka tautan undangan dan periksa nama acara serta izin yang diberikan. Masuk dengan alamat email yang menerima undangan. Jika perlu Google sign-in, alamat undangan tetap dibawa melalui proses masuk dengan aman. Terima undangan untuk membuka album.' },
+      { title: 'Melihat album untukmu', body: 'Ruang Kolaborator menampilkan album yang memang ditugaskan kepadamu. Album milikmu sendiri tetap berada di Album Saya. Status undangan dan akses mengikuti keputusan server.' },
+      { title: 'Memahami izin per album', body: 'Pemilik dapat memberi izin setup, moderasi, dan ekspor ZIP secara terpisah. Izin pada satu album tidak otomatis berlaku pada album lain. Lihat halaman Izin Saya untuk akses saat ini.' },
+      { title: 'Batas akses', body: 'Pemilik tetap mengelola kolaborator, konfirmasi akhir setup, pembayaran, rotasi tautan, jadwal ulang, pemulihan, dan pemulihan foto terhapus. Akses dapat dicabut oleh Pemilik.' },
+    ] },
   },
   en: {
-    navigation: { home: 'Help center', host: 'Host guide', albums: 'My albums', language: 'Language', indonesian: 'Indonesian', english: 'English', switchToLight: 'Switch to light theme', switchToDark: 'Switch to dark theme' },
-    landing: { eyebrow: 'KEPOTRET HELP', title: 'Set up the album. Share the moments.', description: 'A concise guide through the real Kepotret flow, from creating an album to managing photos after the event.', guideLabel: 'START HERE', guideTitle: 'Guide for Hosts', guideDescription: 'Learn capture timing, photo limits, QR sharing, album settings, the gallery, payments, and recovery in clear steps.', guideAction: 'Open the Host guide', quickTitle: 'Already have an album?', quickDescription: 'Open your workspace to continue setup or review an existing album.', createAction: 'Create an album', albumsAction: 'View my albums' },
+    navigation: { home: 'Help center', host: 'Host guide', collaborator: 'Collaborator guide', albums: 'My albums', language: 'Language', indonesian: 'Indonesian', english: 'English', switchToLight: 'Switch to light theme', switchToDark: 'Switch to dark theme' },
+    landing: { eyebrow: 'KEPOTRET HELP', title: 'Set up the album. Share the moments.', description: 'A concise guide through the real Kepotret flow, from creating an album to managing photos after the event.', guideLabel: 'START HERE', guideTitle: 'Guide for Hosts', guideDescription: 'Learn capture timing, photo limits, QR sharing, album settings, the gallery, payments, and recovery in clear steps.', guideAction: 'Open the Host guide', collaboratorTitle: 'Collaborator guide', collaboratorDescription: 'Learn how to accept an invitation, find assigned albums, and understand album permissions.', collaboratorAction: 'Open the collaborator guide', quickTitle: 'Already have an album?', quickDescription: 'Open your workspace to continue setup or review an existing album.', createAction: 'Create an album', albumsAction: 'View my albums' },
     host: {
       eyebrow: 'HOST GUIDE', title: 'From a new album to the final moment.', description: 'Follow the parts relevant to your event. Workspace actions always depend on album state, permissions, and server decisions.', contents: 'Guide contents', progress: '19 steps in 5 sections', back: 'Help center', start: 'Create an album',
       sections: [
@@ -85,5 +92,11 @@ export const helpContent: Record<HelpLocale, HelpContent> = {
         ] },
       ], finishTitle: 'Ready to continue?', finishDescription: 'Open an existing album or create a new one. You can return to this guide from the Host workspace.', finishAction: 'View my albums',
     },
+    collaborator: { eyebrow: 'COLLABORATOR GUIDE', title: 'Work together with clear access.', description: 'Collaboration is assigned per album. You use an ordinary account and do not need a special WO/EO account.', back: 'Help center', sections: [
+      { title: 'Accepting an invitation', body: 'Open the invitation link and review the event and permissions. Sign in with the email address that received the invitation. If Google sign-in is needed, the invitation continues safely through sign-in. Accept it to open the album.' },
+      { title: 'Finding assigned albums', body: 'The Collaborations workspace lists albums assigned to you. Albums you own remain under My Albums. Invitation status and access follow the server’s current decision.' },
+      { title: 'Understanding album permissions', body: 'The Owner can grant setup, moderation, and ZIP export independently. Permission on one album does not carry over to another. Visit My Permissions to review current access.' },
+      { title: 'Access boundaries', body: 'The Owner manages collaborators, final setup confirmation, billing, link rotation, rescheduling, recovery, and restoring deleted photos. The Owner can revoke access.' },
+    ] },
   },
 };

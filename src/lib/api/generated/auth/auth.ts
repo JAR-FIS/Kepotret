@@ -10,6 +10,7 @@ import type {
   ConflictResponse,
   EmptyDataEnvelope,
   ForbiddenResponse,
+  GetApiV1AuthGoogleStartParams,
   NotFoundResponse,
   RateLimitedResponse,
   RedirectEnvelope,
@@ -68,20 +69,27 @@ export type getApiV1AuthGoogleStartResponseError = (getApiV1AuthGoogleStartRespo
 
 export type getApiV1AuthGoogleStartResponse = (getApiV1AuthGoogleStartResponseSuccess | getApiV1AuthGoogleStartResponseError)
 
-export const getGetApiV1AuthGoogleStartUrl = () => {
+export const getGetApiV1AuthGoogleStartUrl = (params?: GetApiV1AuthGoogleStartParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/auth/google/start`
+  return stringifiedParams.length > 0 ? `/api/v1/auth/google/start?${stringifiedParams}` : `/api/v1/auth/google/start`
 }
 
 /**
  * @summary Start Google OIDC + PKCE; safe return_to allowlist.
  */
-export const getApiV1AuthGoogleStart = async ( options?: RequestInit): Promise<getApiV1AuthGoogleStartResponse> => {
+export const getApiV1AuthGoogleStart = async (params?: GetApiV1AuthGoogleStartParams, options?: RequestInit): Promise<getApiV1AuthGoogleStartResponse> => {
 
-  const res = await fetch(getGetApiV1AuthGoogleStartUrl(),
+  const res = await fetch(getGetApiV1AuthGoogleStartUrl(params),
   {
       credentials: 'include',
     ...options,

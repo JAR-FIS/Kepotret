@@ -42,6 +42,7 @@ const album: AlbumDetail = {
   readiness: 'DRAFT', capture_state: 'NOT_STARTED', reveal_state: 'HIDDEN', setup_revision: 4, schedule_version: 0,
   access_version: 0, export_revision: 0, confirmed_setup_revision: null, confirmed_schedule_version: null,
   confirmed_package_version_id: null, setup_confirmed_at: null, guest_count_final: null, quota_total: 30, committed_count: 0,
+  actor_access: { relationship: 'OWNER', permission_version: 0, collaborator_permissions: null },
 };
 
 const schedule: AlbumSchedule = {
@@ -206,6 +207,15 @@ describe('FE-3 setup flow contract surfaces', () => {
     expect(await screen.findByText('Server menemukan hal yang harus dilengkapi. Ikuti tautan untuk memperbaikinya.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Buka bagian' })).toHaveAttribute('href', `/album/${albumId}/setup/jadwal`);
     expect(screen.getByRole('button', { name: 'Konfirmasi setup' })).toBeDisabled();
+  });
+
+  it('allows a collaborator to view setup review but never to finalize it', async () => {
+    api.getAlbum.mockResolvedValue({ status: 200, data: { data: { ...album, actor_access: { relationship: 'COLLABORATOR', permission_version: 3, collaborator_permissions: { can_setup: true, can_moderate: false, can_export_zip: false } } } } });
+    renderHost(<SetupReview albumId={albumId} />);
+    expect(await screen.findByText('Server menyatakan setup telah lengkap.')).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent('Hanya Pemilik album yang dapat mengonfirmasi setup akhir.');
+    expect(screen.queryByRole('button', { name: 'Konfirmasi setup' })).not.toBeInTheDocument();
+    expect(api.confirmSetup).not.toHaveBeenCalled();
   });
 
   it.each([

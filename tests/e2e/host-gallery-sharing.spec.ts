@@ -15,6 +15,7 @@ function managementPhoto() {
 }
 
 async function mockHostBase(page: import('@playwright/test').Page) {
+  await page.route(`**/api/v1/albums/${albumId}`, (route) => route.fulfill({ status: 200, json: { data: { actor_access: { relationship: 'OWNER', permission_version: 0, collaborator_permissions: null } } } }));
   await page.route('**/api/v1/security/csrf', (route) => route.fulfill({ status: 200, json: { data: { csrf_token: 'host-csrf' } } }));
   await page.route(`**/api/v1/albums/${albumId}/settings`, async (route) => {
     if (route.request().method() === 'PATCH') return route.fulfill({ status: 200, json: { data: {} } });

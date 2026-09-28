@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
-import { getApiV1AlbumsAlbumIdReview, getApiV1SecurityCsrf, postApiV1AlbumsAlbumIdConfirmSetup } from '@/lib/api/browser';
+import { getApiV1AlbumsAlbumId, getApiV1AlbumsAlbumIdReview, getApiV1SecurityCsrf, postApiV1AlbumsAlbumIdConfirmSetup } from '@/lib/api/browser';
 import type { AlbumReadiness, SetupReview as SetupReviewData } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
 import { intentKey } from '@/features/host/lib/intent-key';
@@ -19,6 +19,7 @@ export function SetupReview({ albumId }: { albumId: string }) {
   const shared = useTranslations('host');
   const router = useRouter();
   const [review, setReview] = useState<SetupReviewData | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [state, setState] = useState<'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error'>('loading');
   const [message, setMessage] = useState<'conflict' | 'validation' | 'error' | null>(null);
   const [confirmedReadiness, setConfirmedReadiness] = useState<AlbumReadiness | null>(null);
@@ -27,18 +28,27 @@ export function SetupReview({ albumId }: { albumId: string }) {
 
   useEffect(() => {
     let active = true;
-    void getApiV1AlbumsAlbumIdReview(albumId).then((result) => {
-      if (!active) return;
-      if (result.status === 200) { setReview(result.data.data); setState('ready'); }
-      else if (result.status === 401) setState('unauthenticated');
-      else if (result.status === 403) setState('forbidden');
-      else setState('error');
-    }).catch(() => { if (active) setState('error'); });
+    void (async () => {
+      try {
+        const album = await getApiV1AlbumsAlbumId(albumId);
+        if (!active) return;
+        if (album.status === 401) { setState('unauthenticated'); return; }
+        if (album.status === 403) { setState('forbidden'); return; }
+        if (album.status !== 200) { setState('error'); return; }
+        setIsOwner(album.data.data.actor_access.relationship === 'OWNER');
+        const result = await getApiV1AlbumsAlbumIdReview(albumId);
+        if (!active) return;
+        if (result.status === 200) { setReview(result.data.data); setState('ready'); }
+        else if (result.status === 401) setState('unauthenticated');
+        else if (result.status === 403) setState('forbidden');
+        else setState('error');
+      } catch { if (active) setState('error'); }
+    })();
     return () => { active = false; };
   }, [albumId, attempt]);
 
   async function confirmSetup() {
-    if (pending || !review?.complete) return;
+    if (pending || !isOwner || !review?.complete) return;
     setPending(true);
     setMessage(null);
     try {
@@ -98,6 +108,7 @@ export function SetupReview({ albumId }: { albumId: string }) {
     {review.issues.length > 0 && <div className="mt-6"><h3 className="font-semibold">{t('issues')}</h3><ul className="mt-3 space-y-2">{review.issues.map((issue, index) => <li key={`${issue.code}-${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] p-3"><span className="text-sm">{t('issueFallback', { code: issue.message_key ?? issue.code })} <span className="text-xs text-[var(--color-muted-foreground)]">({issue.severity})</span></span><Link className="font-semibold underline" href={hostRoutes.setup(albumId, issue.section)}>{t('fixSection')}</Link></li>)}</ul></div>}
     {message && <p role="alert" className="mt-4 text-sm text-[var(--color-muted-foreground)]">{t(message)}{message === 'conflict' && <> <button type="button" onClick={() => { setMessage(null); setConfirmedReadiness(null); setState('loading'); setAttempt((value) => value + 1); }} className="font-semibold underline">{shared('retry')}</button></>}</p>}
     {confirmedReadiness && <div role="status" className="mt-5 rounded-[var(--radius-md)] bg-[var(--color-muted)] p-4"><p className="font-semibold">{confirmedReadiness === 'READY' ? t('ready') : confirmedReadiness === 'PAYMENT_PENDING' ? t('paymentPending') : t('stillDraft')}</p><p className="mt-1 text-sm">{confirmedReadiness === 'READY' ? t('confirmedReady') : confirmedReadiness === 'PAYMENT_PENDING' ? t('confirmedPayment') : t('confirmedDraft')}</p></div>}
-    <Button type="button" loading={pending} disabled={!review.complete || !!confirmedReadiness} onClick={confirmSetup} className="mt-6">{t('confirm')}</Button>
+    {!isOwner && <p role="note" className="mt-5 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('ownerFinalizationOnly')}</p>}
+    {isOwner && <Button type="button" loading={pending} disabled={!review.complete || !!confirmedReadiness} onClick={confirmSetup} className="mt-6">{t('confirm')}</Button>}
   </section>;
 }
