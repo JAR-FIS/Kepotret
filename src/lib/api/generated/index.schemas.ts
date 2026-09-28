@@ -279,8 +279,13 @@ export interface UserSummary {
 
 export interface AdminSessionState {
   admin_user_id: string;
+  email: string;
+  /** @nullable */
+  display_name: string | null;
   mfa_verified: boolean;
   session_expires_at: string;
+  /** @nullable */
+  step_up_expires_at: string | null;
 }
 
 export interface GuestSessionSummary {
@@ -936,12 +941,48 @@ export interface OperationalHold {
   released_at?: string | null;
 }
 
+export type OperationalConfigValueType = typeof OperationalConfigValueType[keyof typeof OperationalConfigValueType];
+
+
+export const OperationalConfigValueType = {
+  INTEGER: 'INTEGER',
+  NUMBER: 'NUMBER',
+  BOOLEAN: 'BOOLEAN',
+  STRING: 'STRING',
+} as const;
+
 export interface OperationalConfig {
   config_key: string;
+  display_name: string;
+  description: string;
+  editable: boolean;
+  value_type: OperationalConfigValueType;
   typed_value: unknown;
   /** @minimum 1 */
   version: number;
+  /** @nullable */
+  minimum: number | null;
+  /** @nullable */
+  maximum: number | null;
+  /** @nullable */
+  allowed_values: unknown[] | null;
+  updated_at: string;
+  /** @nullable */
+  updated_by_admin_user_id: string | null;
 }
+
+/**
+ * @nullable
+ */
+export type OperationalIssueRelatedEntityType = typeof OperationalIssueRelatedEntityType[keyof typeof OperationalIssueRelatedEntityType] | null;
+
+
+export const OperationalIssueRelatedEntityType = {
+  USER: 'USER',
+  ALBUM: 'ALBUM',
+  PAYMENT: 'PAYMENT',
+  PACKAGE: 'PACKAGE',
+} as const;
 
 export interface OperationalIssue {
   issue_id: string;
@@ -949,6 +990,235 @@ export interface OperationalIssue {
   issue_type: string;
   severity: string;
   summary: string;
+  /** @nullable */
+  error_code: string | null;
+  /** @nullable */
+  related_entity_type: OperationalIssueRelatedEntityType;
+  /** @nullable */
+  related_entity_id: string | null;
+  created_at: string;
+  /** @nullable */
+  acknowledged_at: string | null;
+  /** @nullable */
+  resolved_at: string | null;
+}
+
+export interface AdminOverview {
+  /** @minimum 0 */
+  total_users: number;
+  /** @minimum 0 */
+  suspended_users: number;
+  /** @minimum 0 */
+  total_albums: number;
+  /** @minimum 0 */
+  draft_albums: number;
+  /** @minimum 0 */
+  payment_pending_albums: number;
+  /** @minimum 0 */
+  ready_albums: number;
+  /** @minimum 0 */
+  committed_photos: number;
+  /** @minimum 0 */
+  reserved_photos: number;
+  /** @minimum 0 */
+  pending_payments: number;
+  /** @minimum 0 */
+  processing_payments: number;
+  /** @minimum 0 */
+  successful_payments: number;
+  /** @minimum 0 */
+  failed_payments: number;
+  /** @minimum 0 */
+  open_issues: number;
+  /** @minimum 0 */
+  acknowledged_issues: number;
+  /** @minimum 0 */
+  active_holds: number;
+  generated_at: string;
+}
+
+export interface AdminUserSummary {
+  user_id: string;
+  email: string;
+  /** @nullable */
+  display_name: string | null;
+  suspended: boolean;
+  created_at: string;
+  /** @minimum 0 */
+  owned_album_count: number;
+  /** @minimum 0 */
+  collaborator_album_count: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  active_session_count: number | null;
+}
+
+export interface AdminUserDetail {
+  summary: AdminUserSummary;
+  /** @nullable */
+  last_activity_at: string | null;
+}
+
+export interface AdminAlbumSummary {
+  album_id: string;
+  owner_user_id: string;
+  owner_email: string;
+  /** @nullable */
+  event_name: string | null;
+  readiness: AlbumReadiness;
+  capture_state: CaptureState;
+  reveal_state: RevealState;
+  retention_state: LifecycleRetentionState;
+  /** @nullable */
+  capture_start: string | null;
+  /** @nullable */
+  capture_end: string | null;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     * @nullable
+     */
+  quota_total: number | null;
+  /** @minimum 0 */
+  reserved_count: number;
+  /** @minimum 0 */
+  committed_count: number;
+  hold_active: boolean;
+}
+
+export interface AdminAlbumLifecycle {
+  retention_state: LifecycleRetentionState;
+  server_time: string;
+  normal_access_end_at: string;
+  recovery_end_at: string;
+  backup_cleanup_deadline_at: string;
+}
+
+export interface AdminAlbumDetail {
+  summary: AdminAlbumSummary;
+  /** @nullable */
+  event_location: string | null;
+  timezone: string;
+  schedule: AlbumSchedule | null;
+  lifecycle: AdminAlbumLifecycle | null;
+  entitlement: EntitlementSummary | null;
+  payment_transactions: PaymentTransaction[];
+  related_issues: OperationalIssue[];
+}
+
+export interface AdminPaymentReceiptDiagnostic {
+  receipt_id: string;
+  source: string;
+  /** @nullable */
+  provider_state: string | null;
+  signature_verified: boolean;
+  received_at: string;
+  /** @nullable */
+  processed_at: string | null;
+  /** @nullable */
+  process_result: string | null;
+  /** @nullable */
+  error_code: string | null;
+}
+
+export interface AdminPaymentDiagnosis {
+  transaction: PaymentTransaction;
+  receipt_diagnostics: AdminPaymentReceiptDiagnostic[];
+  entitlement: EntitlementSummary | null;
+  can_reconcile: boolean;
+  /** @nullable */
+  last_reconciled_at: string | null;
+}
+
+export type AdminPackageVersionCurrency = typeof AdminPackageVersionCurrency[keyof typeof AdminPackageVersionCurrency];
+
+
+export const AdminPackageVersionCurrency = {
+  IDR: 'IDR',
+} as const;
+
+export interface AdminPackageVersion {
+  package_version_id: string;
+  /** @minimum 0 */
+  price_amount: number;
+  currency: AdminPackageVersionCurrency;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     */
+  quota_total: number;
+  sale_enabled: boolean;
+  effective_at: string;
+  /** @nullable */
+  retired_at: string | null;
+}
+
+export interface AdminPackage {
+  package_id: string;
+  code: string;
+  name: string;
+  versions: AdminPackageVersion[];
+}
+
+export interface AdminAuditLogSummary {
+  audit_id: string;
+  actor_type: string;
+  /** @nullable */
+  actor_id: string | null;
+  /** @nullable */
+  album_id: string | null;
+  action: string;
+  object_type: string;
+  /** @nullable */
+  object_ref: string | null;
+  /** @nullable */
+  request_id: string | null;
+  result: string;
+  safe_change_summary: string;
+  created_at: string;
+}
+
+export interface AdminAuditLogDetail {
+  summary: AdminAuditLogSummary;
+}
+
+export type AdminRosterEntryGrantStatus = typeof AdminRosterEntryGrantStatus[keyof typeof AdminRosterEntryGrantStatus];
+
+
+export const AdminRosterEntryGrantStatus = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface AdminRosterEntry {
+  admin_user_id: string;
+  email: string;
+  /** @nullable */
+  display_name: string | null;
+  grant_status: AdminRosterEntryGrantStatus;
+  granted_at: string;
+  /** @nullable */
+  revoked_at: string | null;
+  /** @nullable */
+  last_session_at: string | null;
+}
+
+export interface AdminSensitiveMedia {
+  photo_id: string;
+  created_at: string;
+  media: MediaDeliveryReference;
+}
+
+export interface AdminStepUpState {
+  verified_at: string;
+  expires_at: string;
+}
+
+export interface OperationalHoldState {
+  album_id: string;
+  active_hold: OperationalHold | null;
 }
 
 export interface JobExecutionResult {
@@ -981,6 +1251,14 @@ export interface AdminLoginRequest {
 }
 
 export interface AdminMfaVerifyRequest {
+  /**
+     * @minLength 6
+     * @maxLength 12
+     */
+  totp_code: string;
+}
+
+export interface AdminStepUpRequest {
   /**
      * @minLength 6
      * @maxLength 12
@@ -1279,6 +1557,72 @@ export interface UserEnvelope {
 
 export interface AdminSessionEnvelope {
   data: AdminSessionState;
+}
+
+export interface AdminStepUpEnvelope {
+  data: AdminStepUpState;
+}
+
+export interface AdminOverviewEnvelope {
+  data: AdminOverview;
+}
+
+export interface AdminUserEnvelope {
+  data: AdminUserDetail;
+}
+
+export interface AdminUserListEnvelope {
+  data: AdminUserSummary[];
+  meta: PaginationMeta;
+}
+
+export interface AdminAlbumEnvelope {
+  data: AdminAlbumDetail;
+}
+
+export interface AdminAlbumListEnvelope {
+  data: AdminAlbumSummary[];
+  meta: PaginationMeta;
+}
+
+export interface AdminPaymentDiagnosisEnvelope {
+  data: AdminPaymentDiagnosis;
+}
+
+export interface AdminPackageEnvelope {
+  data: AdminPackage;
+}
+
+export interface AdminPackageListEnvelope {
+  data: AdminPackage[];
+  meta: PaginationMeta;
+}
+
+export interface AdminPackageVersionEnvelope {
+  data: AdminPackageVersion;
+}
+
+export interface AdminAuditLogEnvelope {
+  data: AdminAuditLogDetail;
+}
+
+export interface AdminAuditLogListEnvelope {
+  data: AdminAuditLogSummary[];
+  meta: PaginationMeta;
+}
+
+export interface AdminRosterListEnvelope {
+  data: AdminRosterEntry[];
+  meta: PaginationMeta;
+}
+
+export interface AdminSensitiveMediaListEnvelope {
+  data: AdminSensitiveMedia[];
+  meta: PaginationMeta;
+}
+
+export interface OperationalHoldStateEnvelope {
+  data: OperationalHoldState;
 }
 
 export interface GuestSessionEnvelope {
@@ -1605,6 +1949,47 @@ export type CursorParameter = string;
 export type LimitParameter = number;
 
 /**
+ * Allowlisted Admin search query; interpreted only by the relevant Admin list endpoint.
+ */
+export type AdminQueryParameter = string;
+
+export type AdminSuspendedParameter = boolean;
+
+export type AdminAlbumReadinessParameter = AlbumReadiness;
+
+export type AdminAlbumRetentionStateParameter = LifecycleRetentionState;
+
+export type AdminHoldActiveParameter = boolean;
+
+export type AdminPaymentStatusParameter = PaymentPublicStatus;
+
+export type AdminPaymentTypeParameter = PaymentType;
+
+export type AdminIssueStatusParameter = OperationalIssueStatus;
+
+/**
+ * Allowlisted server severity value.
+ */
+export type AdminIssueSeverityParameter = string;
+
+/**
+ * Allowlisted server issue type.
+ */
+export type AdminIssueTypeParameter = string;
+
+export type AdminAuditActorIdParameter = string;
+
+export type AdminAuditActionParameter = string;
+
+export type AdminAuditObjectTypeParameter = string;
+
+export type AdminAuditAlbumIdParameter = string;
+
+export type AdminCreatedFromParameter = string;
+
+export type AdminCreatedToParameter = string;
+
+/**
  * Operation-scoped retry identity. Same key + different payload returns conflict.
  */
 export type IdempotencyKeyParameter = string;
@@ -1613,6 +1998,11 @@ export type IdempotencyKeyParameter = string;
  * Required for state-changing browser-cookie requests.
  */
 export type CsrfTokenParameter = string;
+
+/**
+ * Admin-only CSRF token from /api/v1/admin/security/csrf, bound to Admin pre-auth, MFA challenge, or AdminSession.
+ */
+export type AdminCsrfTokenParameter = string;
 
 export type GetApiV1AuthGoogleStartParams = {
 /**
@@ -1771,6 +2161,198 @@ limit?: LimitParameter;
 };
 
 export type GetApiV1AlbumsAlbumIdRecoveryPhotosParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AdminUsersParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+/**
+ * Allowlisted Admin search query; interpreted only by the relevant Admin list endpoint.
+ * @minLength 1
+ * @maxLength 120
+ */
+query?: AdminQueryParameter;
+suspended?: AdminSuspendedParameter;
+};
+
+export type GetApiV1AdminAlbumsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+/**
+ * Allowlisted Admin search query; interpreted only by the relevant Admin list endpoint.
+ * @minLength 1
+ * @maxLength 120
+ */
+query?: AdminQueryParameter;
+/**
+ * Public readiness dimension; capture/reveal state remain separate.
+ */
+readiness?: AdminAlbumReadinessParameter;
+retention_state?: AdminAlbumRetentionStateParameter;
+hold_active?: AdminHoldActiveParameter;
+};
+
+export type GetApiV1AdminPaymentsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+/**
+ * Normalized status exposed to ordinary Host payment surfaces.
+ */
+status?: AdminPaymentStatusParameter;
+type?: AdminPaymentTypeParameter;
+};
+
+export type GetApiV1AdminEventCategoriesParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AdminPackagesParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AdminOperationalConfigsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AdminIssuesParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+status?: AdminIssueStatusParameter;
+/**
+ * Allowlisted server severity value.
+ * @minLength 1
+ * @maxLength 40
+ */
+severity?: AdminIssueSeverityParameter;
+/**
+ * Allowlisted server issue type.
+ * @minLength 1
+ * @maxLength 80
+ */
+issue_type?: AdminIssueTypeParameter;
+};
+
+export type GetApiV1AdminAuditLogsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+actor_id?: AdminAuditActorIdParameter;
+/**
+ * @minLength 1
+ * @maxLength 120
+ */
+action?: AdminAuditActionParameter;
+/**
+ * @minLength 1
+ * @maxLength 80
+ */
+object_type?: AdminAuditObjectTypeParameter;
+album_id?: AdminAuditAlbumIdParameter;
+created_from?: AdminCreatedFromParameter;
+created_to?: AdminCreatedToParameter;
+};
+
+export type GetApiV1AdminAdminsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AdminAlbumsAlbumIdSensitiveMediaParams = {
+grant_id: string;
 /**
  * Opaque keyset cursor returned by the previous page.
  * @minLength 1

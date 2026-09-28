@@ -6,15 +6,35 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AdminAlbumEnvelope,
+  AdminAlbumListEnvelope,
+  AdminAuditLogEnvelope,
+  AdminAuditLogListEnvelope,
+  AdminOverviewEnvelope,
+  AdminPackageEnvelope,
+  AdminPackageListEnvelope,
+  AdminPackageVersionEnvelope,
+  AdminPaymentDiagnosisEnvelope,
   AdminReasonRequest,
+  AdminRosterListEnvelope,
+  AdminUserEnvelope,
+  AdminUserListEnvelope,
   BadRequestResponse,
   ConflictResponse,
-  EmptyDataEnvelope,
   EventCategoryCreateRequest,
   EventCategoryEnvelope,
   EventCategoryListEnvelope,
   EventCategoryPatchRequest,
   ForbiddenResponse,
+  GetApiV1AdminAdminsParams,
+  GetApiV1AdminAlbumsParams,
+  GetApiV1AdminAuditLogsParams,
+  GetApiV1AdminEventCategoriesParams,
+  GetApiV1AdminIssuesParams,
+  GetApiV1AdminOperationalConfigsParams,
+  GetApiV1AdminPackagesParams,
+  GetApiV1AdminPaymentsParams,
+  GetApiV1AdminUsersParams,
   NotFoundResponse,
   OperationalConfigEnvelope,
   OperationalConfigListEnvelope,
@@ -24,7 +44,6 @@ import type {
   PackageCreateRequest,
   PackageSaleStatusPatchRequest,
   PackageVersionCreateRequest,
-  PaymentEnvelope,
   PaymentListEnvelope,
   RateLimitedResponse,
   ServiceUnavailableResponse,
@@ -34,7 +53,7 @@ import type {
 
 
 export type getApiV1AdminOverviewResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminOverviewEnvelope
   status: 200
 }
 
@@ -114,7 +133,7 @@ export const getApiV1AdminOverview = async ( options?: RequestInit): Promise<get
 
 
 export type getApiV1AdminUsersResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminUserListEnvelope
   status: 200
 }
 
@@ -162,20 +181,27 @@ export type getApiV1AdminUsersResponseError = (getApiV1AdminUsersResponse400 | g
 
 export type getApiV1AdminUsersResponse = (getApiV1AdminUsersResponseSuccess | getApiV1AdminUsersResponseError)
 
-export const getGetApiV1AdminUsersUrl = () => {
+export const getGetApiV1AdminUsersUrl = (params?: GetApiV1AdminUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/users`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/users?${stringifiedParams}` : `/api/v1/admin/users`
 }
 
 /**
  * @summary Cursor/filter user list.
  */
-export const getApiV1AdminUsers = async ( options?: RequestInit): Promise<getApiV1AdminUsersResponse> => {
+export const getApiV1AdminUsers = async (params?: GetApiV1AdminUsersParams, options?: RequestInit): Promise<getApiV1AdminUsersResponse> => {
 
-  const res = await fetch(getGetApiV1AdminUsersUrl(),
+  const res = await fetch(getGetApiV1AdminUsersUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -194,7 +220,7 @@ export const getApiV1AdminUsers = async ( options?: RequestInit): Promise<getApi
 
 
 export type getApiV1AdminUsersUserIdResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminUserEnvelope
   status: 200
 }
 
@@ -274,7 +300,7 @@ export const getApiV1AdminUsersUserId = async (userId: string, options?: Request
 
 
 export type postApiV1AdminUsersUserIdSuspendResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminUserEnvelope
   status: 200
 }
 
@@ -354,7 +380,7 @@ export const postApiV1AdminUsersUserIdSuspend = async (userId: string, options?:
 
 
 export type postApiV1AdminUsersUserIdReactivateResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminUserEnvelope
   status: 200
 }
 
@@ -434,7 +460,7 @@ export const postApiV1AdminUsersUserIdReactivate = async (userId: string, option
 
 
 export type postApiV1AdminUsersUserIdRevokeSessionsResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminUserEnvelope
   status: 200
 }
 
@@ -514,7 +540,7 @@ export const postApiV1AdminUsersUserIdRevokeSessions = async (userId: string, op
 
 
 export type getApiV1AdminAlbumsResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminAlbumListEnvelope
   status: 200
 }
 
@@ -562,20 +588,27 @@ export type getApiV1AdminAlbumsResponseError = (getApiV1AdminAlbumsResponse400 |
 
 export type getApiV1AdminAlbumsResponse = (getApiV1AdminAlbumsResponseSuccess | getApiV1AdminAlbumsResponseError)
 
-export const getGetApiV1AdminAlbumsUrl = () => {
+export const getGetApiV1AdminAlbumsUrl = (params?: GetApiV1AdminAlbumsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/albums`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/albums?${stringifiedParams}` : `/api/v1/admin/albums`
 }
 
 /**
  * @summary Operational album list/filter; no implicit media access.
  */
-export const getApiV1AdminAlbums = async ( options?: RequestInit): Promise<getApiV1AdminAlbumsResponse> => {
+export const getApiV1AdminAlbums = async (params?: GetApiV1AdminAlbumsParams, options?: RequestInit): Promise<getApiV1AdminAlbumsResponse> => {
 
-  const res = await fetch(getGetApiV1AdminAlbumsUrl(),
+  const res = await fetch(getGetApiV1AdminAlbumsUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -594,7 +627,7 @@ export const getApiV1AdminAlbums = async ( options?: RequestInit): Promise<getAp
 
 
 export type getApiV1AdminAlbumsAlbumIdResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminAlbumEnvelope
   status: 200
 }
 
@@ -722,20 +755,27 @@ export type getApiV1AdminPaymentsResponseError = (getApiV1AdminPaymentsResponse4
 
 export type getApiV1AdminPaymentsResponse = (getApiV1AdminPaymentsResponseSuccess | getApiV1AdminPaymentsResponseError)
 
-export const getGetApiV1AdminPaymentsUrl = () => {
+export const getGetApiV1AdminPaymentsUrl = (params?: GetApiV1AdminPaymentsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/payments`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/payments?${stringifiedParams}` : `/api/v1/admin/payments`
 }
 
 /**
  * @summary Payment operations list/filter.
  */
-export const getApiV1AdminPayments = async ( options?: RequestInit): Promise<getApiV1AdminPaymentsResponse> => {
+export const getApiV1AdminPayments = async (params?: GetApiV1AdminPaymentsParams, options?: RequestInit): Promise<getApiV1AdminPaymentsResponse> => {
 
-  const res = await fetch(getGetApiV1AdminPaymentsUrl(),
+  const res = await fetch(getGetApiV1AdminPaymentsUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -754,7 +794,7 @@ export const getApiV1AdminPayments = async ( options?: RequestInit): Promise<get
 
 
 export type getApiV1AdminPaymentsTransactionIdResponse200 = {
-  data: PaymentEnvelope
+  data: AdminPaymentDiagnosisEnvelope
   status: 200
 }
 
@@ -834,7 +874,7 @@ export const getApiV1AdminPaymentsTransactionId = async (transactionId: string, 
 
 
 export type postApiV1AdminPaymentsTransactionIdReconcileResponse200 = {
-  data: PaymentEnvelope
+  data: AdminPaymentDiagnosisEnvelope
   status: 200
 }
 
@@ -967,20 +1007,27 @@ export type getApiV1AdminEventCategoriesResponseError = (getApiV1AdminEventCateg
 
 export type getApiV1AdminEventCategoriesResponse = (getApiV1AdminEventCategoriesResponseSuccess | getApiV1AdminEventCategoriesResponseError)
 
-export const getGetApiV1AdminEventCategoriesUrl = () => {
+export const getGetApiV1AdminEventCategoriesUrl = (params?: GetApiV1AdminEventCategoriesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/event-categories`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/event-categories?${stringifiedParams}` : `/api/v1/admin/event-categories`
 }
 
 /**
  * @summary List event categories including inactive historical categories.
  */
-export const getApiV1AdminEventCategories = async ( options?: RequestInit): Promise<getApiV1AdminEventCategoriesResponse> => {
+export const getApiV1AdminEventCategories = async (params?: GetApiV1AdminEventCategoriesParams, options?: RequestInit): Promise<getApiV1AdminEventCategoriesResponse> => {
 
-  const res = await fetch(getGetApiV1AdminEventCategoriesUrl(),
+  const res = await fetch(getGetApiV1AdminEventCategoriesUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -1188,7 +1235,7 @@ const res = await fetch(getPatchApiV1AdminEventCategoriesCategoryIdUrl(categoryI
 
 
 export type getApiV1AdminPackagesResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminPackageListEnvelope
   status: 200
 }
 
@@ -1236,20 +1283,27 @@ export type getApiV1AdminPackagesResponseError = (getApiV1AdminPackagesResponse4
 
 export type getApiV1AdminPackagesResponse = (getApiV1AdminPackagesResponseSuccess | getApiV1AdminPackagesResponseError)
 
-export const getGetApiV1AdminPackagesUrl = () => {
+export const getGetApiV1AdminPackagesUrl = (params?: GetApiV1AdminPackagesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/packages`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/packages?${stringifiedParams}` : `/api/v1/admin/packages`
 }
 
 /**
  * @summary Full catalog/version history.
  */
-export const getApiV1AdminPackages = async ( options?: RequestInit): Promise<getApiV1AdminPackagesResponse> => {
+export const getApiV1AdminPackages = async (params?: GetApiV1AdminPackagesParams, options?: RequestInit): Promise<getApiV1AdminPackagesResponse> => {
 
-  const res = await fetch(getGetApiV1AdminPackagesUrl(),
+  const res = await fetch(getGetApiV1AdminPackagesUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -1268,7 +1322,7 @@ export const getApiV1AdminPackages = async ( options?: RequestInit): Promise<get
 
 
 export type postApiV1AdminPackagesResponse201 = {
-  data: EmptyDataEnvelope
+  data: AdminPackageEnvelope
   status: 201
 }
 
@@ -1362,7 +1416,7 @@ const res = await fetch(getPostApiV1AdminPackagesUrl(),
 
 
 export type postApiV1AdminPackagesPackageIdVersionsResponse201 = {
-  data: EmptyDataEnvelope
+  data: AdminPackageVersionEnvelope
   status: 201
 }
 
@@ -1457,7 +1511,7 @@ const res = await fetch(getPostApiV1AdminPackagesPackageIdVersionsUrl(packageId)
 
 
 export type patchApiV1AdminPackageVersionsVersionIdSaleStatusResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminPackageVersionEnvelope
   status: 200
 }
 
@@ -1600,20 +1654,27 @@ export type getApiV1AdminOperationalConfigsResponseError = (getApiV1AdminOperati
 
 export type getApiV1AdminOperationalConfigsResponse = (getApiV1AdminOperationalConfigsResponseSuccess | getApiV1AdminOperationalConfigsResponseError)
 
-export const getGetApiV1AdminOperationalConfigsUrl = () => {
+export const getGetApiV1AdminOperationalConfigsUrl = (params?: GetApiV1AdminOperationalConfigsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/operational-configs`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/operational-configs?${stringifiedParams}` : `/api/v1/admin/operational-configs`
 }
 
 /**
  * @summary Allowlisted non-secret runtime configuration.
  */
-export const getApiV1AdminOperationalConfigs = async ( options?: RequestInit): Promise<getApiV1AdminOperationalConfigsResponse> => {
+export const getApiV1AdminOperationalConfigs = async (params?: GetApiV1AdminOperationalConfigsParams, options?: RequestInit): Promise<getApiV1AdminOperationalConfigsResponse> => {
 
-  const res = await fetch(getGetApiV1AdminOperationalConfigsUrl(),
+  const res = await fetch(getGetApiV1AdminOperationalConfigsUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -1775,20 +1836,27 @@ export type getApiV1AdminIssuesResponseError = (getApiV1AdminIssuesResponse400 |
 
 export type getApiV1AdminIssuesResponse = (getApiV1AdminIssuesResponseSuccess | getApiV1AdminIssuesResponseError)
 
-export const getGetApiV1AdminIssuesUrl = () => {
+export const getGetApiV1AdminIssuesUrl = (params?: GetApiV1AdminIssuesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/issues`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/issues?${stringifiedParams}` : `/api/v1/admin/issues`
 }
 
 /**
  * @summary OperationalIssue list/filter.
  */
-export const getApiV1AdminIssues = async ( options?: RequestInit): Promise<getApiV1AdminIssuesResponse> => {
+export const getApiV1AdminIssues = async (params?: GetApiV1AdminIssuesParams, options?: RequestInit): Promise<getApiV1AdminIssuesResponse> => {
 
-  const res = await fetch(getGetApiV1AdminIssuesUrl(),
+  const res = await fetch(getGetApiV1AdminIssuesUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -2062,7 +2130,7 @@ const res = await fetch(getPostApiV1AdminIssuesIssueIdResolveUrl(issueId),
 
 
 export type getApiV1AdminAuditLogsResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminAuditLogListEnvelope
   status: 200
 }
 
@@ -2110,20 +2178,27 @@ export type getApiV1AdminAuditLogsResponseError = (getApiV1AdminAuditLogsRespons
 
 export type getApiV1AdminAuditLogsResponse = (getApiV1AdminAuditLogsResponseSuccess | getApiV1AdminAuditLogsResponseError)
 
-export const getGetApiV1AdminAuditLogsUrl = () => {
+export const getGetApiV1AdminAuditLogsUrl = (params?: GetApiV1AdminAuditLogsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/audit-logs`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/audit-logs?${stringifiedParams}` : `/api/v1/admin/audit-logs`
 }
 
 /**
  * @summary Read-only append-only audit list/filter.
  */
-export const getApiV1AdminAuditLogs = async ( options?: RequestInit): Promise<getApiV1AdminAuditLogsResponse> => {
+export const getApiV1AdminAuditLogs = async (params?: GetApiV1AdminAuditLogsParams, options?: RequestInit): Promise<getApiV1AdminAuditLogsResponse> => {
 
-  const res = await fetch(getGetApiV1AdminAuditLogsUrl(),
+  const res = await fetch(getGetApiV1AdminAuditLogsUrl(params),
   {
       credentials: 'include',
     ...options,
@@ -2142,7 +2217,7 @@ export const getApiV1AdminAuditLogs = async ( options?: RequestInit): Promise<ge
 
 
 export type getApiV1AdminAuditLogsAuditIdResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminAuditLogEnvelope
   status: 200
 }
 
@@ -2222,7 +2297,7 @@ export const getApiV1AdminAuditLogsAuditId = async (auditId: string, options?: R
 
 
 export type getApiV1AdminAdminsResponse200 = {
-  data: EmptyDataEnvelope
+  data: AdminRosterListEnvelope
   status: 200
 }
 
@@ -2270,20 +2345,27 @@ export type getApiV1AdminAdminsResponseError = (getApiV1AdminAdminsResponse400 |
 
 export type getApiV1AdminAdminsResponse = (getApiV1AdminAdminsResponseSuccess | getApiV1AdminAdminsResponseError)
 
-export const getGetApiV1AdminAdminsUrl = () => {
+export const getGetApiV1AdminAdminsUrl = (params?: GetApiV1AdminAdminsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/admin/admins`
+  return stringifiedParams.length > 0 ? `/api/v1/admin/admins?${stringifiedParams}` : `/api/v1/admin/admins`
 }
 
 /**
  * @summary Read-only V1 admin roster; provisioning/reset via CLI only.
  */
-export const getApiV1AdminAdmins = async ( options?: RequestInit): Promise<getApiV1AdminAdminsResponse> => {
+export const getApiV1AdminAdmins = async (params?: GetApiV1AdminAdminsParams, options?: RequestInit): Promise<getApiV1AdminAdminsResponse> => {
 
-  const res = await fetch(getGetApiV1AdminAdminsUrl(),
+  const res = await fetch(getGetApiV1AdminAdminsUrl(params),
   {
       credentials: 'include',
     ...options,

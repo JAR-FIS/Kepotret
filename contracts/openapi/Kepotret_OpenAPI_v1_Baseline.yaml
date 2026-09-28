@@ -244,7 +244,7 @@ paths:
               $ref: '#/components/schemas/AdminLoginRequest'
       parameters:
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/auth/mfa/verify:
     post:
       tags:
@@ -284,7 +284,7 @@ paths:
               $ref: '#/components/schemas/AdminMfaVerifyRequest'
       parameters:
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/auth/me:
     get:
       tags:
@@ -351,7 +351,76 @@ paths:
       x-kepotret-auth: Admin session
       parameters:
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
+  /api/v1/admin/security/csrf:
+    get:
+      tags:
+      - Admin Auth
+      summary: Issue a browser-visible Admin CSRF token bound to the current admin auth lifecycle context.
+      operationId: get_api_v1_admin_security_csrf
+      security: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Admin CSRF token for login, MFA, or an established AdminSession.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfEnvelope'
+      x-kepotret-protection: Strict Origin
+      x-kepotret-auth: Admin pre-auth, MFA challenge, or Admin session
+      x-kepotret-rules:
+      - Bind the token to the Admin pre-auth, MFA challenge, or AdminSession context; never use ordinary User/Guest CSRF context.
+      - The browser may hold the token in memory only; never log or persist it.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/auth/step-up:
+    post:
+      tags:
+      - Admin Auth
+      summary: Verify TOTP for short-lived step-up bound to the current AdminSession.
+      operationId: post_api_v1_admin_auth_step_up
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Current step-up verification window.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStepUpEnvelope'
+      x-kepotret-protection: Admin CSRF + Origin
+      x-kepotret-auth: Admin session
+      x-kepotret-rules:
+      - Bind step-up to this AdminSession and invalidate it when that session ends or is revoked.
+      - The server determines expiry; do not expose a fixed duration in frontend behavior.
+      - Never log or persist the TOTP code.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/AdminCsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminStepUpRequest'
   /api/v1/guest/access/resolve:
     post:
       tags:
@@ -3505,7 +3574,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminOverviewEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
@@ -3538,10 +3607,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminUserListEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/AdminQuery'
+      - $ref: '#/components/parameters/AdminSuspended'
       - $ref: '#/components/parameters/RequestId'
   /api/v1/admin/users/{user_id}:
     get:
@@ -3571,7 +3644,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminUserEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
@@ -3610,7 +3683,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminUserEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Admin session
       parameters:
@@ -3621,7 +3694,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/users/{user_id}/reactivate:
     post:
       tags:
@@ -3650,7 +3723,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminUserEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Admin session
       parameters:
@@ -3661,7 +3734,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/users/{user_id}/revoke-sessions:
     post:
       tags:
@@ -3690,7 +3763,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminUserEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Admin session
       parameters:
@@ -3701,7 +3774,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/albums:
     get:
       tags:
@@ -3730,10 +3803,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminAlbumListEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/AdminQuery'
+      - $ref: '#/components/parameters/AdminAlbumReadiness'
+      - $ref: '#/components/parameters/AdminAlbumRetentionState'
+      - $ref: '#/components/parameters/AdminHoldActive'
       - $ref: '#/components/parameters/RequestId'
   /api/v1/admin/albums/{album_id}:
     get:
@@ -3763,7 +3842,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminAlbumEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
@@ -3806,6 +3885,10 @@ paths:
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/AdminPaymentStatus'
+      - $ref: '#/components/parameters/AdminPaymentType'
       - $ref: '#/components/parameters/RequestId'
   /api/v1/admin/payments/{transaction_id}:
     get:
@@ -3835,7 +3918,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentEnvelope'
+                $ref: '#/components/schemas/AdminPaymentDiagnosisEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
@@ -3876,7 +3959,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentEnvelope'
+                $ref: '#/components/schemas/AdminPaymentDiagnosisEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Admin session
       parameters:
@@ -3887,7 +3970,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/event-categories:
     get:
       tags:
@@ -3920,6 +4003,8 @@ paths:
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/RequestId'
     post:
       tags:
@@ -3953,7 +4038,7 @@ paths:
       x-kepotret-auth: Admin session
       parameters:
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
       requestBody:
         required: true
         content:
@@ -3999,7 +4084,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
       requestBody:
         required: true
         content:
@@ -4034,10 +4119,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminPackageListEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/RequestId'
     post:
       tags:
@@ -4066,7 +4153,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminPackageEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Admin session
       requestBody:
@@ -4077,7 +4164,7 @@ paths:
               $ref: '#/components/schemas/PackageCreateRequest'
       parameters:
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/packages/{package_id}/versions:
     post:
       tags:
@@ -4106,7 +4193,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminPackageVersionEnvelope'
       x-kepotret-protection: Idempotency + CSRF
       x-kepotret-auth: Admin session
       parameters:
@@ -4118,7 +4205,7 @@ paths:
           format: uuid
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/IdempotencyKey'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
       requestBody:
         required: true
         content:
@@ -4153,7 +4240,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminPackageVersionEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Admin session
       parameters:
@@ -4164,7 +4251,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
       requestBody:
         required: true
         content:
@@ -4203,6 +4290,8 @@ paths:
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/RequestId'
   /api/v1/admin/operational-configs/{key}:
     patch:
@@ -4243,7 +4332,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
       requestBody:
         required: true
         content:
@@ -4282,6 +4371,11 @@ paths:
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/AdminIssueStatus'
+      - $ref: '#/components/parameters/AdminIssueSeverity'
+      - $ref: '#/components/parameters/AdminIssueType'
       - $ref: '#/components/parameters/RequestId'
   /api/v1/admin/issues/{issue_id}:
     get:
@@ -4361,7 +4455,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/issues/{issue_id}/resolve:
     post:
       tags:
@@ -4401,7 +4495,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
       requestBody:
         required: true
         content:
@@ -4436,10 +4530,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminAuditLogListEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/AdminAuditActorId'
+      - $ref: '#/components/parameters/AdminAuditAction'
+      - $ref: '#/components/parameters/AdminAuditObjectType'
+      - $ref: '#/components/parameters/AdminAuditAlbumId'
+      - $ref: '#/components/parameters/AdminCreatedFrom'
+      - $ref: '#/components/parameters/AdminCreatedTo'
       - $ref: '#/components/parameters/RequestId'
   /api/v1/admin/audit-logs/{audit_id}:
     get:
@@ -4469,7 +4571,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminAuditLogEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
@@ -4508,10 +4610,63 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyDataEnvelope'
+                $ref: '#/components/schemas/AdminRosterListEnvelope'
       x-kepotret-protection: '-'
       x-kepotret-auth: Admin session
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/admin/albums/{album_id}/sensitive-media:
+    get:
+      tags:
+      - Admin Sensitive Access
+      summary: Cursor-paginated view-only media for a current album-scoped grant.
+      operationId: get_api_v1_admin_albums_album_id_sensitive_media
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: View-only, currently authorized media references.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSensitiveMediaListEnvelope'
+      x-kepotret-protection: Current grant authorization
+      x-kepotret-auth: Admin session + current album-scoped SensitiveAccessGrant
+      x-kepotret-rules:
+      - Grant must belong to the current AdminSession, match this album, remain unexpired, and have a valid AdminGrant/session.
+      - Operational Hold is not media authority. Reauthorize every media delivery; never return a permanent storage URL.
+      - This response grants view-only access and contains no download or mutation action.
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: grant_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/RequestId'
   /api/v1/admin/albums/{album_id}/sensitive-access-grants:
     post:
@@ -4552,7 +4707,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
       requestBody:
         required: true
         content:
@@ -4598,8 +4753,42 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
   /api/v1/admin/albums/{album_id}/operational-hold:
+    get:
+      tags:
+      - Admin Hold
+      summary: Return the authoritative active or inactive hold state for an album.
+      operationId: get_api_v1_admin_albums_album_id_operational_hold
+      security:
+      - AdminCookie: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '200':
+          description: Current hold state, including an explicit no-active-hold result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalHoldStateEnvelope'
+      x-kepotret-protection: '-'
+      x-kepotret-auth: Admin session
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
     post:
       tags:
       - Admin Hold
@@ -4638,7 +4827,7 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
       requestBody:
         required: true
         content:
@@ -4648,7 +4837,7 @@ paths:
     delete:
       tags:
       - Admin Hold
-      summary: Release hold; normal current schedule/lifecycle still governs.
+      summary: Release hold with reason; normal current schedule/lifecycle still governs.
       operationId: delete_api_v1_admin_albums_album_id_operational_hold
       security:
       - AdminCookie: []
@@ -4683,7 +4872,13 @@ paths:
           type: string
           format: uuid
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
+      - $ref: '#/components/parameters/AdminCsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminReasonRequest'
   /internal/v1/scheduler/dispatch:
     post:
       tags:
@@ -5127,15 +5322,30 @@ components:
       additionalProperties: false
       properties:
         admin_user_id: *id001
+        email:
+          type: string
+          format: email
+        display_name:
+          type:
+          - string
+          - 'null'
         mfa_verified: &id004
           type: boolean
         session_expires_at: &id002
           type: string
           format: date-time
+        step_up_expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
       required:
       - admin_user_id
+      - email
+      - display_name
       - mfa_verified
       - session_expires_at
+      - step_up_expires_at
     GuestSessionSummary:
       type: object
       additionalProperties: false
@@ -6163,14 +6373,55 @@ components:
       properties:
         config_key:
           type: string
+        display_name:
+          type: string
+        description:
+          type: string
+        editable:
+          type: boolean
+        value_type:
+          type: string
+          enum:
+          - INTEGER
+          - NUMBER
+          - BOOLEAN
+          - STRING
         typed_value: {}
         version:
           type: integer
           minimum: 1
+        minimum:
+          type:
+          - number
+          - 'null'
+        maximum:
+          type:
+          - number
+          - 'null'
+        allowed_values:
+          type:
+          - array
+          - 'null'
+          items: {}
+        updated_at: *id002
+        updated_by_admin_user_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
       required:
       - config_key
+      - display_name
+      - description
+      - editable
+      - value_type
       - typed_value
       - version
+      - minimum
+      - maximum
+      - allowed_values
+      - updated_at
+      - updated_by_admin_user_id
     OperationalIssue:
       type: object
       additionalProperties: false
@@ -6184,12 +6435,509 @@ components:
           type: string
         summary:
           type: string
+        error_code:
+          type:
+          - string
+          - 'null'
+        related_entity_type:
+          type:
+          - string
+          - 'null'
+          enum:
+          - USER
+          - ALBUM
+          - PAYMENT
+          - PACKAGE
+          - null
+        related_entity_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        created_at: *id002
+        acknowledged_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        resolved_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
       required:
       - issue_id
       - status
       - issue_type
       - severity
       - summary
+      - error_code
+      - related_entity_type
+      - related_entity_id
+      - created_at
+      - acknowledged_at
+      - resolved_at
+    AdminOverview:
+      type: object
+      additionalProperties: false
+      properties:
+        total_users:
+          type: integer
+          minimum: 0
+        suspended_users:
+          type: integer
+          minimum: 0
+        total_albums:
+          type: integer
+          minimum: 0
+        draft_albums:
+          type: integer
+          minimum: 0
+        payment_pending_albums:
+          type: integer
+          minimum: 0
+        ready_albums:
+          type: integer
+          minimum: 0
+        committed_photos:
+          type: integer
+          minimum: 0
+        reserved_photos:
+          type: integer
+          minimum: 0
+        pending_payments:
+          type: integer
+          minimum: 0
+        processing_payments:
+          type: integer
+          minimum: 0
+        successful_payments:
+          type: integer
+          minimum: 0
+        failed_payments:
+          type: integer
+          minimum: 0
+        open_issues:
+          type: integer
+          minimum: 0
+        acknowledged_issues:
+          type: integer
+          minimum: 0
+        active_holds:
+          type: integer
+          minimum: 0
+        generated_at: *id002
+      required:
+      - total_users
+      - suspended_users
+      - total_albums
+      - draft_albums
+      - payment_pending_albums
+      - ready_albums
+      - committed_photos
+      - reserved_photos
+      - pending_payments
+      - processing_payments
+      - successful_payments
+      - failed_payments
+      - open_issues
+      - acknowledged_issues
+      - active_holds
+      - generated_at
+    AdminUserSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        user_id: *id001
+        email:
+          type: string
+          format: email
+        display_name:
+          type:
+          - string
+          - 'null'
+        suspended:
+          type: boolean
+        created_at: *id002
+        owned_album_count:
+          type: integer
+          minimum: 0
+        collaborator_album_count:
+          type: integer
+          minimum: 0
+        active_session_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+      required:
+      - user_id
+      - email
+      - display_name
+      - suspended
+      - created_at
+      - owned_album_count
+      - collaborator_album_count
+      - active_session_count
+    AdminUserDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        summary:
+          $ref: '#/components/schemas/AdminUserSummary'
+        last_activity_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - summary
+      - last_activity_at
+    AdminAlbumSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        owner_user_id: *id001
+        owner_email:
+          type: string
+          format: email
+        event_name:
+          type:
+          - string
+          - 'null'
+        readiness:
+          $ref: '#/components/schemas/AlbumReadiness'
+        capture_state:
+          $ref: '#/components/schemas/CaptureState'
+        reveal_state:
+          $ref: '#/components/schemas/RevealState'
+        retention_state:
+          $ref: '#/components/schemas/LifecycleRetentionState'
+        capture_start:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        capture_end:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        quota_total:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 10000
+        reserved_count:
+          type: integer
+          minimum: 0
+        committed_count:
+          type: integer
+          minimum: 0
+        hold_active:
+          type: boolean
+      required:
+      - album_id
+      - owner_user_id
+      - owner_email
+      - event_name
+      - readiness
+      - capture_state
+      - reveal_state
+      - retention_state
+      - capture_start
+      - capture_end
+      - quota_total
+      - reserved_count
+      - committed_count
+      - hold_active
+    AdminAlbumDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        summary:
+          $ref: '#/components/schemas/AdminAlbumSummary'
+        event_location:
+          type:
+          - string
+          - 'null'
+        timezone:
+          type: string
+        schedule:
+          oneOf:
+          - $ref: '#/components/schemas/AlbumSchedule'
+          - type: 'null'
+        lifecycle:
+          oneOf:
+          - $ref: '#/components/schemas/AdminAlbumLifecycle'
+          - type: 'null'
+        entitlement:
+          oneOf:
+          - $ref: '#/components/schemas/EntitlementSummary'
+          - type: 'null'
+        payment_transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentTransaction'
+        related_issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperationalIssue'
+      required:
+      - summary
+      - event_location
+      - timezone
+      - schedule
+      - lifecycle
+      - entitlement
+      - payment_transactions
+      - related_issues
+    AdminAlbumLifecycle:
+      type: object
+      additionalProperties: false
+      properties:
+        retention_state:
+          $ref: '#/components/schemas/LifecycleRetentionState'
+        server_time: *id002
+        normal_access_end_at: *id002
+        recovery_end_at: *id002
+        backup_cleanup_deadline_at: *id002
+      required:
+      - retention_state
+      - server_time
+      - normal_access_end_at
+      - recovery_end_at
+      - backup_cleanup_deadline_at
+    AdminPaymentReceiptDiagnostic:
+      type: object
+      additionalProperties: false
+      properties:
+        receipt_id: *id001
+        source:
+          type: string
+        provider_state:
+          type:
+          - string
+          - 'null'
+        signature_verified:
+          type: boolean
+        received_at: *id002
+        processed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        process_result:
+          type:
+          - string
+          - 'null'
+        error_code:
+          type:
+          - string
+          - 'null'
+      required:
+      - receipt_id
+      - source
+      - provider_state
+      - signature_verified
+      - received_at
+      - processed_at
+      - process_result
+      - error_code
+    AdminPaymentDiagnosis:
+      type: object
+      additionalProperties: false
+      properties:
+        transaction:
+          $ref: '#/components/schemas/PaymentTransaction'
+        receipt_diagnostics:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminPaymentReceiptDiagnostic'
+        entitlement:
+          oneOf:
+          - $ref: '#/components/schemas/EntitlementSummary'
+          - type: 'null'
+        can_reconcile:
+          type: boolean
+        last_reconciled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - transaction
+      - receipt_diagnostics
+      - entitlement
+      - can_reconcile
+      - last_reconciled_at
+    AdminPackageVersion:
+      type: object
+      additionalProperties: false
+      properties:
+        package_version_id: *id001
+        price_amount:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum: [IDR]
+        quota_total:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        sale_enabled:
+          type: boolean
+        effective_at:
+          type: string
+          format: date-time
+        retired_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - package_version_id
+      - price_amount
+      - currency
+      - quota_total
+      - sale_enabled
+      - effective_at
+      - retired_at
+    AdminPackage:
+      type: object
+      additionalProperties: false
+      properties:
+        package_id: *id001
+        code:
+          type: string
+        name:
+          type: string
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminPackageVersion'
+      required:
+      - package_id
+      - code
+      - name
+      - versions
+    AdminAuditLogSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        audit_id: *id001
+        actor_type:
+          type: string
+        actor_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        album_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        action:
+          type: string
+        object_type:
+          type: string
+        object_ref:
+          type:
+          - string
+          - 'null'
+        request_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        result:
+          type: string
+        safe_change_summary:
+          type: string
+        created_at: *id002
+      required:
+      - audit_id
+      - actor_type
+      - actor_id
+      - album_id
+      - action
+      - object_type
+      - object_ref
+      - request_id
+      - result
+      - safe_change_summary
+      - created_at
+    AdminAuditLogDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        summary:
+          $ref: '#/components/schemas/AdminAuditLogSummary'
+      required: [summary]
+    AdminRosterEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        admin_user_id: *id001
+        email:
+          type: string
+          format: email
+        display_name:
+          type:
+          - string
+          - 'null'
+        grant_status:
+          type: string
+          enum: [ACTIVE, REVOKED]
+        granted_at: *id002
+        revoked_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        last_session_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - admin_user_id
+      - email
+      - display_name
+      - grant_status
+      - granted_at
+      - revoked_at
+      - last_session_at
+    AdminSensitiveMedia:
+      type: object
+      additionalProperties: false
+      properties:
+        photo_id: *id001
+        created_at: *id002
+        media:
+          $ref: '#/components/schemas/MediaDeliveryReference'
+      required: [photo_id, created_at, media]
+    AdminStepUpState:
+      type: object
+      additionalProperties: false
+      properties:
+        verified_at: *id002
+        expires_at: *id002
+      required: [verified_at, expires_at]
+    OperationalHoldState:
+      type: object
+      additionalProperties: false
+      properties:
+        album_id: *id001
+        active_hold:
+          oneOf:
+          - $ref: '#/components/schemas/OperationalHold'
+          - type: 'null'
+      required: [album_id, active_hold]
     JobExecutionResult:
       type: object
       additionalProperties: false
@@ -6233,6 +6981,16 @@ components:
       - email
       - password
     AdminMfaVerifyRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        totp_code:
+          type: string
+          minLength: 6
+          maxLength: 12
+      required:
+      - totp_code
+    AdminStepUpRequest:
       type: object
       additionalProperties: false
       properties:
@@ -6678,6 +7436,135 @@ components:
           $ref: '#/components/schemas/AdminSessionState'
       required:
       - data
+    AdminStepUpEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminStepUpState'
+      required: [data]
+    AdminOverviewEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminOverview'
+      required: [data]
+    AdminUserEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminUserDetail'
+      required: [data]
+    AdminUserListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserSummary'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
+    AdminAlbumEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminAlbumDetail'
+      required: [data]
+    AdminAlbumListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAlbumSummary'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
+    AdminPaymentDiagnosisEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminPaymentDiagnosis'
+      required: [data]
+    AdminPackageEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminPackage'
+      required: [data]
+    AdminPackageListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminPackage'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
+    AdminPackageVersionEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminPackageVersion'
+      required: [data]
+    AdminAuditLogEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminAuditLogDetail'
+      required: [data]
+    AdminAuditLogListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAuditLogSummary'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
+    AdminRosterListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminRosterEntry'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
+    AdminSensitiveMediaListEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminSensitiveMedia'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
+    OperationalHoldStateEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/OperationalHoldState'
+      required: [data]
     GuestSessionEnvelope:
       type: object
       additionalProperties: false
@@ -7297,6 +8184,119 @@ components:
         maximum: 100
         default: 25
       description: Maximum page size; defaults to 25 and is capped at 100.
+    AdminQuery:
+      name: query
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 120
+      description: Allowlisted Admin search query; interpreted only by the relevant Admin list endpoint.
+    AdminSuspended:
+      name: suspended
+      in: query
+      required: false
+      schema:
+        type: boolean
+    AdminAlbumReadiness:
+      name: readiness
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/AlbumReadiness'
+    AdminAlbumRetentionState:
+      name: retention_state
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/LifecycleRetentionState'
+    AdminHoldActive:
+      name: hold_active
+      in: query
+      required: false
+      schema:
+        type: boolean
+    AdminPaymentStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/PaymentPublicStatus'
+    AdminPaymentType:
+      name: type
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/PaymentType'
+    AdminIssueStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/OperationalIssueStatus'
+    AdminIssueSeverity:
+      name: severity
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 40
+      description: Allowlisted server severity value.
+    AdminIssueType:
+      name: issue_type
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 80
+      description: Allowlisted server issue type.
+    AdminAuditActorId:
+      name: actor_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+    AdminAuditAction:
+      name: action
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 120
+    AdminAuditObjectType:
+      name: object_type
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 80
+    AdminAuditAlbumId:
+      name: album_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+    AdminCreatedFrom:
+      name: created_from
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+    AdminCreatedTo:
+      name: created_to
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -7312,6 +8312,13 @@ components:
       schema:
         type: string
       description: Required for state-changing browser-cookie requests.
+    AdminCsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Admin-only CSRF token from /api/v1/admin/security/csrf, bound to Admin pre-auth, MFA challenge, or AdminSession.
 x-kepotret-checkpoint: 7
 x-kepotret-physical-table-count: 44
 x-kepotret-upstream-baselines:
