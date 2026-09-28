@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -32,6 +32,7 @@ export function InvitationAcceptance({ invitationId, locale }: { invitationId: s
   const [preview, setPreview] = useState<InvitationPreview | null>(null);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const invitationSecretRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (state === 'invalid' || state === 'expired' || state === 'used') {
@@ -45,14 +46,18 @@ export function InvitationAcceptance({ invitationId, locale }: { invitationId: s
       if (!uuidPattern.test(invitationId)) { setState('invalid'); return; }
       try {
         const fragment = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
-        let currentPreview: InvitationPreview;
-        if (fragment) {
-          const resolved = await postApiV1CollaboratorInvitationsInvitationIdResolve(invitationId, { invitation_secret: fragment });
-          if (!active) return;
+        if (invitationSecretRef.current === null && fragment) {
+          invitationSecretRef.current = fragment;
           window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
-          if (resolved.status === 404) { setState('invalid'); return; }
-          if (resolved.status === 410) { setState(apiErrorCode(resolved.data) === 'INVITATION_USED' || apiErrorCode(resolved.data) === 'INVITATION_REVOKED' ? 'used' : 'expired'); return; }
+        }
+        let currentPreview: InvitationPreview;
+        if (invitationSecretRef.current !== null) {
+          const resolved = await postApiV1CollaboratorInvitationsInvitationIdResolve(invitationId, { invitation_secret: invitationSecretRef.current });
+          if (!active) return;
+          if (resolved.status === 404 || resolved.status === 422) { invitationSecretRef.current = null; setState('invalid'); return; }
+          if (resolved.status === 410) { invitationSecretRef.current = null; setState(apiErrorCode(resolved.data) === 'INVITATION_USED' || apiErrorCode(resolved.data) === 'INVITATION_REVOKED' ? 'used' : 'expired'); return; }
           if (resolved.status !== 200) { setState('error'); return; }
+          invitationSecretRef.current = null;
           currentPreview = resolved.data.data;
         } else {
           const current = await getApiV1CollaboratorInvitationsInvitationIdPreview(invitationId);

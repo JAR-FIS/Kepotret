@@ -33,6 +33,43 @@ test('H17 maps invalid, expired, used and revoked invitations safely and preserv
   await expect(page.getByRole('heading', { name: 'Undangan belum dapat diperiksa' })).toBeVisible();
 });
 
+test('H17 retries a recoverable resolve with the same in-memory secret after clearing the URL fragment', async ({ page }) => {
+  const resolveBodies: Array<{ invitation_secret?: string }> = [];
+  let previewRequests = 0;
+  let retryClicked = false;
+  await page.route(`**/api/v1/collaborator-invitations/${invitationId}/resolve`, async route => {
+    resolveBodies.push(route.request().postDataJSON() as { invitation_secret?: string });
+    if (!retryClicked) {
+      return route.fulfill({ status: 429, json: { error: { code: 'RATE_LIMITED' } } });
+    }
+    return route.fulfill({ status: 200, json: preview });
+  });
+  await page.route(`**/api/v1/collaborator-invitations/${invitationId}/preview`, route => {
+    previewRequests += 1;
+    return route.fulfill({ status: 200, json: preview });
+  });
+  await page.route('**/api/v1/auth/me', route => route.fulfill({ status: 401, json: { error: { code: 'UNAUTHENTICATED' } } }));
+
+  await page.goto(`/undangan/kolaborator/${invitationId}#retry-secret`);
+  await expect(page.getByRole('heading', { name: 'Undangan belum dapat diperiksa' })).toBeVisible();
+  await expect.poll(() => page.url()).not.toContain('retry-secret');
+  expect(page.url()).not.toContain('#');
+  expect(await page.evaluate(() => `${localStorage.length}:${sessionStorage.length}`)).toBe('0:0');
+  expect(resolveBodies.length).toBeGreaterThanOrEqual(1);
+  expect(resolveBodies.every(body => body.invitation_secret === 'retry-secret')).toBe(true);
+  expect(previewRequests).toBe(0);
+
+  retryClicked = true;
+  await page.getByRole('button', { name: 'Coba lagi' }).click();
+  await expect(page.getByRole('button', { name: 'Lanjutkan dengan Google' })).toBeVisible();
+  expect(resolveBodies.length).toBeGreaterThanOrEqual(2);
+  expect(resolveBodies.every(body => body.invitation_secret === 'retry-secret')).toBe(true);
+  expect(previewRequests).toBe(0);
+  expect(page.url()).not.toContain('retry-secret');
+  expect(page.url()).not.toContain('#');
+  expect(await page.evaluate(() => `${localStorage.length}:${sessionStorage.length}`)).toBe('0:0');
+});
+
 test('H17 accept uses the continuation cookie and maps session, mismatch, terminal and rate-limit responses', async ({ page }) => {
   let acceptStatus = 401;
   let acceptCode: string | undefined;
