@@ -13,8 +13,13 @@ import type {
   CollaboratorPermissionPatchRequest,
   ConflictResponse,
   ForbiddenResponse,
+  GetApiV1AlbumsAlbumIdCollaboratorInvitationsParams,
+  GetApiV1AlbumsAlbumIdCollaboratorsParams,
+  GoneResponse,
   InvitationEnvelope,
   InvitationListEnvelope,
+  InvitationPreviewEnvelope,
+  InvitationResolveRequest,
   NotFoundResponse,
   RateLimitedResponse,
   UnauthorizedResponse,
@@ -71,20 +76,29 @@ export type getApiV1AlbumsAlbumIdCollaboratorsResponseError = (getApiV1AlbumsAlb
 
 export type getApiV1AlbumsAlbumIdCollaboratorsResponse = (getApiV1AlbumsAlbumIdCollaboratorsResponseSuccess | getApiV1AlbumsAlbumIdCollaboratorsResponseError)
 
-export const getGetApiV1AlbumsAlbumIdCollaboratorsUrl = (albumId: string,) => {
+export const getGetApiV1AlbumsAlbumIdCollaboratorsUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdCollaboratorsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/albums/${albumId}/collaborators`
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/collaborators?${stringifiedParams}` : `/api/v1/albums/${albumId}/collaborators`
 }
 
 /**
  * @summary List active collaborators.
  */
-export const getApiV1AlbumsAlbumIdCollaborators = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdCollaboratorsResponse> => {
+export const getApiV1AlbumsAlbumIdCollaborators = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdCollaboratorsParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdCollaboratorsResponse> => {
 
-  const res = await fetch(getGetApiV1AlbumsAlbumIdCollaboratorsUrl(albumId),
+  const res = await fetch(getGetApiV1AlbumsAlbumIdCollaboratorsUrl(albumId,params),
   {
       credentials: 'include',
     ...options,
@@ -246,20 +260,29 @@ export type getApiV1AlbumsAlbumIdCollaboratorInvitationsResponseError = (getApiV
 
 export type getApiV1AlbumsAlbumIdCollaboratorInvitationsResponse = (getApiV1AlbumsAlbumIdCollaboratorInvitationsResponseSuccess | getApiV1AlbumsAlbumIdCollaboratorInvitationsResponseError)
 
-export const getGetApiV1AlbumsAlbumIdCollaboratorInvitationsUrl = (albumId: string,) => {
+export const getGetApiV1AlbumsAlbumIdCollaboratorInvitationsUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdCollaboratorInvitationsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/albums/${albumId}/collaborator-invitations`
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/collaborator-invitations?${stringifiedParams}` : `/api/v1/albums/${albumId}/collaborator-invitations`
 }
 
 /**
  * @summary List invitation history/status.
  */
-export const getApiV1AlbumsAlbumIdCollaboratorInvitations = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdCollaboratorInvitationsResponse> => {
+export const getApiV1AlbumsAlbumIdCollaboratorInvitations = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdCollaboratorInvitationsParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdCollaboratorInvitationsResponse> => {
 
-  const res = await fetch(getGetApiV1AlbumsAlbumIdCollaboratorInvitationsUrl(albumId),
+  const res = await fetch(getGetApiV1AlbumsAlbumIdCollaboratorInvitationsUrl(albumId,params),
   {
       credentials: 'include',
     ...options,
@@ -274,6 +297,156 @@ export const getApiV1AlbumsAlbumIdCollaboratorInvitations = async (albumId: stri
 
   const data: getApiV1AlbumsAlbumIdCollaboratorInvitationsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdCollaboratorInvitationsResponse
+}
+
+
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponse200 = {
+  data: InvitationPreviewEnvelope
+  status: 200
+}
+
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponse410 = {
+  data: GoneResponse
+  status: 410
+}
+
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponseSuccess = (postApiV1CollaboratorInvitationsInvitationIdResolveResponse200) & {
+  headers: Headers;
+};
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponseError = (postApiV1CollaboratorInvitationsInvitationIdResolveResponse400 | postApiV1CollaboratorInvitationsInvitationIdResolveResponse404 | postApiV1CollaboratorInvitationsInvitationIdResolveResponse410 | postApiV1CollaboratorInvitationsInvitationIdResolveResponse422 | postApiV1CollaboratorInvitationsInvitationIdResolveResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1CollaboratorInvitationsInvitationIdResolveResponse = (postApiV1CollaboratorInvitationsInvitationIdResolveResponseSuccess | postApiV1CollaboratorInvitationsInvitationIdResolveResponseError)
+
+export const getPostApiV1CollaboratorInvitationsInvitationIdResolveUrl = (invitationId: string,) => {
+
+
+
+
+  return `/api/v1/collaborator-invitations/${invitationId}/resolve`
+}
+
+/**
+ * @summary Resolve a one-time invitation secret and establish short-lived continuation context.
+ */
+export const postApiV1CollaboratorInvitationsInvitationIdResolve = async (invitationId: string,
+    invitationResolveRequest: InvitationResolveRequest, options?: RequestInit): Promise<postApiV1CollaboratorInvitationsInvitationIdResolveResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1CollaboratorInvitationsInvitationIdResolveUrl(invitationId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(invitationResolveRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1CollaboratorInvitationsInvitationIdResolveResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1CollaboratorInvitationsInvitationIdResolveResponse
+}
+
+
+export type getApiV1CollaboratorInvitationsInvitationIdPreviewResponse200 = {
+  data: InvitationPreviewEnvelope
+  status: 200
+}
+
+export type getApiV1CollaboratorInvitationsInvitationIdPreviewResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1CollaboratorInvitationsInvitationIdPreviewResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1CollaboratorInvitationsInvitationIdPreviewResponse410 = {
+  data: GoneResponse
+  status: 410
+}
+
+export type getApiV1CollaboratorInvitationsInvitationIdPreviewResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1CollaboratorInvitationsInvitationIdPreviewResponseSuccess = (getApiV1CollaboratorInvitationsInvitationIdPreviewResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollaboratorInvitationsInvitationIdPreviewResponseError = (getApiV1CollaboratorInvitationsInvitationIdPreviewResponse401 | getApiV1CollaboratorInvitationsInvitationIdPreviewResponse404 | getApiV1CollaboratorInvitationsInvitationIdPreviewResponse410 | getApiV1CollaboratorInvitationsInvitationIdPreviewResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1CollaboratorInvitationsInvitationIdPreviewResponse = (getApiV1CollaboratorInvitationsInvitationIdPreviewResponseSuccess | getApiV1CollaboratorInvitationsInvitationIdPreviewResponseError)
+
+export const getGetApiV1CollaboratorInvitationsInvitationIdPreviewUrl = (invitationId: string,) => {
+
+
+
+
+  return `/api/v1/collaborator-invitations/${invitationId}/preview`
+}
+
+/**
+ * @summary Return current safe invitation preview using the short-lived continuation context.
+ */
+export const getApiV1CollaboratorInvitationsInvitationIdPreview = async (invitationId: string, options?: RequestInit): Promise<getApiV1CollaboratorInvitationsInvitationIdPreviewResponse> => {
+
+  const res = await fetch(getGetApiV1CollaboratorInvitationsInvitationIdPreviewUrl(invitationId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollaboratorInvitationsInvitationIdPreviewResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollaboratorInvitationsInvitationIdPreviewResponse
 }
 
 
@@ -307,6 +480,11 @@ export type postApiV1CollaboratorInvitationsInvitationIdAcceptResponse409 = {
   status: 409
 }
 
+export type postApiV1CollaboratorInvitationsInvitationIdAcceptResponse410 = {
+  data: GoneResponse
+  status: 410
+}
+
 export type postApiV1CollaboratorInvitationsInvitationIdAcceptResponse422 = {
   data: ValidationErrorResponse
   status: 422
@@ -320,7 +498,7 @@ export type postApiV1CollaboratorInvitationsInvitationIdAcceptResponse429 = {
 export type postApiV1CollaboratorInvitationsInvitationIdAcceptResponseSuccess = (postApiV1CollaboratorInvitationsInvitationIdAcceptResponse201) & {
   headers: Headers;
 };
-export type postApiV1CollaboratorInvitationsInvitationIdAcceptResponseError = (postApiV1CollaboratorInvitationsInvitationIdAcceptResponse400 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse401 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse403 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse404 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse409 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse422 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse429) & {
+export type postApiV1CollaboratorInvitationsInvitationIdAcceptResponseError = (postApiV1CollaboratorInvitationsInvitationIdAcceptResponse400 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse401 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse403 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse404 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse409 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse410 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse422 | postApiV1CollaboratorInvitationsInvitationIdAcceptResponse429) & {
   headers: Headers;
 };
 

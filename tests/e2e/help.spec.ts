@@ -18,10 +18,16 @@ test('Help and the 19-step Host guide work in Indonesian and English across view
   await contentsLink.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#siapkan-aturan$/);
-  await expect(page.getByRole('link', { name: /collaborator|admin|kolaborator|superadmin/i })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Panduan kolaborator' })).toHaveAttribute('href', '/help/collaborator');
+  await page.getByRole('link', { name: 'Panduan kolaborator' }).click();
+  await expect(page.getByRole('heading', { name: 'Bekerja bersama dengan akses yang jelas.' })).toBeVisible();
+  await page.goto('/help/host');
   await page.getByRole('combobox', { name: 'Bahasa' }).selectOption('en');
   await expect(page.getByRole('heading', { name: 'From a new album to the final moment.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Edit album settings' })).toBeVisible();
+  await page.getByRole('link', { name: 'Collaborator guide' }).click();
+  await expect(page.getByRole('heading', { name: 'Work together with clear access.' })).toBeVisible();
+  await page.goto('/help/host');
   await page.getByRole('button', { name: 'Switch to dark theme' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.emulateMedia({ reducedMotion: 'reduce' });

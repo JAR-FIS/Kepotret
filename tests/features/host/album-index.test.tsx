@@ -18,6 +18,7 @@ const draft: AlbumSummary = {
   album_id: '11111111-1111-4111-8111-111111111111',
   readiness: 'DRAFT', capture_state: 'NOT_STARTED', reveal_state: 'HIDDEN', setup_revision: 1, schedule_version: 0,
   event_name: null, timezone: 'Asia/Jakarta', capture_start: null, capture_end: null, guest_count_final: null, quota_total: null, committed_count: null,
+  actor_access: { relationship: 'OWNER', permission_version: 0, collaborator_permissions: null },
 };
 const readyAlbum: AlbumDetail = {
   ...draft, event_location: null, event_category_id: null, selected_package_version_id: null, readiness: 'READY', access_version: 1, export_revision: 1,
@@ -147,7 +148,7 @@ describe('FE-3 Host album surfaces', () => {
   });
 
   it('submits collaborator permissions as independent contract flags without billing access', async () => {
-    const invitation: InvitationSummary = { invitation_id: '22222222-2222-4222-8222-222222222222', email: 'planner@example.com', expires_at: '2026-10-01T00:00:00Z', permissions: { can_setup: true, can_moderate: false, can_export_zip: true } };
+    const invitation: InvitationSummary = { invitation_id: '22222222-2222-4222-8222-222222222222', email: 'planner@example.com', status: 'PENDING', created_at: '2026-09-27T00:00:00Z', expires_at: '2026-10-01T00:00:00Z', accepted_at: null, revoked_at: null, permissions: { can_setup: true, can_moderate: false, can_export_zip: true } };
     getInvitations.mockResolvedValue({ status: 200, data: { data: [], meta: { has_more: false } } });
     getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
     createInvitation.mockResolvedValue({ status: 201, data: { data: invitation } });
@@ -156,7 +157,7 @@ describe('FE-3 Host album surfaces', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Setup album' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Ekspor ZIP' }));
     fireEvent.click(screen.getByRole('button', { name: 'Buat undangan' }));
-    await waitFor(() => expect(createInvitation).toHaveBeenCalledWith(draft.album_id, { email: invitation.email, can_setup: true, can_moderate: false, can_export_zip: true }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+    await waitFor(() => expect(createInvitation).toHaveBeenCalledWith(draft.album_id, { email: invitation.email, can_setup: true, can_moderate: false, can_export_zip: true }, { headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf', 'Idempotency-Key': expect.any(String) }) }));
     expect(await screen.findByText(invitation.email)).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /billing|payment|pembayaran/i })).not.toBeInTheDocument();
   });

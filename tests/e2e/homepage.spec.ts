@@ -70,10 +70,45 @@ test('ordinary auth and system routes use their defined recovery surfaces', asyn
   await expect(page.getByRole('status')).toBeVisible();
   await page.goto('/masuk/gagal');
   await expect(page.getByRole('heading', { name: 'Belum berhasil masuk' })).toBeVisible();
-  await page.goto('/undangan/kolaborator/11111111-1111-4111-8111-111111111111');
-  await expect(page.getByRole('button', { name: 'Terima undangan' })).toBeVisible();
+  const invitationId = '11111111-1111-4111-8111-111111111111';
+  await page.route(`**/api/v1/collaborator-invitations/${invitationId}/resolve`, route => route.fulfill({ status: 200, json: { data: { invitation_id: invitationId, album_id: '22222222-2222-4222-8222-222222222222', event_name: 'Test Event', permissions: { can_setup: true, can_moderate: false, can_export_zip: false }, expires_at: '2026-10-01T00:00:00Z', status: 'PENDING', invited_email_hint: 'pl***@example.com' } } }));
+  await page.route('**/api/v1/auth/me', route => route.fulfill({ status: 401, json: { error: { code: 'UNAUTHENTICATED' } } }));
+  await page.route('**/api/v1/auth/google/start**', route => {
+    const requestUrl = new URL(route.request().url());
+    expect(requestUrl.searchParams.get('return_to')).toBe(`/undangan/kolaborator/${invitationId}`);
+    return route.fulfill({ status: 200, json: { data: { redirect_url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test' } } });
+  });
+  await page.route('https://accounts.google.com/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Google sign-in stub</title>' }));
+  await page.goto(`/undangan/kolaborator/${invitationId}#one-time-secret`);
+  await expect(page.getByRole('button', { name: 'Lanjutkan dengan Google' })).toBeVisible();
+  await expect(page).toHaveURL(`/undangan/kolaborator/${invitationId}`);
   await page.goto('/akses-ditolak');
   await expect(page.getByRole('heading', { name: 'Akses tidak tersedia' })).toBeVisible();
   await page.goto('/not-a-fe2-route');
   await expect(page.getByRole('heading', { name: 'Halaman tidak ditemukan' })).toBeVisible();
+});
+
+test('H17 resolves the fragment secret in the POST body and keeps it out of return paths and storage', async ({ page }) => {
+  const invitationId = '11111111-1111-4111-8111-111111111111';
+  let resolveBody: unknown;
+  await page.route(`**/api/v1/collaborator-invitations/${invitationId}/resolve`, async route => {
+    resolveBody = route.request().postDataJSON();
+    return route.fulfill({ status: 200, json: { data: { invitation_id: invitationId, album_id: '22222222-2222-4222-8222-222222222222', event_name: 'Test Event', permissions: { can_setup: true, can_moderate: false, can_export_zip: false }, expires_at: '2026-10-01T00:00:00Z', status: 'PENDING', invited_email_hint: 'pl***@example.com' } } });
+  });
+  await page.route('**/api/v1/auth/me', route => route.fulfill({ status: 401, json: { error: { code: 'UNAUTHENTICATED' } } }));
+  await page.route('**/api/v1/auth/google/start**', route => {
+    const requestUrl = new URL(route.request().url());
+    expect(requestUrl.searchParams.get('return_to')).toBe(`/undangan/kolaborator/${invitationId}`);
+    return route.fulfill({ status: 200, json: { data: { redirect_url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test' } } });
+  });
+  await page.route('https://accounts.google.com/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Google sign-in stub</title>' }));
+  await page.goto(`/undangan/kolaborator/${invitationId}#one-time-secret`);
+  await expect(page.getByRole('button', { name: 'Lanjutkan dengan Google' })).toBeVisible();
+  await expect(page).toHaveURL(`/undangan/kolaborator/${invitationId}`);
+  expect(resolveBody).toEqual({ invitation_secret: 'one-time-secret' });
+  await expect(page.getByText(/undangan.*tidak disimpan di alamat masuk/i)).toBeVisible();
+  expect(await page.evaluate(() => `${localStorage.length}:${sessionStorage.length}`)).toBe('0:0');
+  await page.getByRole('button', { name: 'Lanjutkan dengan Google' }).click();
+  await expect(page).toHaveURL(/https:\/\/accounts\.google\.com/);
+  expect(page.url()).not.toContain('one-time-secret');
 });

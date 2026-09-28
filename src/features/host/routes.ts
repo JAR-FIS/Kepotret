@@ -1,6 +1,8 @@
 export const hostRoutes = {
   dashboard: '/dashboard',
   albums: '/album',
+  collaborations: '/kolaborasi',
+  assignedAlbums: '/kolaborasi/album',
   createAlbum: '/album/baru',
   album: (albumId: string) => `/album/${encodeURIComponent(albumId)}`,
   setup: (albumId: string, step: string) =>
@@ -22,6 +24,9 @@ export const hostRoutes = {
   lifecycle: (albumId: string) => `/album/${encodeURIComponent(albumId)}/retensi`,
   recovery: (albumId: string) => `/album/${encodeURIComponent(albumId)}/pemulihan`,
   recoveryMedia: (albumId: string) => `/album/${encodeURIComponent(albumId)}/pemulihan/media`,
+  collaborators: (albumId: string) => `/album/${encodeURIComponent(albumId)}/kolaborator`,
+  invitations: (albumId: string) => `/album/${encodeURIComponent(albumId)}/kolaborator/undangan`,
+  permissions: (albumId: string) => `/album/${encodeURIComponent(albumId)}/izin`,
 } as const;
 
 export const setupSteps = [

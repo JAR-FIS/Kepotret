@@ -14,7 +14,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     reveal_state: 'HIDDEN', setup_revision: 1, schedule_version: 0, access_version: 0,
     export_revision: 0, confirmed_setup_revision: null, confirmed_schedule_version: null,
     confirmed_package_version_id: null, setup_confirmed_at: null, guest_count_final: null,
-    quota_total: null, committed_count: null,
+    quota_total: null, committed_count: null, actor_access: { relationship: 'OWNER', permission_version: 0, collaborator_permissions: null },
   };
   const albumList: AlbumListEnvelope = { data: [], meta: { next_cursor: null, has_more: false } };
   let schedule: AlbumSchedule = {
@@ -166,6 +166,7 @@ test('Confirm Setup reuses its UUIDv7 for a revision retry and changes it for a 
       selected_package_version_id: null, collaborator_count: 0,
     },
   } });
+  await page.route(`**/api/v1/albums/${albumId}`, route => route.fulfill({ status: 200, json: { data: { actor_access: { relationship: 'OWNER', permission_version: 0, collaborator_permissions: null } } } }));
   await page.route(`**/api/v1/albums/${albumId}/review`, route => route.fulfill({ status: 200, json: review() }));
   await page.route('**/api/v1/security/csrf', route => route.fulfill({ status: 200, json: { data: { csrf_token: 'test-csrf' } } }));
   await page.route(`**/api/v1/albums/${albumId}/confirm-setup`, route => {

@@ -9,6 +9,7 @@ import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { getApiV1AlbumsAlbumIdCollaboratorInvitations, getApiV1SecurityCsrf, postApiV1AlbumsAlbumIdCollaboratorInvitations } from '@/lib/api/browser';
 import type { CollaboratorPermissions, InvitationSummary } from '@/lib/api/generated/index.schemas';
+import { intentKey } from '@/features/host/lib/intent-key';
 
 export function CollaboratorSetup({ albumId }: { albumId: string }) {
   const t = useTranslations('host.collaborators');
@@ -45,8 +46,11 @@ export function CollaboratorSetup({ albumId }: { albumId: string }) {
         else setMessage(t('error'));
         return;
       }
-      const result = await postApiV1AlbumsAlbumIdCollaboratorInvitations(albumId, { email: email.trim(), ...permissions }, { headers: { 'X-CSRF-Token': csrf.data.data.csrf_token } });
+      const request = { email: email.trim().toLowerCase(), ...permissions };
+      const keySlot = `collaborator-invite:${albumId}`;
+      const result = await postApiV1AlbumsAlbumIdCollaboratorInvitations(albumId, request, { headers: { 'X-CSRF-Token': csrf.data.data.csrf_token, 'Idempotency-Key': intentKey(keySlot, JSON.stringify(request)) } });
       if (result.status === 201) {
+        sessionStorage.removeItem(`kepotret:${keySlot}`);
         setInvitations((items) => [result.data.data, ...items]);
         setEmail('');
         setMessage(t('created'));

@@ -35,6 +35,36 @@ export const AlbumReadiness = {
 } as const;
 
 /**
+ * Current server-derived relationship between the authenticated User and one album.
+ */
+export type AlbumActorRelationship = typeof AlbumActorRelationship[keyof typeof AlbumActorRelationship];
+
+
+export const AlbumActorRelationship = {
+  OWNER: 'OWNER',
+  COLLABORATOR: 'COLLABORATOR',
+} as const;
+
+export interface CollaboratorPermissions {
+  can_setup: boolean;
+  can_moderate: boolean;
+  can_export_zip: boolean;
+}
+
+/**
+ * Current relationship and collaborator permission snapshot. Server recalculates from current membership on each authorized request; rendered access never freezes authorization. OWNER has null collaborator_permissions and permission_version. COLLABORATOR requires both values; Owner rights are not represented as collaborator flags.
+ */
+export interface AlbumActorAccess {
+  relationship: AlbumActorRelationship;
+  collaborator_permissions: CollaboratorPermissions | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  permission_version: number | null;
+}
+
+/**
  * Normalized status exposed to ordinary Host payment surfaces.
  */
 export type PaymentPublicStatus = typeof PaymentPublicStatus[keyof typeof PaymentPublicStatus];
@@ -342,6 +372,7 @@ export interface CaptureReadiness {
 
 export interface AlbumSummary {
   album_id: string;
+  actor_access: AlbumActorAccess;
   readiness: AlbumReadiness;
   capture_state: CaptureState;
   reveal_state: RevealState;
@@ -371,6 +402,7 @@ export interface AlbumSummary {
 
 export interface AlbumDetail {
   album_id: string;
+  actor_access: AlbumActorAccess;
   /** @nullable */
   event_name: string | null;
   /** @nullable */
@@ -535,23 +567,52 @@ export interface SetupReview {
   snapshot: SetupReviewSnapshot;
 }
 
-export interface CollaboratorPermissions {
-  can_setup: boolean;
-  can_moderate: boolean;
-  can_export_zip: boolean;
-}
+export type InvitationStatus = typeof InvitationStatus[keyof typeof InvitationStatus];
+
+
+export const InvitationStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REVOKED: 'REVOKED',
+  EXPIRED: 'EXPIRED',
+} as const;
 
 export interface CollaboratorSummary {
   user_id: string;
+  /** @nullable */
+  display_name: string | null;
+  email: string;
   permission_version: number;
   permissions: CollaboratorPermissions;
+  joined_at: string;
 }
 
 export interface InvitationSummary {
   invitation_id: string;
   email: string;
   permissions: CollaboratorPermissions;
+  status: InvitationStatus;
+  created_at: string;
   expires_at: string;
+  /** @nullable */
+  accepted_at: string | null;
+  /** @nullable */
+  revoked_at: string | null;
+}
+
+/**
+ * Minimal safe context after invitation-secret proof or through its short-lived continuation. Email is masked and the raw secret is never returned.
+ */
+export interface InvitationPreview {
+  invitation_id: string;
+  album_id: string;
+  /** @nullable */
+  event_name: string | null;
+  permissions: CollaboratorPermissions;
+  expires_at: string;
+  status: InvitationStatus;
+  /** @nullable */
+  invited_email_hint: string | null;
 }
 
 export type CaptureAttemptStatus = typeof CaptureAttemptStatus[keyof typeof CaptureAttemptStatus];
@@ -1100,7 +1161,17 @@ export interface CollaboratorInvitationCreateRequest {
   can_export_zip: boolean;
 }
 
+export interface InvitationResolveRequest {
+  /**
+     * @minLength 32
+     * @maxLength 2048
+     */
+  invitation_secret: string;
+}
+
 export interface CollaboratorPermissionPatchRequest {
+  /** @minimum 0 */
+  expected_permission_version: number;
   can_setup: boolean;
   can_moderate: boolean;
   can_export_zip: boolean;
@@ -1252,6 +1323,10 @@ export interface CollaboratorEnvelope {
 
 export interface InvitationEnvelope {
   data: InvitationSummary;
+}
+
+export interface InvitationPreviewEnvelope {
+  data: InvitationPreview;
 }
 
 export interface CaptureAttemptEnvelope {
@@ -1538,6 +1613,62 @@ export type IdempotencyKeyParameter = string;
  * Required for state-changing browser-cookie requests.
  */
 export type CsrfTokenParameter = string;
+
+export type GetApiV1AuthGoogleStartParams = {
+/**
+ * Allowlisted frontend-relative return path. Never include invitation secrets or OAuth credentials.
+ * @minLength 1
+ * @maxLength 512
+ * @pattern ^/(?!/)[^#]*$
+ */
+return_to?: string;
+};
+
+export type GetApiV1AlbumsParams = {
+/**
+ * Server-side album relationship filter for the current User. Omit to list both relationships.
+ */
+relationship?: AlbumActorRelationship;
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AlbumsAlbumIdCollaboratorsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
+
+export type GetApiV1AlbumsAlbumIdCollaboratorInvitationsParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * Maximum page size; defaults to 25 and is capped at 100.
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: LimitParameter;
+};
 
 export type GetApiV1GuestGalleryPhotosParams = {
 sort?: GetApiV1GuestGalleryPhotosSort;

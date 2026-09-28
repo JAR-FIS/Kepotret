@@ -42,6 +42,7 @@ const album: AlbumDetail = {
   readiness: 'DRAFT', capture_state: 'NOT_STARTED', reveal_state: 'HIDDEN', setup_revision: 4, schedule_version: 0,
   access_version: 0, export_revision: 0, confirmed_setup_revision: null, confirmed_schedule_version: null,
   confirmed_package_version_id: null, setup_confirmed_at: null, guest_count_final: null, quota_total: 30, committed_count: 0,
+  actor_access: { relationship: 'OWNER', permission_version: 0, collaborator_permissions: null },
 };
 
 const schedule: AlbumSchedule = {

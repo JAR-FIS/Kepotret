@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { getApiV1AuthGoogleStart } from '@/lib/api/browser';
 import { getContent, type Locale } from '@/features/marketing/content';
 
-export function GoogleSignInButton({ locale }: { locale: Locale }) {
+export function GoogleSignInButton({ locale, returnTo }: { locale: Locale; returnTo?: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const copy = getContent(locale).auth;
@@ -18,7 +18,7 @@ export function GoogleSignInButton({ locale }: { locale: Locale }) {
     setPending(true);
     router.push('/auth/google/memproses');
     try {
-      const response = await getApiV1AuthGoogleStart();
+      const response = await getApiV1AuthGoogleStart(returnTo ? { return_to: returnTo } : undefined);
       if (response.status !== 200) throw new Error('Google sign-in could not start');
       const target = new URL(response.data.data.redirect_url);
       if (target.protocol !== 'https:' || target.hostname !== 'accounts.google.com') {

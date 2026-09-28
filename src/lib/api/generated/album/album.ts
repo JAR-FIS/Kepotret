@@ -18,6 +18,7 @@ import type {
   ConflictResponse,
   EmptyDataEnvelope,
   ForbiddenResponse,
+  GetApiV1AlbumsParams,
   NotFoundResponse,
   PinSetRequest,
   RateLimitedResponse,
@@ -174,20 +175,27 @@ export type getApiV1AlbumsResponseError = (getApiV1AlbumsResponse400 | getApiV1A
 
 export type getApiV1AlbumsResponse = (getApiV1AlbumsResponseSuccess | getApiV1AlbumsResponseError)
 
-export const getGetApiV1AlbumsUrl = () => {
+export const getGetApiV1AlbumsUrl = (params?: GetApiV1AlbumsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/albums`
+  return stringifiedParams.length > 0 ? `/api/v1/albums?${stringifiedParams}` : `/api/v1/albums`
 }
 
 /**
  * @summary Cursor list of owned/collaborated albums.
  */
-export const getApiV1Albums = async ( options?: RequestInit): Promise<getApiV1AlbumsResponse> => {
+export const getApiV1Albums = async (params?: GetApiV1AlbumsParams, options?: RequestInit): Promise<getApiV1AlbumsResponse> => {
 
-  const res = await fetch(getGetApiV1AlbumsUrl(),
+  const res = await fetch(getGetApiV1AlbumsUrl(params),
   {
       credentials: 'include',
     ...options,
