@@ -9,8 +9,11 @@ import type {
   AdminLoginRequest,
   AdminMfaVerifyRequest,
   AdminSessionEnvelope,
+  AdminStepUpEnvelope,
+  AdminStepUpRequest,
   BadRequestResponse,
   ConflictResponse,
+  CsrfEnvelope,
   EmptyDataEnvelope,
   ForbiddenResponse,
   NotFoundResponse,
@@ -365,6 +368,155 @@ export const postApiV1AdminAuthLogout = async ( options?: RequestInit): Promise<
 
   const data: postApiV1AdminAuthLogoutResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1AdminAuthLogoutResponse
+}
+
+
+export type getApiV1AdminSecurityCsrfResponse200 = {
+  data: CsrfEnvelope
+  status: 200
+}
+
+export type getApiV1AdminSecurityCsrfResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getApiV1AdminSecurityCsrfResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AdminSecurityCsrfResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1AdminSecurityCsrfResponseSuccess = (getApiV1AdminSecurityCsrfResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AdminSecurityCsrfResponseError = (getApiV1AdminSecurityCsrfResponse400 | getApiV1AdminSecurityCsrfResponse403 | getApiV1AdminSecurityCsrfResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1AdminSecurityCsrfResponse = (getApiV1AdminSecurityCsrfResponseSuccess | getApiV1AdminSecurityCsrfResponseError)
+
+export const getGetApiV1AdminSecurityCsrfUrl = () => {
+
+
+
+
+  return `/api/v1/admin/security/csrf`
+}
+
+/**
+ * @summary Issue a browser-visible Admin CSRF token bound to the current admin auth lifecycle context.
+ */
+export const getApiV1AdminSecurityCsrf = async ( options?: RequestInit): Promise<getApiV1AdminSecurityCsrfResponse> => {
+
+  const res = await fetch(getGetApiV1AdminSecurityCsrfUrl(),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AdminSecurityCsrfResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminSecurityCsrfResponse
+}
+
+
+export type postApiV1AdminAuthStepUpResponse200 = {
+  data: AdminStepUpEnvelope
+  status: 200
+}
+
+export type postApiV1AdminAuthStepUpResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type postApiV1AdminAuthStepUpResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type postApiV1AdminAuthStepUpResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type postApiV1AdminAuthStepUpResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type postApiV1AdminAuthStepUpResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type postApiV1AdminAuthStepUpResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type postApiV1AdminAuthStepUpResponseSuccess = (postApiV1AdminAuthStepUpResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AdminAuthStepUpResponseError = (postApiV1AdminAuthStepUpResponse400 | postApiV1AdminAuthStepUpResponse401 | postApiV1AdminAuthStepUpResponse403 | postApiV1AdminAuthStepUpResponse409 | postApiV1AdminAuthStepUpResponse422 | postApiV1AdminAuthStepUpResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1AdminAuthStepUpResponse = (postApiV1AdminAuthStepUpResponseSuccess | postApiV1AdminAuthStepUpResponseError)
+
+export const getPostApiV1AdminAuthStepUpUrl = () => {
+
+
+
+
+  return `/api/v1/admin/auth/step-up`
+}
+
+/**
+ * @summary Verify TOTP for short-lived step-up bound to the current AdminSession.
+ */
+export const postApiV1AdminAuthStepUp = async (adminStepUpRequest: AdminStepUpRequest, options?: RequestInit): Promise<postApiV1AdminAuthStepUpResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AdminAuthStepUpUrl(),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminStepUpRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AdminAuthStepUpResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AdminAuthStepUpResponse
 }
 
 

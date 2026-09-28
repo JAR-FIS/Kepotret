@@ -5,10 +5,6 @@
  * remain isolated under generated/internal and must not be used by browser
  * feature code.
  */
-export * from './generated/admin/admin';
-export * from './generated/admin-auth/admin-auth';
-export * from './generated/admin-hold/admin-hold';
-export * from './generated/admin-sensitive/admin-sensitive';
 export * from './generated/ai/ai';
 export * from './generated/album/album';
 export * from './generated/auth/auth';

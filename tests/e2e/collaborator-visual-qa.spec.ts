@@ -13,6 +13,8 @@ const collaborator = { user_id: '33333333-3333-4333-8333-333333333333', display_
 const invitation = (status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED', index: number) => ({ invitation_id: `${index + 1}3333333-3333-4333-8333-333333333333`, email: 'a-very-long-invitation-address-for-visual-wrapping-checks@example-events-organizer.com', permissions: { can_setup: true, can_moderate: false, can_export_zip: true }, status, created_at: '2026-09-01T00:00:00Z', expires_at: '2026-10-01T00:00:00Z', accepted_at: status === 'ACCEPTED' ? '2026-09-02T00:00:00Z' : null, revoked_at: status === 'REVOKED' ? '2026-09-03T00:00:00Z' : null });
 
 test('FE-7 surfaces fit required widths in both locales and themes', async ({ page, context }) => {
+  // This full visual sweep visits each surface in both locales and can exceed the default timeout under suite concurrency.
+  test.setTimeout(90_000);
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url());
     const path = url.pathname;

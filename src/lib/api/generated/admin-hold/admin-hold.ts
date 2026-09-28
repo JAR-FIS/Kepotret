@@ -12,10 +12,81 @@ import type {
   ForbiddenResponse,
   NotFoundResponse,
   OperationalHoldEnvelope,
+  OperationalHoldStateEnvelope,
   RateLimitedResponse,
   UnauthorizedResponse,
   ValidationErrorResponse
 } from '../index.schemas';
+
+
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponse200 = {
+  data: OperationalHoldStateEnvelope
+  status: 200
+}
+
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponseSuccess = (getApiV1AdminAlbumsAlbumIdOperationalHoldResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponseError = (getApiV1AdminAlbumsAlbumIdOperationalHoldResponse400 | getApiV1AdminAlbumsAlbumIdOperationalHoldResponse401 | getApiV1AdminAlbumsAlbumIdOperationalHoldResponse403 | getApiV1AdminAlbumsAlbumIdOperationalHoldResponse404 | getApiV1AdminAlbumsAlbumIdOperationalHoldResponse429) & {
+  headers: Headers;
+};
+
+export type getApiV1AdminAlbumsAlbumIdOperationalHoldResponse = (getApiV1AdminAlbumsAlbumIdOperationalHoldResponseSuccess | getApiV1AdminAlbumsAlbumIdOperationalHoldResponseError)
+
+export const getGetApiV1AdminAlbumsAlbumIdOperationalHoldUrl = (albumId: string,) => {
+
+
+
+
+  return `/api/v1/admin/albums/${albumId}/operational-hold`
+}
+
+/**
+ * @summary Return the authoritative active or inactive hold state for an album.
+ */
+export const getApiV1AdminAlbumsAlbumIdOperationalHold = async (albumId: string, options?: RequestInit): Promise<getApiV1AdminAlbumsAlbumIdOperationalHoldResponse> => {
+
+  const res = await fetch(getGetApiV1AdminAlbumsAlbumIdOperationalHoldUrl(albumId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AdminAlbumsAlbumIdOperationalHoldResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminAlbumsAlbumIdOperationalHoldResponse
+}
 
 
 export type postApiV1AdminAlbumsAlbumIdOperationalHoldResponse200 = {
@@ -171,17 +242,32 @@ export const getDeleteApiV1AdminAlbumsAlbumIdOperationalHoldUrl = (albumId: stri
 }
 
 /**
- * @summary Release hold; normal current schedule/lifecycle still governs.
+ * @summary Release hold with reason; normal current schedule/lifecycle still governs.
  */
-export const deleteApiV1AdminAlbumsAlbumIdOperationalHold = async (albumId: string, options?: RequestInit): Promise<deleteApiV1AdminAlbumsAlbumIdOperationalHoldResponse> => {
+export const deleteApiV1AdminAlbumsAlbumIdOperationalHold = async (albumId: string,
+    adminReasonRequest: AdminReasonRequest, options?: RequestInit): Promise<deleteApiV1AdminAlbumsAlbumIdOperationalHoldResponse> => {
 
-  const res = await fetch(getDeleteApiV1AdminAlbumsAlbumIdOperationalHoldUrl(albumId),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getDeleteApiV1AdminAlbumsAlbumIdOperationalHoldUrl(albumId),
   {
       credentials: 'include',
     ...options,
-    method: 'DELETE'
-
-
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminReasonRequest)
   }
 )
 
