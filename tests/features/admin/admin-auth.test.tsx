@@ -1,9 +1,9 @@
+import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { replace, csrf, login } = vi.hoisted(() => ({ replace: vi.fn(), csrf: vi.fn(), login: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace, push: vi.fn() }) }));
-vi.mock('next-intl', () => ({ useLocale: () => 'en' }));
 vi.mock('@/components/ui/locale-control', () => ({ LocaleControl: () => null }));
 vi.mock('@/components/ui/theme-toggle', () => ({ ThemeToggle: () => null }));
 vi.mock('@/lib/api/admin-browser', () => ({
@@ -12,6 +12,7 @@ vi.mock('@/lib/api/admin-browser', () => ({
 }));
 
 import { AdminLogin } from '@/features/admin/auth';
+import enMessages from '@/messages/en.json';
 
 describe('FE-8 Admin authentication boundary', () => {
   beforeEach(() => {
@@ -22,7 +23,7 @@ describe('FE-8 Admin authentication boundary', () => {
 
   it('uses Admin CSRF, sends credentials without persisting them, and sends a 202 challenge to MFA', async () => {
     login.mockResolvedValue({ status: 202, data: {} });
-    render(<AdminLogin />);
+    render(<NextIntlClientProvider locale="en" messages={enMessages}><AdminLogin /></NextIntlClientProvider>);
     expect(screen.queryByRole('button', { name: /google|sign up|forgot/i })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'admin@example.test' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'temporary-password' } });
@@ -40,7 +41,7 @@ describe('FE-8 Admin authentication boundary', () => {
 
   it('uses generic credential failure copy', async () => {
     login.mockResolvedValue({ status: 401, data: {} });
-    render(<AdminLogin />);
+    render(<NextIntlClientProvider locale="en" messages={enMessages}><AdminLogin /></NextIntlClientProvider>);
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'unknown@example.test' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong-password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue to MFA verification' }));

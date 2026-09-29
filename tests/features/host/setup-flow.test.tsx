@@ -55,7 +55,7 @@ const completeReview: SetupReviewData = {
   album_id: albumId, setup_revision: 7, complete: true, issues: [], snapshot: {
     event_basics: { event_name: 'Test event', event_location: 'Test venue', event_category_id: category.category_id, timezone: 'Asia/Jakarta' },
     schedule, access: { pin_enabled: false }, settings: { per_guest_limit: 10 },
-    design: { cover_asset_id: null, setup_revision: 7 }, selected_package_version_id: null, collaborator_count: 0,
+    design: { cover_asset_id: null, cover_preview: null, setup_revision: 7 }, selected_package_version_id: null, collaborator_count: 0,
   },
 };
 
@@ -69,7 +69,7 @@ describe('FE-3 setup flow contract surfaces', () => {
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: album } });
     api.getCategories.mockResolvedValue({ status: 200, data: { data: [category], meta: { next_cursor: null, has_more: false } } });
     api.getSchedule.mockResolvedValue({ status: 404, data: {} });
-    api.getDesign.mockResolvedValue({ status: 200, data: { data: { cover_asset_id: null, setup_revision: 4 } } });
+    api.getDesign.mockResolvedValue({ status: 200, data: { data: { cover_asset_id: null, cover_preview: null, setup_revision: 4 } } });
     api.getPackages.mockResolvedValue({ status: 200, data: { data: [packageOption], meta: { next_cursor: null, has_more: false } } });
     api.getReview.mockResolvedValue({ status: 200, data: { data: completeReview } });
     api.getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
@@ -174,11 +174,11 @@ describe('FE-3 setup flow contract surfaces', () => {
   });
 
   it('rehydrates committed design state and allows clearing the supported cover selection', async () => {
-    const cover: AlbumDesign = { cover_asset_id: '55555555-5555-4555-8555-555555555555', setup_revision: 4 };
-    api.getDesign.mockResolvedValueOnce({ status: 200, data: { data: cover } }).mockResolvedValueOnce({ status: 200, data: { data: { cover_asset_id: null, setup_revision: 5 } } });
+    const cover: AlbumDesign = { cover_asset_id: '55555555-5555-4555-8555-555555555555', cover_preview: null, setup_revision: 4 };
+    api.getDesign.mockResolvedValueOnce({ status: 200, data: { data: cover } }).mockResolvedValueOnce({ status: 200, data: { data: cover } }).mockResolvedValueOnce({ status: 200, data: { data: { cover_asset_id: null, cover_preview: null, setup_revision: 5 } } });
     api.patchDesign.mockResolvedValue({ status: 200, data: { data: album } });
     renderHost(<DesignSetup albumId={albumId} />);
-    expect(await screen.findByText(cover.cover_asset_id!)).toBeInTheDocument();
+    expect(await screen.findByText('Sampul telah dipilih.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Hapus pilihan sampul' }));
     await waitFor(() => expect(api.patchDesign).toHaveBeenCalledWith(albumId, { expected_revision: 4, cover_asset_id: null }, { headers: { 'X-CSRF-Token': 'csrf' } }));
     expect(await screen.findByText('Pilihan sampul diperbarui.')).toBeInTheDocument();

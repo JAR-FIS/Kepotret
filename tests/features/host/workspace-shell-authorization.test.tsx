@@ -53,7 +53,7 @@ describe('FE-7 server-projected workspace capabilities', () => {
     await screen.findByText('workspace child');
     const galleryAnchor = document.querySelector(`a[href="/album/${albumId}/galeri"]`);
     const permissionAnchor = document.querySelector(`a[href="/album/${albumId}/izin"]`);
-    expect(gallery ? galleryAnchor : permissionAnchor).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector(gallery ? `a[href="/album/${albumId}/galeri"]` : `a[href="/album/${albumId}/izin"]`)).toBeInTheDocument());
     expect(gallery ? permissionAnchor : galleryAnchor).not.toBeInTheDocument();
     clickMenu('Lainnya');
     const menu = screen.getAllByRole('menu')[0]!;
