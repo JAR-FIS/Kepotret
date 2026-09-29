@@ -13,6 +13,7 @@ import { getApiV1AlbumsAlbumId } from '@/lib/api/browser';
 import type { AlbumDetail } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
 import { AlbumStatus, albumStatusKey } from '@/features/host/components/album-status';
+import { LiveEventDashboard } from '@/features/host/components/live-event-dashboard';
 
 export function AlbumOverview({ albumId }: { albumId: string }) {
   const t = useTranslations('host');
@@ -37,6 +38,7 @@ export function AlbumOverview({ albumId }: { albumId: string }) {
   if (state === 'unauthenticated') return <ReauthState title={t('reauthTitle')} description={t('reauthDescription')} action={<Link href="/masuk-ulang" className="underline">{t('reauthTitle')}</Link>} />;
   if (state === 'forbidden') return <ForbiddenState title={t('forbiddenTitle')} description={t('forbiddenDescription')} />;
   if (state === 'error' || !album) return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={t('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
+  if (album.capture_state === 'OPEN') return <LiveEventDashboard albumId={albumId} />;
 
   const summary = album;
   const isOwner = album.actor_access.relationship === 'OWNER';
@@ -50,7 +52,7 @@ export function AlbumOverview({ albumId }: { albumId: string }) {
       <p className="mt-4 text-xl font-semibold">{album.event_name ?? t('detail.eventNameMissing')}</p>
       {album.event_location && <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('detail.location')}: {album.event_location}</p>}
       <p className="mt-4 text-xs text-[var(--color-muted-foreground)]">{t('detail.id')}</p><p className="mt-1 break-all font-mono text-sm">{album.album_id}</p>
-      <div className="mt-6 border-t border-[var(--color-border)] pt-5"><p className="text-sm font-semibold">{album.capture_state === 'OPEN' ? t('detail.captureOpen') : album.capture_state === 'CLOSED' ? t('detail.captureClosed') : t('detail.notStarted')}</p></div>
+      <div className="mt-6 border-t border-[var(--color-border)] pt-5"><p className="text-sm font-semibold">{album.capture_state === 'CLOSED' ? t('detail.captureClosed') : t('detail.notStarted')}</p></div>
       {album.capture_start && album.capture_end && <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{formatTime(album.capture_start)} – {formatTime(album.capture_end)} ({album.timezone})</p>}
       {isOwner && album.quota_total !== null && album.committed_count !== null && <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t('albums.quota', { committed: album.committed_count, quota: album.quota_total })}</p>}
     </section>

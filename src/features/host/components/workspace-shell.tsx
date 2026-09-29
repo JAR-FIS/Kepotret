@@ -125,14 +125,21 @@ function WorkspaceNavigation({
   const canModerate = actorAccess?.relationship === 'COLLABORATOR' && !!actorAccess.collaborator_permissions?.can_moderate;
   const canSetup = actorAccess?.relationship === 'COLLABORATOR' && !!actorAccess.collaborator_permissions?.can_setup && albumReadiness === 'DRAFT';
   const canExport = actorAccess?.relationship === 'COLLABORATOR' && !!actorAccess.collaborator_permissions?.can_export_zip;
+  const canViewActivity = isOwner || (actorAccess?.relationship === 'COLLABORATOR' && !!actorAccess.collaborator_permissions && Object.values(actorAccess.collaborator_permissions).some(Boolean));
   const manageItems = isOwner ? [
+    { href: hostRoutes.settings(albumId), label: t('navItems.albumSettings') },
+    { href: hostRoutes.design(albumId), label: t('navItems.design') },
+    { href: hostRoutes.guestPreview(albumId), label: t('navItems.guestPreview') },
+    ...(canViewActivity ? [{ href: hostRoutes.activity(albumId), label: t('navItems.activity') }] : []),
     { href: hostRoutes.gallery(albumId), label: t('navItems.gallerySettings') },
     { href: hostRoutes.reschedule(albumId), label: t('navItems.reschedule') },
     { href: hostRoutes.lifecycle(albumId), label: t('navItems.lifecycle') },
     { href: hostRoutes.recovery(albumId), label: t('navItems.recovery') },
     { href: hostRoutes.recoveryMedia(albumId), label: t('navItems.recoveryMedia') },
   ] : [
+    ...(canViewActivity ? [{ href: hostRoutes.activity(albumId), label: t('navItems.activity') }] : []),
     ...(canModerate ? [{ href: hostRoutes.gallery(albumId), label: t('navItems.gallerySettings') }] : []),
+    ...(canSetup ? [{ href: hostRoutes.settings(albumId), label: t('navItems.albumSettings') }, { href: hostRoutes.design(albumId), label: t('navItems.design') }] : []),
     ...(canSetup ? setupSteps.filter((step) => step !== 'kolaborator' && step !== 'review').map((step) => ({ href: hostRoutes.setup(albumId, step), label: t(`steps.${step}`) })) : []),
   ];
   const moreItems = isOwner ? [
@@ -151,7 +158,7 @@ function WorkspaceNavigation({
     ...(canExport ? [{ href: hostRoutes.exports(albumId), label: t('navItems.exports') }] : []),
     ...(canSetup ? setupSteps.filter((step) => step !== 'kolaborator' && step !== 'review').map((step) => ({ href: hostRoutes.setup(albumId, step), label: t(`steps.${step}`) })) : []),
   ];
-  const manageActive = isOwner ? pathname.includes('/galeri') || pathname.includes('/jadwal-ulang') || pathname.includes('/retensi') || pathname.includes('/pemulihan') : pathname.includes('/galeri') || pathname.includes('/setup/');
+  const manageActive = isOwner ? pathname.includes('/galeri') || pathname.includes('/jadwal-ulang') || pathname.includes('/retensi') || pathname.includes('/pemulihan') || pathname.includes('/pengaturan') || pathname.includes('/desain') || pathname.includes('/preview-tamu') || pathname.includes('/aktivitas') : pathname.includes('/galeri') || pathname.includes('/setup/') || pathname.includes('/pengaturan') || pathname.includes('/desain') || pathname.includes('/aktivitas');
   const moreActive = pathname.includes('/berbagi') || pathname.includes('/pembayaran') || pathname.includes('/checkout') || pathname.includes('/upgrade') || pathname.includes('/ekspor') || pathname.includes('/setup/') || pathname.includes('/izin') || pathname.includes('/kolaborator');
   const itemClass = 'flex min-h-11 items-center rounded-[var(--radius-md)] px-3 text-sm hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
   const toggle = (menu: 'manage' | 'more') => setOpenMenu(openMenu === menu ? null : menu);
