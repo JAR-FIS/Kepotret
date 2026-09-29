@@ -2,8 +2,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { listAlbums, getAlbum, getSettings, getCsrf, patchSettings, getInvitations, createInvitation, setPin } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getSettings: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn(), setPin: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1AlbumsAlbumIdSettings: getSettings, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin }));
+const { listAlbums, getAlbum, getLiveOverview, getSettings, getCsrf, patchSettings, getInvitations, createInvitation, setPin } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getLiveOverview: vi.fn(), getSettings: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn(), setPin: vi.fn() }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1AlbumsAlbumIdLiveOverview: getLiveOverview, getApiV1AlbumsAlbumIdSettings: getSettings, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin }));
 
 import { AlbumIndex } from '@/features/host/components/album-index';
 import { AlbumOverview } from '@/features/host/components/album-overview';
@@ -30,7 +30,7 @@ function renderHost(node: React.ReactNode) {
 }
 
 describe('FE-3 Host album surfaces', () => {
-  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getSettings.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); sessionStorage.clear(); });
+  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getLiveOverview.mockReset(); getSettings.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); sessionStorage.clear(); });
 
   it('shows an actionable empty dashboard state', async () => {
     listAlbums.mockResolvedValue({ status: 200, data: { data: [], meta: {} } });
@@ -60,6 +60,31 @@ describe('FE-3 Host album surfaces', () => {
     renderHost(<AlbumOverview albumId={readyAlbum.album_id} />);
     expect(await screen.findByText('27')).toBeInTheDocument();
     expect(getAlbum).toHaveBeenCalledWith(readyAlbum.album_id);
+  });
+
+  it('shows H41 only for a live capture state and uses the server projection for time, quota and guest count', async () => {
+    const albumId = readyAlbum.album_id;
+    getAlbum.mockResolvedValue({ status: 200, data: { data: { ...readyAlbum, capture_state: 'OPEN' } } });
+    getLiveOverview.mockResolvedValue({ status: 200, data: { data: {
+      album_id: albumId, server_time: '2026-09-29T10:00:00Z', event_name: 'Live event', event_location: 'Depok', timezone: 'Asia/Jakarta', readiness: 'READY', capture_state: 'OPEN', reveal_state: 'HIDDEN',
+      capture_start: '2026-09-29T09:00:00Z', capture_end: '2026-09-29T10:05:00Z', reveal_at: '2026-10-01T10:00:00Z', quota_total: 100, committed_count: 20, reserved_current_count: 3,
+      live_guest_session_count: 14, guest_count_final: null, actor_access: readyAlbum.actor_access,
+    } } });
+    renderHost(<AlbumOverview albumId={albumId} />);
+    expect(await screen.findByText('Dasbor acara langsung · H41')).toBeInTheDocument();
+    expect(screen.getByText('20 dari 100 foto')).toBeInTheDocument();
+    expect(screen.getByText('3 foto sedang dicadangkan')).toBeInTheDocument();
+    expect(screen.getByText('14')).toBeInTheDocument();
+    expect(await screen.findByRole('timer')).toHaveTextContent('5 m 00 dtk');
+    expect(getLiveOverview).toHaveBeenCalledWith(albumId);
+    expect(screen.getByRole('link', { name: 'Buka galeri' })).toHaveAttribute('href', `/album/${albumId}/galeri`);
+  });
+
+  it('keeps a non-live album on the H27 overview and does not request H41', async () => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: readyAlbum } });
+    renderHost(<AlbumOverview albumId={readyAlbum.album_id} />);
+    expect(await screen.findByText('27')).toBeInTheDocument();
+    expect(getLiveOverview).not.toHaveBeenCalled();
   });
 
   it.each([

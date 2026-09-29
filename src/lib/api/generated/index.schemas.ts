@@ -451,11 +451,95 @@ export interface AlbumDetail {
   committed_count: number | null;
 }
 
+/**
+ * Current authorized Host design projection. cover_preview is a short-lived Media Gateway reference with current authorization rechecked; raw/permanent storage URLs and storage metadata are never returned.
+ */
 export interface AlbumDesign {
   /** @nullable */
   cover_asset_id: string | null;
+  cover_preview: MediaDeliveryReference | null;
   /** @minimum 1 */
   setup_revision: number;
+}
+
+/**
+ * Bounded server-authoritative operational projection. Permission-filtered for the current Owner or active collaborator.
+ */
+export interface AlbumLiveOverview {
+  album_id: string;
+  server_time: string;
+  /** @nullable */
+  event_name: string | null;
+  /** @nullable */
+  event_location: string | null;
+  timezone: string;
+  readiness: AlbumReadiness;
+  capture_state: CaptureState;
+  reveal_state: RevealState;
+  /** @nullable */
+  capture_start: string | null;
+  /** @nullable */
+  capture_end: string | null;
+  /** @nullable */
+  reveal_at: string | null;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     * @nullable
+     */
+  quota_total: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  committed_count: number | null;
+  /**
+     * Current reservation usage only; not a persistent UI-derived value.
+     * @minimum 0
+     * @nullable
+     */
+  reserved_current_count: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  live_guest_session_count: number | null;
+  /**
+     * Finalized post-event snapshot; null until server finalization.
+     * @minimum 0
+     * @nullable
+     */
+  guest_count_final: number | null;
+  actor_access: AlbumActorAccess;
+}
+
+export type AlbumActivityItemActivityCode = typeof AlbumActivityItemActivityCode[keyof typeof AlbumActivityItemActivityCode];
+
+
+export const AlbumActivityItemActivityCode = {
+  ALBUM_CREATED: 'ALBUM_CREATED',
+  SETUP_CONFIRMED: 'SETUP_CONFIRMED',
+  SCHEDULE_UPDATED: 'SCHEDULE_UPDATED',
+  SETTINGS_UPDATED: 'SETTINGS_UPDATED',
+  DESIGN_UPDATED: 'DESIGN_UPDATED',
+  PHOTO_APPROVED: 'PHOTO_APPROVED',
+  PHOTO_HIDDEN: 'PHOTO_HIDDEN',
+  PHOTO_RESTORED: 'PHOTO_RESTORED',
+  EXPORT_CREATED: 'EXPORT_CREATED',
+} as const;
+
+/**
+ * Safe Host-facing activity item; excludes raw audit metadata, billing, credentials, secrets, and provider data.
+ */
+export interface AlbumActivityItem {
+  activity_id: string;
+  occurred_at: string;
+  activity_code: AlbumActivityItemActivityCode;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  actor_label: string | null;
 }
 
 export type SetupReviewIssueSection = typeof SetupReviewIssueSection[keyof typeof SetupReviewIssueSection];
@@ -1362,10 +1446,32 @@ export interface PinSetRequest {
   pin: string;
 }
 
+export type DesignAssetAuthorizeRequestAssetType = typeof DesignAssetAuthorizeRequestAssetType[keyof typeof DesignAssetAuthorizeRequestAssetType];
+
+
+export const DesignAssetAuthorizeRequestAssetType = {
+  COVER: 'COVER',
+} as const;
+
+export type DesignAssetAuthorizeRequestContentType = typeof DesignAssetAuthorizeRequestContentType[keyof typeof DesignAssetAuthorizeRequestContentType];
+
+
+export const DesignAssetAuthorizeRequestContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+/**
+ * V1 permits only private COVER uploads. JPEG, PNG, and WebP are accepted; SVG and arbitrary template uploads are not supported. Maximum original size is exactly 5000000 bytes.
+ */
 export interface DesignAssetAuthorizeRequest {
-  asset_type: string;
-  content_type: string;
-  /** @minimum 1 */
+  asset_type: DesignAssetAuthorizeRequestAssetType;
+  content_type: DesignAssetAuthorizeRequestContentType;
+  /**
+     * @minimum 1
+     * @maximum 5000000
+     */
   size_bytes: number;
 }
 
@@ -1493,7 +1599,31 @@ export interface AIMessage {
   content: string;
 }
 
+/**
+ * Requested UI/session boundary. Required session must be present; the backend must not fall back to another cookie or public authority.
+ */
+export type AIAssistantContextSelectorSurface = typeof AIAssistantContextSelectorSurface[keyof typeof AIAssistantContextSelectorSurface];
+
+
+export const AIAssistantContextSelectorSurface = {
+  PUBLIC: 'PUBLIC',
+  USER: 'USER',
+  GUEST: 'GUEST',
+  ADMIN: 'ADMIN',
+} as const;
+
+/**
+ * Untrusted UI/session-boundary hint only. The backend derives the actor and current permissions from the matching session cookie and rechecks authorization. This is never a role, capability, or permission claim.
+ */
+export interface AIAssistantContextSelector {
+  /** Requested UI/session boundary. Required session must be present; the backend must not fall back to another cookie or public authority. */
+  surface: AIAssistantContextSelectorSurface;
+  /** Optional untrusted context hint for USER or ADMIN only. Never grants access; ignored/rejected for PUBLIC and never used for GUEST. */
+  album_id?: string;
+}
+
 export interface AIAssistantRequest {
+  context: AIAssistantContextSelector;
   /**
      * @minLength 1
      * @maxLength 2000
@@ -1655,6 +1785,26 @@ export interface ScheduleEnvelope {
 
 export interface AlbumDesignEnvelope {
   data: AlbumDesign;
+}
+
+export interface DesignAssetUploadAuthorization {
+  asset_id: string;
+  upload_url: string;
+  expires_at: string;
+}
+
+export interface DesignAssetUploadAuthorizationEnvelope {
+  data: DesignAssetUploadAuthorization;
+}
+
+export interface AlbumLiveOverviewEnvelope {
+  data: AlbumLiveOverview;
+}
+
+export interface AlbumActivityPageEnvelope {
+  /** @maxItems 50 */
+  data: AlbumActivityItem[];
+  meta: PaginationMeta;
 }
 
 export interface SetupReviewEnvelope {
@@ -2030,6 +2180,19 @@ cursor?: CursorParameter;
  * @maximum 100
  */
 limit?: LimitParameter;
+};
+
+export type GetApiV1AlbumsAlbumIdActivityParams = {
+/**
+ * Opaque keyset cursor returned by the previous page.
+ * @minLength 1
+ */
+cursor?: CursorParameter;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
 };
 
 export type GetApiV1AlbumsAlbumIdCollaboratorsParams = {

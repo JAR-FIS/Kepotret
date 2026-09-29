@@ -39,7 +39,7 @@ test('FE-8 package version retries keep the payload key and new intents get a ne
 
   await create.click();
   await expect.poll(() => requests.length).toBe(1);
-  await expect(page.getByText(/Network/)).toBeVisible();
+  await expect(page.locator('p[role="alert"]')).toBeVisible();
   expect(requests[0].key).toMatch(uuidV7);
   expect(requests[0].body).toEqual({ price_amount: 75000, currency: 'IDR', quota_total: 100 });
 

@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useConnectivity } from '@/hooks/use-connectivity';
 import { getApiV1AlbumsAlbumIdSettings, getApiV1SecurityCsrf, patchApiV1AlbumsAlbumIdSettings } from '@/lib/api/browser';
 import type { AlbumSettingsPatchRequest } from '@/lib/api/generated/index.schemas';
 
-type State = 'loading' | 'ready' | 'forbidden' | 'error';
+type State = 'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error';
 export function GallerySettings({ albumId }: { albumId: string }) {
   const t = useTranslations('host.gallery');
   const isOnline = useConnectivity();
@@ -20,6 +22,7 @@ export function GallerySettings({ albumId }: { albumId: string }) {
     setState('loading');
     try {
       const result = await getApiV1AlbumsAlbumIdSettings(albumId);
+      if (result.status === 401) { setState('unauthenticated'); return; }
       if (result.status === 403) { setState('forbidden'); return; }
       if (result.status !== 200) { setState('error'); return; }
       const current = result.data.data;
@@ -44,10 +47,14 @@ export function GallerySettings({ albumId }: { albumId: string }) {
     setMessage('');
     try {
       const csrf = await getApiV1SecurityCsrf();
+      if (csrf.status === 401) { setState('unauthenticated'); return; }
       if (csrf.status !== 200) { setMessage(t('forbidden')); return; }
       const result = await patchApiV1AlbumsAlbumIdSettings(albumId, draft, { headers: { 'X-CSRF-Token': csrf.data.data.csrf_token } });
       if (result.status === 403) { setMessage(t('forbidden')); return; }
+      if (result.status === 401) { setState('unauthenticated'); return; }
       if (result.status === 409) { setMessage(t('conflict')); await load(); return; }
+      if (result.status === 422) { setMessage(t('validation')); return; }
+      if (result.status === 429) { setMessage(t('rateLimited')); return; }
       if (result.status !== 200) { setMessage(t('error')); return; }
       setMessage(t('saved'));
       await load();
@@ -55,8 +62,10 @@ export function GallerySettings({ albumId }: { albumId: string }) {
     finally { setBusy(false); }
   }
 
-  if (state === 'loading') return <p role="status">{t('loading')}</p>;
-  if (state !== 'ready' || !draft) return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5"><p role="alert">{state === 'forbidden' ? t('forbidden') : !isOnline ? t('offline') : t('error')}</p><Button className="mt-4" variant="secondary" disabled={!isOnline} onClick={() => void load()}>{t('refresh')}</Button></section>;
+  if (state === 'loading') return <LoadingState label={t('loading')} />;
+  if (state === 'unauthenticated') return <ReauthState title={t('reauthTitle')} description={t('reauthDescription')} />;
+  if (state === 'forbidden') return <ForbiddenState title={t('forbiddenTitle')} description={t('forbidden')} />;
+  if (state !== 'ready' || !draft) return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5"><p role="alert">{!isOnline ? t('offline') : t('error')}</p><Button className="mt-4" variant="secondary" disabled={!isOnline} onClick={() => void load()}>{t('refresh')}</Button></section>;
   return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6"><h2 className="text-lg font-semibold">{t('visibility')} · {t('moderation')}</h2>{!isOnline && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t('offline')}</p>}<div className="mt-4 grid gap-4 sm:grid-cols-2">
     <Choice label={t('visibility')} value={draft.visibility ?? 'GUEST'} onChange={(value) => setDraft({ ...draft, visibility: value as AlbumSettingsPatchRequest['visibility'] })} options={[["GUEST", t('guestVisible')], ["HOST_ONLY", t('hostOnly')]]} />
     <Choice label={t('moderation')} value={draft.moderation_mode ?? 'APPROVAL'} onChange={(value) => setDraft({ ...draft, moderation_mode: value as AlbumSettingsPatchRequest['moderation_mode'] })} options={[["INSTANT", t('instant')], ["APPROVAL", t('approval')]]} />

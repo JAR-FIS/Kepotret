@@ -9,7 +9,7 @@ import { PublicPageFrame } from '@/features/marketing/components/public-page-fra
 
 export function H01Page({ locale }: { locale: Locale }) {
   const copy = getContent(locale);
-  return <PublicPageFrame locale={locale} assistant>
+  return <PublicPageFrame locale={locale}>
     <main>
       <Hero locale={locale} copy={copy} />
       <HowSection copy={copy} />

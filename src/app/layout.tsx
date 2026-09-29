@@ -3,6 +3,7 @@ import { getLocale } from 'next-intl/server';
 
 import { ThemeProvider } from '@/providers/theme-provider';
 import { LocaleProvider } from '@/providers/locale-provider';
+import { Assistant } from '@/features/assistant/components/assistant';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -34,7 +35,7 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          <LocaleProvider initialLocale={locale as 'id' | 'en'}>{children}</LocaleProvider>
+          <LocaleProvider initialLocale={locale as 'id' | 'en'}>{children}<Assistant /></LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -6,6 +6,10 @@ import { getContent, type Locale } from '@/features/marketing/content';
 export function SiteFooter({ locale }: { locale: Locale }) {
   const copy = getContent(locale);
   const footer = copy.footer;
+  const socialTargets: Record<string, string> = {
+    Instagram: 'https://www.instagram.com/kepotret.official/',
+    TikTok: 'https://www.tiktok.com/@kepotret.official',
+  };
   const products = [
     [copy.nav.how, '/cara-kerja'],
     [copy.nav.pricing, '/harga'],
@@ -30,7 +34,12 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         <div>
           <h2 className="text-sm font-bold">{footer.social}</h2>
           <ul className="mt-3 space-y-2 text-sm text-[var(--color-muted-foreground)]">
-            {footer.socialLabels.map((label) => <li key={label}><span aria-disabled="true" title={footer.unavailable}>{label} <span className="text-xs">({footer.unavailable})</span></span></li>)}
+            {footer.socialLabels.map((label) => {
+              const href = socialTargets[label];
+              return <li key={label}>{href
+                ? <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`${label} (${footer.social})`} className="hover:text-[var(--color-foreground)] hover:underline">{label}</a>
+                : <span aria-disabled="true" title={footer.unavailable}>{label} <span className="text-xs">({footer.unavailable})</span></span>}</li>;
+            })}
           </ul>
         </div>
       </div>

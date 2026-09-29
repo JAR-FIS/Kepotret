@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Album, BookOpen, Boxes, ChevronDown, ClipboardList, CreditCard, LayoutDashboard, LogOut, Menu, Settings2, Users, X } from 'lucide-react';
 
@@ -23,16 +24,16 @@ const primaryItems = [
 ] as const;
 
 export function AdminShell({ session, locale, onLogout, children }: { session: AdminSessionState; locale: AdminLocale; onLogout: () => void; children: React.ReactNode }) {
+  const t = useTranslations('admin.shell');
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const online = useAdminOnline();
   const [operationsOpen, setOperationsOpen] = useState(pathname.startsWith('/admin/config') || pathname.startsWith('/admin/issues') || pathname.startsWith('/admin/admins'));
-  const id = locale === 'id';
-  const labels = id
-    ? { overview: 'Ringkasan', users: 'Pengguna', albums: 'Album', payments: 'Pembayaran', catalog: 'Katalog', operations: 'Operasional', audit: 'Audit', issues: 'Isu operasional', config: 'Konfigurasi', roster: 'Admin · baca saja', help: 'Panduan Admin', signedIn: 'Sesi Admin', expires: 'Berakhir', mfa: 'MFA terverifikasi', logout: 'Keluar', menu: 'Buka navigasi', close: 'Tutup navigasi', language: 'Bahasa', light: 'Ganti ke tema terang', dark: 'Ganti ke tema gelap' }
-    : { overview: 'Overview', users: 'Users', albums: 'Albums', payments: 'Payments', catalog: 'Catalog', operations: 'Operations', audit: 'Audit', issues: 'Operational issues', config: 'Configuration', roster: 'Admin roster · read only', help: 'Admin guide', signedIn: 'Admin session', expires: 'Expires', mfa: 'MFA verified', logout: 'Sign out', menu: 'Open navigation', close: 'Close navigation', language: 'Language', light: 'Switch to light theme', dark: 'Switch to dark theme' };
+  const labels = {
+    overview: t('overview'), users: t('users'), albums: t('albums'), payments: t('payments'), catalog: t('catalog'), operations: t('operations'), audit: t('audit'), issues: t('issues'), config: t('config'), roster: t('roster'), help: t('help'), signedIn: t('signedIn'), expires: t('expires'), mfa: t('mfa'), logout: t('logout'), menu: t('menu'), close: t('close'), language: t('language'), light: t('light'), dark: t('dark'),
+  };
 
-  const navigation = <nav aria-label={id ? 'Navigasi Admin' : 'Admin navigation'} className="space-y-1">
+  const navigation = <nav aria-label={t('navLabel')} className="space-y-1">
     {primaryItems.map(({ href, key, icon: Icon }) => {
       const active = key === 'operations' ? pathname.startsWith('/admin/config') || pathname.startsWith('/admin/issues') || pathname.startsWith('/admin/admins') : key === 'overview' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
       if (key === 'operations') return <div key={key}>

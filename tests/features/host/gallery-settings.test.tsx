@@ -41,4 +41,22 @@ describe('gallery settings visibility', () => {
     fireEvent.change(visibility, { target: { value: 'HOST_ONLY' } });
     expect(visibility).toHaveValue('HOST_ONLY');
   });
+
+  it('uses CSRF and refreshes revision after a conflict', async () => {
+    api.patch.mockResolvedValueOnce({ status: 409, data: {} });
+    render(<NextIntlClientProvider locale="en" messages={messages}><GallerySettings albumId="album-1" /></NextIntlClientProvider>);
+    await screen.findByLabelText('Gallery visibility');
+    fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+    expect(await screen.findByText('Album settings changed. Reload before saving again.')).toBeInTheDocument();
+    await waitFor(() => expect(api.settings).toHaveBeenCalledTimes(2));
+    expect(api.patch).toHaveBeenCalledWith('album-1', expect.objectContaining({ expected_revision: 7 }), { headers: { 'X-CSRF-Token': 'settings-csrf' } });
+  });
+
+  it('blocks settings mutations while offline', async () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    render(<NextIntlClientProvider locale="en" messages={messages}><GallerySettings albumId="album-1" /></NextIntlClientProvider>);
+    await screen.findByLabelText('Gallery visibility');
+    expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled();
+    expect(api.patch).not.toHaveBeenCalled();
+  });
 });

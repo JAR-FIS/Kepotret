@@ -12,18 +12,18 @@ import type {
   ConflictResponse,
   DesignAssetAuthorizeRequest,
   DesignAssetCommitRequest,
+  DesignAssetUploadAuthorizationEnvelope,
   DesignPatchRequest,
   ForbiddenResponse,
   NotFoundResponse,
   RateLimitedResponse,
   UnauthorizedResponse,
-  UploadAuthorizationEnvelope,
   ValidationErrorResponse
 } from '../index.schemas';
 
 
 export type postApiV1AlbumsAlbumIdDesignAssetsUploadAuthorizationsResponse201 = {
-  data: UploadAuthorizationEnvelope
+  data: DesignAssetUploadAuthorizationEnvelope
   status: 201
 }
 

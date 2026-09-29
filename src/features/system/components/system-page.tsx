@@ -13,6 +13,12 @@ export function SystemPage({ locale, kind }: { locale: Locale; kind: 'denied' | 
   return <AuthPageFrame>
     <h1 className="font-[var(--font-display)] text-3xl font-bold">{item.title}</h1>
     <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{item.description}</p>
+    {kind === 'compatibility' && <>
+      <ul className="mt-6 space-y-3 text-sm leading-6">
+        {copy.system.compatibilityGuidance.map((guidance) => <li key={guidance} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">{guidance}</li>)}
+      </ul>
+      <Link href={locale === 'id' ? '/bantuan' : '/help'} className="mt-5 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">{copy.system.compatibilityHelp}</Link>
+    </>}
     <Link href="/" className="mt-6 inline-flex min-h-11 items-center rounded-[10px] bg-[var(--color-primary)] px-4 font-semibold text-[var(--color-primary-foreground)]">{copy.system.home}</Link>
   </AuthPageFrame>;
 }

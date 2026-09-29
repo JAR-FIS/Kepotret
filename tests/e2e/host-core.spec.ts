@@ -66,7 +66,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     return route.fulfill({ status: 200, json: { data: schedule } });
   });
   await page.route(`**/api/v1/albums/${albumId}/settings`, (route) => route.fulfill({ status: 200, json: { data: { revision: 1, per_guest_limit: 30 } } }));
-  await page.route(`**/api/v1/albums/${albumId}/design`, (route) => route.fulfill({ status: 200, json: { data: { cover_asset_id: null, setup_revision: album.setup_revision } } }));
+  await page.route(`**/api/v1/albums/${albumId}/design`, (route) => route.fulfill({ status: 200, json: { data: { cover_asset_id: null, cover_preview: null, setup_revision: album.setup_revision } } }));
   await page.route(`**/api/v1/albums/${albumId}/setup/package`, async (route) => {
     const body = route.request().postDataJSON() as { expected_revision: number; package_version_id: string | null };
     expect(route.request().headers()['x-csrf-token']).toBe('test-csrf');
@@ -80,7 +80,7 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     snapshot: {
       event_basics: { event_name: album.event_name!, event_location: album.event_location!, event_category_id: categoryId, timezone: album.timezone },
       schedule, access: { pin_enabled: false }, settings: { per_guest_limit: 30 },
-      design: { cover_asset_id: null, setup_revision: album.setup_revision },
+      design: { cover_asset_id: null, cover_preview: null, setup_revision: album.setup_revision },
       selected_package_version_id: album.selected_package_version_id, collaborator_count: 0,
     },
   } });
@@ -162,7 +162,7 @@ test('Confirm Setup reuses its UUIDv7 for a revision retry and changes it for a 
     snapshot: {
       event_basics: { event_name: 'Free event', event_location: 'Jakarta', event_category_id: categoryId, timezone: 'Asia/Jakarta' },
       schedule: null, access: { pin_enabled: false }, settings: { per_guest_limit: 30 },
-      design: { cover_asset_id: null, setup_revision: revision },
+      design: { cover_asset_id: null, cover_preview: null, setup_revision: revision },
       selected_package_version_id: null, collaborator_count: 0,
     },
   } });

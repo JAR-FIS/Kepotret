@@ -139,6 +139,7 @@ test('host management, settings, restore, rotation, and QR download are disabled
   await page.goto(`/album/${albumId}/galeri`);
   await expect(page.getByRole('button', { name: 'Setujui' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Hapus foto' })).toBeDisabled();
+  await page.goto(`/album/${albumId}/pengaturan`);
   await expect(page.getByRole('button', { name: 'Simpan pengaturan' })).toBeDisabled();
   await expect(page.getByText(/Kamu sedang offline/).first()).toBeVisible();
 
