@@ -63,7 +63,7 @@ describe('shared read-only assistant', () => {
   });
 
   it('sends ADMIN context with the album route hint', async () => {
-    api.pathname = '/admin/albums/123e4567-e89b-12d3-a456-426614174000/hold';
+    api.pathname = '/admin/albums/123e4567-e89b-12d3-a456-426614174000';
     api.assistant.mockResolvedValue({ status: 200, data: { data: { answer: 'OK' } } });
     renderAssistant();
     fireEvent.click(screen.getByRole('button', { name: 'Open AI Assistant' }));
@@ -119,9 +119,24 @@ describe('shared read-only assistant', () => {
     expect(screen.getByRole('button', { name: 'Open AI Assistant' })).toBeInTheDocument();
   });
 
-  it.each(['/album/123e4567-e89b-12d3-a456-426614174000/checkout/pkg', '/album/123e4567-e89b-12d3-a456-426614174000/pembayaran/txn', '/album/123e4567-e89b-12d3-a456-426614174000/sensitive-access'])('suppresses Assistant on critical route %s', (pathname) => {
+  it.each([
+    '/admin/masuk',
+    '/admin/mfa',
+    '/admin/akses-ditolak',
+    '/admin/albums/123e4567-e89b-12d3-a456-426614174000/sensitive-access',
+    '/admin/albums/123e4567-e89b-12d3-a456-426614174000/hold',
+    '/album/123e4567-e89b-12d3-a456-426614174000/checkout/pkg',
+    '/album/123e4567-e89b-12d3-a456-426614174000/pembayaran/txn',
+    '/album/123e4567-e89b-12d3-a456-426614174000/sensitive-access',
+  ])('hides Assistant on protected route %s', (pathname) => {
     api.pathname = pathname;
     renderAssistant();
     expect(screen.queryByRole('button', { name: 'Open AI Assistant' })).not.toBeInTheDocument();
+  });
+
+  it.each(['/admin', '/admin/users', '/admin/albums', '/admin/payments', '/admin/catalog', '/admin/config', '/admin/issues', '/admin/audit', '/admin/admins'])('keeps Assistant visible on Admin operational route %s', (pathname) => {
+    api.pathname = pathname;
+    renderAssistant();
+    expect(screen.getByRole('button', { name: 'Open AI Assistant' })).toBeInTheDocument();
   });
 });

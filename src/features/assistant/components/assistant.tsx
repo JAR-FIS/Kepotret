@@ -51,10 +51,7 @@ export function Assistant() {
     if (list && typeof list.scrollTo === 'function') list.scrollTo({ top: list.scrollHeight });
   }, [turns, state, open]);
 
-  const isGuestEntry = /^\/j\/[^/]+\/?$/.test(pathname);
-  const isCritical = pathname.includes('/sensitive-access') || pathname.includes('/checkout/') || pathname.includes('/pembayaran/');
-
-  if ((isGuestEntry && guestCameraActive) || isCritical) return null;
+  if (shouldHideAssistant(pathname, guestCameraActive)) return null;
 
   async function sendMessage(event?: FormEvent<HTMLFormElement>, prompt?: string) {
     event?.preventDefault();
@@ -116,4 +113,13 @@ export function getAssistantContext(pathname: string) {
   if (albumId) return { surface: 'USER' as const, album_id: albumId };
   if (/^\/(?:album|dashboard|kolaborasi|akun)(?:\/|$)/.test(pathname)) return { surface: 'USER' as const };
   return { surface: 'PUBLIC' as const };
+}
+
+export function shouldHideAssistant(pathname: string, guestCameraActive: boolean) {
+  const isGuestEntry = /^\/j\/[^/]+\/?$/.test(pathname);
+  const isAdminPreSessionOrDenied = /^\/admin\/(?:masuk|mfa|akses-ditolak)\/?$/.test(pathname);
+  const isAdminPrivilegedFlow = /^\/admin\/albums\/[^/]+\/(?:sensitive-access|hold)\/?$/.test(pathname);
+  const isCritical = pathname.includes('/sensitive-access') || pathname.includes('/checkout/') || pathname.includes('/pembayaran/');
+
+  return isAdminPreSessionOrDenied || isAdminPrivilegedFlow || (isGuestEntry && guestCameraActive) || isCritical;
 }
