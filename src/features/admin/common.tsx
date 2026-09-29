@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
 import { getApiV1AdminSecurityCsrf } from '@/lib/api/admin-browser';
@@ -21,29 +22,29 @@ export async function adminCsrfHeaders(): Promise<HeadersInit> {
   return { 'X-CSRF-Token': response.data.data.csrf_token };
 }
 
-export function adminErrorText(locale: AdminLocale, status?: number) {
-  if (status === 401) return locale === 'id' ? 'Sesi Admin berakhir. Masuk kembali untuk melanjutkan.' : 'Your Admin session ended. Sign in again to continue.';
-  if (status === 403) return locale === 'id' ? 'Akses Admin tidak tersedia untuk tindakan ini.' : 'Admin access is not available for this action.';
-  if (status === 404) return locale === 'id' ? 'Data tidak ditemukan.' : 'The requested record was not found.';
-  if (status === 409) return locale === 'id' ? 'Data berubah di tempat lain. Muat ulang sebelum mencoba lagi.' : 'This record changed elsewhere. Reload before trying again.';
-  if (status === 422) return locale === 'id' ? 'Server menolak nilai ini. Periksa isian dan coba lagi.' : 'The server rejected this value. Review the fields and try again.';
-  if (status === 429) return locale === 'id' ? 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.' : 'Too many requests. Wait briefly, then try again.';
-  if (status === 503) return locale === 'id' ? 'Layanan pendukung sedang tidak tersedia. Coba lagi nanti.' : 'A supporting service is unavailable. Try again later.';
-  return locale === 'id' ? 'Data Admin belum dapat dimuat. Coba lagi.' : 'Admin data could not be loaded. Try again.';
+export function adminErrorKey(status?: number) {
+  if (status === 401) return 'error401';
+  if (status === 403) return 'error403';
+  if (status === 404) return 'error404';
+  if (status === 409) return 'error409';
+  if (status === 422) return 'error422';
+  if (status === 429) return 'error429';
+  if (status === 503) return 'error503';
+  return 'errorGeneric';
 }
 
 export function formatAdminDate(value: string | null | undefined, locale: AdminLocale) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat(locale === 'id' ? 'id-ID' : 'en-US', {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
 }
 
 export function formatAdminNumber(value: number | null | undefined, locale: AdminLocale) {
-  return new Intl.NumberFormat(locale === 'id' ? 'id-ID' : 'en-US').format(value ?? 0);
+  return new Intl.NumberFormat(locale).format(value ?? 0);
 }
 
 export function useAdminOnline() {
@@ -62,9 +63,10 @@ export function useAdminOnline() {
 }
 
 export function AdminPage({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  const t = useTranslations('admin.common');
   return <main className="mx-auto w-full max-w-7xl px-4 py-7 pb-24 sm:px-6 lg:px-8 lg:py-10">
     <header className="mb-7 border-b border-[var(--color-border)] pb-6">
-      <p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">KEPOTRET · OPERATIONS</p>
+      <p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('operationsLabel')}</p>
       <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
       {description && <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--color-muted-foreground)]">{description}</p>}
     </header>
@@ -84,10 +86,12 @@ export function AdminFeedback({ children, kind = 'error' }: { children: React.Re
 }
 
 export function AdminError({ locale, status, retry }: { locale: AdminLocale; status?: number; retry: () => void }) {
+  void locale;
   const router = useRouter();
+  const t = useTranslations('admin.common');
   return <AdminCard>
-    <AdminFeedback>{adminErrorText(locale, status)}</AdminFeedback>
-    <Button className="mt-4" variant="secondary" onClick={status === 401 ? () => router.replace('/admin/masuk') : retry}>{status === 401 ? (locale === 'id' ? 'Masuk kembali' : 'Sign in again') : (locale === 'id' ? 'Muat ulang' : 'Reload')}</Button>
+    <AdminFeedback>{t(adminErrorKey(status))}</AdminFeedback>
+    <Button className="mt-4" variant="secondary" onClick={status === 401 ? () => router.replace('/admin/masuk') : retry}>{status === 401 ? t('signInAgain') : t('reload')}</Button>
   </AdminCard>;
 }
 
@@ -101,12 +105,16 @@ export function AdminStatus({ value }: { value: string }) {
 }
 
 export function AdminPagination({ hasMore, cursor, busy, locale, onNext }: { hasMore: boolean; cursor: string | null; busy: boolean; locale: AdminLocale; onNext: () => void }) {
+  const t = useTranslations('admin.common');
+  void locale;
   if (!hasMore || !cursor) return null;
-  return <div className="flex justify-end"><Button variant="secondary" disabled={busy} loading={busy} onClick={onNext}>{locale === 'id' ? 'Muat halaman berikutnya' : 'Load next page'}</Button></div>;
+  return <div className="flex justify-end"><Button variant="secondary" disabled={busy} loading={busy} onClick={onNext}>{t('loadNextPage')}</Button></div>;
 }
 
 export function AdminOfflineNote({ online, locale }: { online: boolean; locale: AdminLocale }) {
-  return online ? null : <AdminFeedback kind="status">{locale === 'id' ? 'Kamu sedang offline. Aksi Admin dinonaktifkan dan tidak akan dimasukkan ke antrean.' : 'You are offline. Admin actions are disabled and will not be queued.'}</AdminFeedback>;
+  const t = useTranslations('admin.common');
+  void locale;
+  return online ? null : <AdminFeedback kind="status">{t('offline')}</AdminFeedback>;
 }
 
 export function AdminField({ label, children }: { label: string; children: React.ReactNode }) {
