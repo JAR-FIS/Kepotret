@@ -19,7 +19,7 @@ async function checkNoOverflow(page: Page) {
 }
 
 test('public landing and ordinary sign-in remain usable with optimized, reserved imagery @cross-browser', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await checkNoOverflow(page);
   const hero = page.locator('.hero-visual');
