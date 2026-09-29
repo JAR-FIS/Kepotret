@@ -18,6 +18,7 @@ import {
 } from '@/lib/api/browser';
 import type { CaptureAttemptStatus, CaptureReadiness, GuestAccessPreview, GuestContext } from '@/lib/api/generated/index.schemas';
 import { createUuidV7 } from '@/features/guest/lib/idempotency';
+import { setGuestCameraActive } from '@/features/guest/lib/camera-visibility';
 import { guestRoutes } from '@/features/guest/routes';
 import { MAX_CAPTURE_BYTES, processCapture } from '@/features/guest/capture/capture-processor';
 import {
@@ -89,6 +90,14 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const checkedBoundaryRef = useRef<string | null>(null);
   const checkedRevealRef = useRef(false);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
+
+  useEffect(() => {
+    const active = stage === 'camera';
+    setGuestCameraActive(active);
+    return () => {
+      if (active) setGuestCameraActive(false);
+    };
+  }, [stage]);
 
   const clearCommittedPhoto = useCallback(() => setCommittedPhoto(null), []);
   const keepCommittedPhoto = useCallback((attemptId: string) => {
