@@ -26,6 +26,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:critical": "playwright test --project=chromium --grep @release-critical",
+    "uat:visual": "playwright test --config=playwright.owner-uat.config.ts --project=owner-uat-desktop",
+    "uat:visual:mobile": "playwright test --config=playwright.owner-uat.config.ts --project=owner-uat-mobile",
     "api:generate": "orval --config ./orval.config.ts",
     "api:check": "node ./scripts/check-openapi.mjs"
   },
