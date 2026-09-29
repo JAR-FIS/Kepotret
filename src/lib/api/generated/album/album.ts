@@ -6,9 +6,11 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AlbumActivityPageEnvelope,
   AlbumCreateRequest,
   AlbumEnvelope,
   AlbumListEnvelope,
+  AlbumLiveOverviewEnvelope,
   AlbumPatchRequest,
   AlbumSettingsEnvelope,
   AlbumSettingsPatchRequest,
@@ -18,6 +20,7 @@ import type {
   ConflictResponse,
   EmptyDataEnvelope,
   ForbiddenResponse,
+  GetApiV1AlbumsAlbumIdActivityParams,
   GetApiV1AlbumsParams,
   NotFoundResponse,
   PinSetRequest,
@@ -715,6 +718,135 @@ const res = await fetch(getPatchApiV1AlbumsAlbumIdSettingsUrl(albumId),
 
   const data: patchApiV1AlbumsAlbumIdSettingsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1AlbumsAlbumIdSettingsResponse
+}
+
+
+export type getApiV1AlbumsAlbumIdLiveOverviewResponse200 = {
+  data: AlbumLiveOverviewEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdLiveOverviewResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdLiveOverviewResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdLiveOverviewResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdLiveOverviewResponseSuccess = (getApiV1AlbumsAlbumIdLiveOverviewResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdLiveOverviewResponseError = (getApiV1AlbumsAlbumIdLiveOverviewResponse401 | getApiV1AlbumsAlbumIdLiveOverviewResponse403 | getApiV1AlbumsAlbumIdLiveOverviewResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdLiveOverviewResponse = (getApiV1AlbumsAlbumIdLiveOverviewResponseSuccess | getApiV1AlbumsAlbumIdLiveOverviewResponseError)
+
+export const getGetApiV1AlbumsAlbumIdLiveOverviewUrl = (albumId: string,) => {
+
+
+
+
+  return `/api/v1/albums/${albumId}/live-overview`
+}
+
+/**
+ * @summary Return a bounded, server-authoritative live operations projection for the current album relationship.
+ */
+export const getApiV1AlbumsAlbumIdLiveOverview = async (albumId: string, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdLiveOverviewResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdLiveOverviewUrl(albumId),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdLiveOverviewResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdLiveOverviewResponse
+}
+
+
+export type getApiV1AlbumsAlbumIdActivityResponse200 = {
+  data: AlbumActivityPageEnvelope
+  status: 200
+}
+
+export type getApiV1AlbumsAlbumIdActivityResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getApiV1AlbumsAlbumIdActivityResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getApiV1AlbumsAlbumIdActivityResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getApiV1AlbumsAlbumIdActivityResponseSuccess = (getApiV1AlbumsAlbumIdActivityResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AlbumsAlbumIdActivityResponseError = (getApiV1AlbumsAlbumIdActivityResponse401 | getApiV1AlbumsAlbumIdActivityResponse403 | getApiV1AlbumsAlbumIdActivityResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1AlbumsAlbumIdActivityResponse = (getApiV1AlbumsAlbumIdActivityResponseSuccess | getApiV1AlbumsAlbumIdActivityResponseError)
+
+export const getGetApiV1AlbumsAlbumIdActivityUrl = (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdActivityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/albums/${albumId}/activity?${stringifiedParams}` : `/api/v1/albums/${albumId}/activity`
+}
+
+/**
+ * @summary Return a safe, capability-scoped album activity projection.
+ */
+export const getApiV1AlbumsAlbumIdActivity = async (albumId: string,
+    params?: GetApiV1AlbumsAlbumIdActivityParams, options?: RequestInit): Promise<getApiV1AlbumsAlbumIdActivityResponse> => {
+
+  const res = await fetch(getGetApiV1AlbumsAlbumIdActivityUrl(albumId,params),
+  {
+      credentials: 'include',
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AlbumsAlbumIdActivityResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AlbumsAlbumIdActivityResponse
 }
 
 

@@ -907,6 +907,69 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AlbumSettingsPatchRequest'
+  /api/v1/albums/{album_id}/live-overview:
+    get:
+      tags: [Album]
+      summary: Return a bounded, server-authoritative live operations projection for the current album relationship.
+      operationId: get_api_v1_albums_album_id_live_overview
+      security:
+      - UserCookie: []
+      responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '200':
+          description: Safe live event overview. Collaborators receive only currently authorized fields; no billing data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumLiveOverviewEnvelope'
+      x-kepotret-auth: Current Owner / active collaborator; permission re-evaluated server-side
+      x-kepotret-protection: Read-only
+      x-kepotret-rules:
+      - server_time is authoritative; guest_count_final retains its post-event snapshot semantics.
+      - live_guest_session_count is a live projection and does not alter guest_count_final.
+      - Contains no billing or payment history.
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/RequestId'
+  /api/v1/albums/{album_id}/activity:
+    get:
+      tags: [Album]
+      summary: Return a safe, capability-scoped album activity projection.
+      operationId: get_api_v1_albums_album_id_activity
+      security:
+      - UserCookie: []
+      responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '200':
+          description: Safe operational activity, newest first with deterministic tie-break.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumActivityPageEnvelope'
+      x-kepotret-auth: Owner / active collaborator; current capabilities re-evaluated server-side
+      x-kepotret-protection: Read-only
+      x-kepotret-rules:
+      - Never expose raw Admin AuditLog, billing, credentials, tokens, PIN data, provider payload, private media secrets, or raw internal metadata.
+      - Collaborator activity is limited to events relevant to current active capabilities.
+      - Results are ordered by occurred_at descending, then activity_id descending for a deterministic cursor order.
+      parameters:
+      - name: album_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/Cursor'
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, maximum: 50, default: 25 }
+      - $ref: '#/components/parameters/RequestId'
   /api/v1/albums/{album_id}/access/pin:
     put:
       tags:
@@ -1020,9 +1083,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UploadAuthorizationEnvelope'
+                $ref: '#/components/schemas/DesignAssetUploadAuthorizationEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Owner / can_setup
+      x-kepotret-rules:
+      - V1 accepts COVER assets only, with image/jpeg, image/png, or image/webp content types and 0 < size_bytes <= 5000000.
+      - Current Owner/can_setup authorization and current album state are re-evaluated before issuing a short-lived upload authorization.
+      - The server creates or records the DesignAsset before issuing authorization. Upload authorization returns its asset_id; the browser must not derive it from object_key, URL, or filename.
+      - Storage is private. The server verifies object association, actual size, declared MIME, magic/signature, allowed type, and non-invalidated state when committing. Storage PUT alone does not commit or select a cover.
+      - A committed DesignAsset must still be selected through PATCH /design with the current setup revision. Design responses expose only short-lived Media Gateway references that recheck current authorization, never raw/permanent storage URLs.
       parameters:
       - name: album_id
         in: path
@@ -1069,6 +1138,10 @@ paths:
                 $ref: '#/components/schemas/AlbumEnvelope'
       x-kepotret-protection: CSRF
       x-kepotret-auth: Owner / can_setup
+      x-kepotret-rules:
+      - Commit is valid only for the exact currently authorized DesignAsset and current Owner/can_setup permission under current album state.
+      - Verify the expected object association, object existence, actual original size (1..5000000 bytes), declared MIME, file magic/signature, COVER type, and that the asset has not already been invalidated. Reject SVG and unsupported MIME types.
+      - Commit does not select the cover. The committed asset must be selected separately through PATCH /design using the current setup revision.
       parameters:
       - name: album_id
         in: path
@@ -3508,6 +3581,9 @@ paths:
       operationId: post_api_v1_ai_assistant
       security:
       - UserCookie: []
+      - GuestCookie: []
+      - AdminCookie: []
+      - {}
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -3531,7 +3607,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AIAssistantEnvelope'
-      x-kepotret-protection: CSRF/rate as applicable
+      x-kepotret-protection: Strict Origin validation and rate limiting; no state-changing CSRF token is required
       x-kepotret-auth: Context-dependent
       requestBody:
         required: true
@@ -3541,11 +3617,13 @@ paths:
               $ref: '#/components/schemas/AIAssistantRequest'
       parameters:
       - $ref: '#/components/parameters/RequestId'
-      - $ref: '#/components/parameters/CsrfToken'
       x-kepotret-rules:
       - Read-only context; no mutation tools; no photo bytes/URLs sent to Gemini V1.
       - Backend uses official Go SDK google.golang.org/genai behind server adapter; exact model is server configuration.
       - No permanent chat/answer persistence.
+      - Actor is resolved from the current session; clients never submit role or capability claims.
+      - Anonymous access is public informational context only. Guest context cannot access Host, collaborator, or Admin information.
+      - Admin context never grants Sensitive Media access; Operational Hold grants no additional assistant permission.
   /api/v1/admin/overview:
     get:
       tags:
@@ -5624,18 +5702,87 @@ components:
     AlbumDesign:
       type: object
       additionalProperties: false
+      description: Current authorized Host design projection. cover_preview is a short-lived Media Gateway reference with current authorization rechecked; raw/permanent storage URLs and storage metadata are never returned.
       properties:
         cover_asset_id:
           type:
           - string
           - 'null'
           format: uuid
+        cover_preview:
+          anyOf:
+          - $ref: '#/components/schemas/MediaDeliveryReference'
+          - type: 'null'
         setup_revision:
           type: integer
           minimum: 1
       required:
       - cover_asset_id
+      - cover_preview
       - setup_revision
+    AlbumLiveOverview:
+      type: object
+      additionalProperties: false
+      description: Bounded server-authoritative operational projection. Permission-filtered for the current Owner or active collaborator.
+      properties:
+        album_id: *id001
+        server_time: *id002
+        event_name:
+          type: [string, 'null']
+        event_location:
+          type: [string, 'null']
+        timezone:
+          type: string
+        readiness:
+          $ref: '#/components/schemas/AlbumReadiness'
+        capture_state:
+          $ref: '#/components/schemas/CaptureState'
+        reveal_state:
+          $ref: '#/components/schemas/RevealState'
+        capture_start:
+          type: [string, 'null']
+          format: date-time
+        capture_end:
+          type: [string, 'null']
+          format: date-time
+        reveal_at:
+          type: [string, 'null']
+          format: date-time
+        quota_total:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 10000
+        committed_count:
+          type: [integer, 'null']
+          minimum: 0
+        reserved_current_count:
+          type: [integer, 'null']
+          minimum: 0
+          description: Current reservation usage only; not a persistent UI-derived value.
+        live_guest_session_count:
+          type: [integer, 'null']
+          minimum: 0
+        guest_count_final:
+          type: [integer, 'null']
+          minimum: 0
+          description: Finalized post-event snapshot; null until server finalization.
+        actor_access:
+          $ref: '#/components/schemas/AlbumActorAccess'
+      required: [album_id, server_time, event_name, event_location, timezone, readiness, capture_state, reveal_state, capture_start, capture_end, reveal_at, quota_total, committed_count, reserved_current_count, live_guest_session_count, guest_count_final, actor_access]
+    AlbumActivityItem:
+      type: object
+      additionalProperties: false
+      description: Safe Host-facing activity item; excludes raw audit metadata, billing, credentials, secrets, and provider data.
+      properties:
+        activity_id: *id001
+        occurred_at: *id002
+        activity_code:
+          type: string
+          enum: [ALBUM_CREATED, SETUP_CONFIRMED, SCHEDULE_UPDATED, SETTINGS_UPDATED, DESIGN_UPDATED, PHOTO_APPROVED, PHOTO_HIDDEN, PHOTO_RESTORED, EXPORT_CREATED]
+        actor_label:
+          type: [string, 'null']
+          maxLength: 100
+      required: [activity_id, occurred_at, activity_code, actor_label]
     SetupReviewIssue:
       type: object
       additionalProperties: false
@@ -7138,14 +7285,18 @@ components:
     DesignAssetAuthorizeRequest:
       type: object
       additionalProperties: false
+      description: V1 permits only private COVER uploads. JPEG, PNG, and WebP are accepted; SVG and arbitrary template uploads are not supported. Maximum original size is exactly 5000000 bytes.
       properties:
         asset_type:
           type: string
+          enum: [COVER]
         content_type:
           type: string
+          enum: [image/jpeg, image/png, image/webp]
         size_bytes:
           type: integer
           minimum: 1
+          maximum: 5000000
       required:
       - asset_type
       - content_type
@@ -7626,6 +7777,44 @@ components:
           $ref: '#/components/schemas/AlbumDesign'
       required:
       - data
+    DesignAssetUploadAuthorization:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        upload_url:
+          type: string
+          format: uri
+        expires_at: *id002
+      required: [asset_id, upload_url, expires_at]
+    DesignAssetUploadAuthorizationEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/DesignAssetUploadAuthorization'
+      required: [data]
+    AlbumLiveOverviewEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AlbumLiveOverview'
+      required: [data]
+    AlbumActivityPageEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AlbumActivityItem'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required: [data, meta]
     SetupReviewEnvelope:
       type: object
       additionalProperties: false
