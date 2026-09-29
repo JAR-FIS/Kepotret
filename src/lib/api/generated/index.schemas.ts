@@ -1599,7 +1599,31 @@ export interface AIMessage {
   content: string;
 }
 
+/**
+ * Requested UI/session boundary. Required session must be present; the backend must not fall back to another cookie or public authority.
+ */
+export type AIAssistantContextSelectorSurface = typeof AIAssistantContextSelectorSurface[keyof typeof AIAssistantContextSelectorSurface];
+
+
+export const AIAssistantContextSelectorSurface = {
+  PUBLIC: 'PUBLIC',
+  USER: 'USER',
+  GUEST: 'GUEST',
+  ADMIN: 'ADMIN',
+} as const;
+
+/**
+ * Untrusted UI/session-boundary hint only. The backend derives the actor and current permissions from the matching session cookie and rechecks authorization. This is never a role, capability, or permission claim.
+ */
+export interface AIAssistantContextSelector {
+  /** Requested UI/session boundary. Required session must be present; the backend must not fall back to another cookie or public authority. */
+  surface: AIAssistantContextSelectorSurface;
+  /** Optional untrusted context hint for USER or ADMIN only. Never grants access; ignored/rejected for PUBLIC and never used for GUEST. */
+  album_id?: string;
+}
+
 export interface AIAssistantRequest {
+  context: AIAssistantContextSelector;
   /**
      * @minLength 1
      * @maxLength 2000

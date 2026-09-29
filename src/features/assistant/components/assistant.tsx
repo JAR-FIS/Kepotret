@@ -19,6 +19,32 @@ export function Assistant() {
   const [state, setState] = useState<'idle' | 'loading' | 'unauthenticated' | 'forbidden' | 'unavailable' | 'rateLimited' | 'error'>('idle');
   const guestCameraActive = useSyncExternalStore(subscribeGuestCameraActive, getGuestCameraActiveSnapshot, () => false);
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
+
+  const context = getAssistantContext(pathname);
+
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      inputRef.current?.focus();
+      return;
+    }
+    if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      launcherRef.current?.focus();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
 
   useEffect(() => {
     const list = listRef.current;
@@ -39,7 +65,7 @@ export function Assistant() {
     const recent = turns.slice(-6);
     setTurns((current) => [...current, { role: 'user' as const, content: message }].slice(-6));
     try {
-      const result = await postApiV1AiAssistant({ message, recent_turns: recent });
+      const result = await postApiV1AiAssistant({ context, message, recent_turns: recent });
       if (result.status === 200) {
         setTurns((current) => [...current, { role: 'assistant' as const, content: result.data.data.answer }].slice(-6));
         setState('idle');
@@ -53,13 +79,13 @@ export function Assistant() {
 
   return <div className="fixed bottom-4 right-4 z-40 sm:bottom-5 sm:right-5">
     {open && <>
-      <section id="assistant-dialog" role="dialog" aria-modal="true" aria-labelledby="assistant-title" className="fixed inset-0 z-50 flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] sm:inset-y-4 sm:left-auto sm:right-4 sm:w-[min(26rem,calc(100vw-2rem))] sm:rounded-2xl sm:border sm:border-[var(--color-border)] sm:bg-[var(--color-surface)] sm:shadow-2xl">
+      <section id="assistant-dialog" role="dialog" aria-labelledby="assistant-title" className="fixed inset-0 z-50 flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] sm:inset-y-4 sm:left-auto sm:right-4 sm:w-[min(26rem,calc(100vw-2rem))] sm:rounded-2xl sm:border sm:border-[var(--color-border)] sm:bg-[var(--color-surface)] sm:shadow-2xl">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3 pt-[max(.75rem,env(safe-area-inset-top))] sm:rounded-t-2xl">
           <div><h2 id="assistant-title" className="font-semibold">{t('title')}</h2><p className="text-xs text-[var(--color-muted-foreground)]">{t('contextNotice')}</p></div>
           <button type="button" aria-label={t('close')} onClick={() => setOpen(false)} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-[var(--color-muted)]"><X size={19} aria-hidden="true" /></button>
         </header>
         <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
-          {!turns.length && <div className="space-y-3"><p className="text-sm leading-6">{t('intro')}</p><div className="flex flex-wrap gap-2">{(['promptOne', 'promptTwo', 'promptThree'] as const).map((key) => <button key={key} type="button" disabled={state === 'loading'} onClick={() => void sendMessage(undefined, t(key))} className="rounded-full border border-[var(--color-border)] px-3 py-2 text-left text-sm hover:bg-[var(--color-muted)]">{t(key)}</button>)}</div></div>}
+          {!turns.length && <div className="space-y-3"><p className="text-sm leading-6">{t('intro')}</p><div className="flex flex-wrap gap-2">{(['promptOne', 'promptTwo', 'promptThree'] as const).map((key) => <button key={key} type="button" disabled={state === 'loading'} onClick={() => void sendMessage(undefined, t(key))} className="min-h-11 rounded-full border border-[var(--color-border)] px-3 py-2 text-left text-sm hover:bg-[var(--color-muted)]">{t(key)}</button>)}</div></div>}
           {turns.map((turn, index) => <p key={`${index}-${turn.role}`} className={`max-w-[90%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${turn.role === 'user' ? 'ml-auto bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : 'bg-[var(--color-muted)]'}`}>{turn.content}</p>)}
           {state === 'loading' && <p role="status" className="text-sm text-[var(--color-muted-foreground)]">{t('loading')}</p>}
           {state === 'unavailable' && <p role="status" className="rounded-xl bg-[var(--color-muted)] p-3 text-sm">{t('unavailable')}</p>}
@@ -70,12 +96,24 @@ export function Assistant() {
         </div>
         <form onSubmit={(event) => void sendMessage(event)} className="flex shrink-0 items-end gap-2 border-t border-[var(--color-border)] p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] sm:rounded-b-2xl">
           <label className="sr-only" htmlFor="assistant-message">{t('messageLabel')}</label>
-          <textarea id="assistant-message" value={text} onChange={(event) => setText(event.target.value.slice(0, 2000))} maxLength={2000} rows={2} placeholder={t('placeholder')} disabled={state === 'loading'} className="min-h-12 flex-1 resize-none rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm" />
+          <textarea ref={inputRef} id="assistant-message" value={text} onChange={(event) => setText(event.target.value.slice(0, 2000))} maxLength={2000} rows={2} placeholder={t('placeholder')} disabled={state === 'loading'} className="min-h-12 flex-1 resize-none rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm" />
           <Button type="submit" aria-label={t('send')} disabled={!text.trim() || state === 'loading'} className="min-h-12 min-w-12 px-3"><Send size={17} aria-hidden="true" /></Button>
         </form>
       </section>
       <div className="fixed inset-0 z-40 bg-black/30 sm:hidden" aria-hidden="true" onClick={() => setOpen(false)} />
     </>}
-    <button type="button" aria-expanded={open} aria-controls={open ? 'assistant-dialog' : undefined} onClick={() => setOpen((value) => !value)} aria-label={open ? t('close') : t('open')} className="relative z-[60] inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-primary)] px-4 font-semibold text-[var(--color-primary-foreground)] shadow-[var(--shadow-soft)] hover:brightness-95"><MessageCircle size={19} aria-hidden="true" /><span>{open ? t('close') : t('open')}</span></button>
+    <button ref={launcherRef} type="button" aria-expanded={open} aria-controls={open ? 'assistant-dialog' : undefined} onClick={() => setOpen((value) => !value)} aria-label={open ? t('close') : t('open')} className="relative z-[60] inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-primary)] px-4 font-semibold text-[var(--color-primary-foreground)] shadow-[var(--shadow-soft)] hover:brightness-95"><MessageCircle size={19} aria-hidden="true" /><span>{open ? t('close') : t('open')}</span></button>
   </div>;
+}
+
+export function getAssistantContext(pathname: string) {
+  if (/^\/j\/[^/]+(?:\/.*)?$/.test(pathname)) return { surface: 'GUEST' as const };
+  if (/^\/admin(?:\/|$)/.test(pathname)) {
+    const albumId = pathname.match(/^\/admin\/albums\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i)?.[1];
+    return albumId ? { surface: 'ADMIN' as const, album_id: albumId } : { surface: 'ADMIN' as const };
+  }
+  const albumId = pathname.match(/^\/album\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i)?.[1];
+  if (albumId) return { surface: 'USER' as const, album_id: albumId };
+  if (/^\/(?:album|dashboard|kolaborasi|akun)(?:\/|$)/.test(pathname)) return { surface: 'USER' as const };
+  return { surface: 'PUBLIC' as const };
 }

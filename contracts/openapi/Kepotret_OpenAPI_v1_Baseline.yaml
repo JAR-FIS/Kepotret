@@ -3621,9 +3621,11 @@ paths:
       - Read-only context; no mutation tools; no photo bytes/URLs sent to Gemini V1.
       - Backend uses official Go SDK google.golang.org/genai behind server adapter; exact model is server configuration.
       - No permanent chat/answer persistence.
-      - Actor is resolved from the current session; clients never submit role or capability claims.
-      - Anonymous access is public informational context only. Guest context cannot access Host, collaborator, or Admin information.
-      - Admin context never grants Sensitive Media access; Operational Hold grants no additional assistant permission.
+      - The context selector is an untrusted UI/session-boundary hint, never an authorization role or permission claim; the backend derives actor and relationship/capability from the current session and rechecks current permission before using album context.
+      - PUBLIC is informational only and must not escalate because other cookies coexist; a PUBLIC album_id is rejected or ignored and never used for private context. Missing required USER, GUEST, or ADMIN session returns normal 401/403 and never falls back to another cookie or public authority.
+      - USER requires UserCookie; album_id is only a hint and current Owner/collaborator relationship and capability must be derived and authorized by the backend. Host/WO/EO role and capability are never client-supplied.
+      - GUEST requires GuestCookie and derives album authority only from the current GuestSession/GuestCredential; client album_id is not accepted. Guest context cannot retrieve Host, collaborator, billing, Admin, unrevealed private media, or other-session data.
+      - ADMIN requires AdminCookie; album_id selects operational album context only after current Admin authorization. It never grants Sensitive Access or private media access; Operational Hold grants no additional assistant permission.
   /api/v1/admin/overview:
     get:
       tags:
@@ -7485,6 +7487,8 @@ components:
       type: object
       additionalProperties: false
       properties:
+        context:
+          $ref: '#/components/schemas/AIAssistantContextSelector'
         message:
           type: string
           minLength: 1
@@ -7495,7 +7499,27 @@ components:
           items:
             $ref: '#/components/schemas/AIMessage'
       required:
+      - context
       - message
+    AIAssistantContextSelector:
+      type: object
+      description: Untrusted UI/session-boundary hint only. The backend derives the actor and current permissions from the matching session cookie and rechecks authorization. This is never a role, capability, or permission claim.
+      additionalProperties: false
+      properties:
+        surface:
+          type: string
+          enum:
+          - PUBLIC
+          - USER
+          - GUEST
+          - ADMIN
+          description: Requested UI/session boundary. Required session must be present; the backend must not fall back to another cookie or public authority.
+        album_id:
+          type: string
+          format: uuid
+          description: Optional untrusted context hint for USER or ADMIN only. Never grants access; ignored/rejected for PUBLIC and never used for GUEST.
+      required:
+      - surface
     PackageCreateRequest:
       type: object
       additionalProperties: false

@@ -106,10 +106,10 @@ This is a source mapping of the checkpoint 8.1 Pages Registry to the frontend at
 | Code | Shared surface |
 |---|---|
 | C01 | Shared launcher in `Assistant` |
-| C02 | Shared panel/dialog shell |
+| C02 | Shared labelled non-modal panel shell; focuses its input on open, supports Escape, and restores launcher focus on close |
 | C03 | In-memory conversation and informational response bubble |
 | C04 | Generic safe fallback on request failure |
-| C05 | Context notice derived from active session access; no client role field |
+| C05 | Explicit untrusted `context.surface` selector (`PUBLIC`, `USER`, `GUEST`, `ADMIN`) and optional route-derived `album_id` hint for USER/ADMIN; backend derives actor and current relationship/capability, rechecks permission, and never treats client role/capability claims as authoritative |
 | C06 | Loading state |
 | C07 | 503 unavailable state; main page remains usable |
 | C08 | 401/403, 429, and recoverable error states |
@@ -119,7 +119,7 @@ The shared assistant is included at the application root for public, Host, colla
 
 ## Cross-cutting states and security boundaries
 
-- UserCookie, GuestCookie, and AdminCookie remain distinct browser sessions. AI request body contains only message and bounded recent turns; role/capability claims are not sent.
+- UserCookie, GuestCookie, and AdminCookie remain distinct browser sessions. AI sends an untrusted UI/session-boundary context selector plus message and bounded recent turns; route-derived album IDs are hints only. The backend derives actor and relationship/capability and rechecks current permission; missing required sessions cannot fall back to another cookie or public authority.
 - AI conversation lives in React state only; no localStorage or permanent browser persistence.
 - H41 countdown uses `server_time` from the live projection and monotonic elapsed time; browser wall-clock time is not used for authorization.
 - H52 UI consumes only a typed safe activity projection. Current relationship/capability scoping is an API authorization requirement and must be enforced by the backend on every request.
@@ -128,7 +128,7 @@ The shared assistant is included at the application root for public, Host, colla
 - Backend must verify Owner/allowed `can_setup` permission and current album state before recording a DesignAsset and issuing short-lived upload authorization; `can_setup` does not grant post-confirm setup privileges where the permission model forbids them. Commit must verify current authorization, exact object association, object existence, size, declared MIME, magic/signature, allowed type, and non-invalidated asset state. A successful storage PUT alone does not commit or select the cover. The server must recheck authorization for every short-lived Media Gateway delivery and return `cover_preview: null` without a selected cover.
 - H59 uses only Host-authorized AlbumDetail, AlbumSchedule, AlbumSettings, and AlbumDesign projections. It does not call Guest Access Resolve, create GuestSession/GuestCredential/GuestConsent/CaptureAttempt, bypass PIN, reserve quota, capture, upload, access unrevealed gallery media, like, or download. The disabled guest CTA and Preview/Pratinjau mark keep the surface read-only and visibly simulated.
 - Admin surfaces under `src/features/admin/**` use next-intl. Bahasa Indonesia remains the default; representative Admin dashboard and album surfaces have ID/EN regression coverage. Enum values and technical identifiers deliberately shown diagnostically remain literal.
-- AI is informational only, sends no client role/capability, keeps conversation in component memory, and uses the active session cookie boundary. It does not authorize or mutate actions. C01-C09 cover shared launcher, panel, memory-only turns, safe fallback, session-derived context, loading, 503, 401/403/429/error, and responsive dialog/panel behavior.
+- AI is informational only, sends no client role/capability, keeps conversation in component memory, and uses the requested untrusted session boundary while the backend resolves and authorizes the actor. It does not authorize or mutate actions. C01-C09 cover shared launcher, panel, memory-only turns, safe fallback, untrusted context selector, loading, 503, 401/403/429/error, and responsive dialog/panel behavior.
 - H01 Instagram and TikTok link to `https://www.instagram.com/kepotret.official/` and `https://www.tiktok.com/@kepotret.official/`. WhatsApp, Hubungi Kami, and contact details remain visibly unavailable until an official target is supplied by the Owner.
 
 ## Quality evidence for this remediation snapshot
@@ -147,5 +147,4 @@ The shared assistant is included at the application root for public, Host, colla
 
 - No backend implementation is included. `/live-overview`, `/activity`, DesignAsset authorization/commit validation, and authorized Media Gateway projections must be implemented server-side and enforce fresh Owner/collaborator authorization before integration acceptance.
 - External integration remains backend-owned: Gemini AI requests require the approved server adapter, payment status requires provider callbacks/reconciliation, and private media delivery/upload require the Media Gateway and object-storage authorization paths. These integrations are not claimed as implemented here.
-- H13 has no dedicated browser/device compatibility guide.
 - Official WhatsApp and contact targets are awaiting Owner-provided details.
