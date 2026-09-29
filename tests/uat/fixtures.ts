@@ -3,9 +3,11 @@ import type {
   AlbumLiveOverview,
   AlbumSchedule,
   AlbumSettings,
+  AlbumActivityItem,
   GuestAccessPreview,
   GuestContext,
   GuestGalleryPhoto,
+  InvitationPreview,
   PaymentTransaction,
 } from '../../src/lib/api/generated/index.schemas';
 import { uatCaptureEnd, uatCaptureStart, uatEventName, uatIds, uatNow } from './constants';
@@ -62,6 +64,26 @@ export const uatSettings: AlbumSettings = {
   share_enabled: true,
   per_guest_limit: 30,
 };
+
+export const uatActivityItem: AlbumActivityItem = {
+  activity_id: uatIds.issue,
+  occurred_at: uatNow,
+  activity_code: 'ALBUM_CREATED',
+  actor_label: 'Pemilik UAT',
+};
+
+export function makeInvitationPreview(scenario: string): InvitationPreview {
+  const status = scenario === 'expired' ? 'EXPIRED' : scenario === 'used' ? 'ACCEPTED' : 'PENDING';
+  return {
+    invitation_id: uatIds.invitation,
+    album_id: uatIds.album,
+    event_name: uatEventName,
+    permissions: { can_setup: false, can_moderate: true, can_export_zip: false },
+    expires_at: '2026-10-08T08:00:00Z',
+    status,
+    invited_email_hint: 'in***@kepotret.test',
+  };
+}
 
 export function makeLiveOverview(scenario: string, collaborator = false): AlbumLiveOverview {
   const album = makeAlbum(scenario === 'live' ? 'live' : 'draft', collaborator);

@@ -1,11 +1,11 @@
-# Kepotret Owner Visual UAT Checklist
+﻿# Kepotret Owner Visual UAT Checklist
 
 Use this per-route checklist while the visible runner is paused. The artifact records owner observations; it does not submit data. `N/A` is allowed only when a check does not apply. Keep an issue screenshot and reproduction notes in the guide issue log.
 
 Fields per route: expected major visual; desktop; mobile; Indonesian; English; Light; Dark; overflow; typography; spacing; CTA hierarchy; loading; empty; error/permission; dialog/panel; interaction; copy; accessibility; owner result (PASS / ISSUE / RECHECK).
 
-| Route | Expected major visual | Desktop | Mobile | ID | EN | Light | Dark | Overflow | Type | Spacing | CTA | Loading | Empty | Error / permission | Dialog / panel | Interaction | Copy | A11y | Owner result | Owner approval ||---|
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Route | Expected major visual | Desktop | Mobile | ID | EN | Light | Dark | Overflow | Type | Spacing | CTA | Loading | Empty | Error / permission | Dialog / panel | Interaction | Copy | A11y | Owner result | Owner approval |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 <!-- ROUTE_CHECKLIST_START -->
 | H01 Landing Page | __________________ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] PASS [ ] ISSUE [ ] RECHECK | [ ] |
 | H02 How Kepotret Works | __________________ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] PASS [ ] ISSUE [ ] RECHECK | [ ] |

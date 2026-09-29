@@ -1,12 +1,14 @@
 import type { Page, Route } from '@playwright/test';
+import type { OperationalIssue } from '../../src/lib/api/generated/index.schemas';
 import { uatCaptureEnd, uatCaptureStart, uatEventName, uatIds, uatNow } from './constants';
-import { makeAlbum, makeGuestContext, makeGuestPreview, makeLiveOverview, makeTransaction, uatPhoto, uatSchedule, uatSettings } from './fixtures';
+import { makeAlbum, makeGuestContext, makeGuestPreview, makeInvitationPreview, makeLiveOverview, makeTransaction, uatActivityItem, uatPhoto, uatSchedule, uatSettings } from './fixtures';
 
 const envelope = (data: unknown) => ({ data });
 const list = (data: unknown[]) => ({ data, meta: { has_more: false, next_cursor: null } });
 const dateLater = '2026-10-04T17:00:00Z';
 const photoMedia = { url: 'https://media.test/owner-uat/photo.svg', expires_at: '2026-10-01T08:15:00Z' };
 const adminMe = { admin_user_id: uatIds.user, email: 'superadmin@kepotret.test', display_name: 'Superadmin UAT', mfa_verified: true, session_expires_at: '2026-10-02T08:00:00Z', step_up_expires_at: null };
+const operationalIssue: OperationalIssue = { issue_id: uatIds.issue, status: 'OPEN', issue_type: 'PHOTO_PROCESSING', severity: 'MEDIUM', summary: 'Synthetic Owner UAT operational issue.', error_code: 'UAT_SYNTHETIC', related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: uatNow, acknowledged_at: null, resolved_at: null };
 const userSummary = { user_id: uatIds.user, email: 'owner@kepotret.test', display_name: 'Pemilik UAT', suspended: false, created_at: '2026-09-01T08:00:00Z', owned_album_count: 1, collaborator_album_count: 1, active_session_count: 1 };
 const albumSummary = (scenario: string, collaborator = false) => {
   const album = makeAlbum(scenario, collaborator);
@@ -19,6 +21,30 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
   }
 
   if (pathname === '/api/v1/security/csrf' || pathname === '/api/v1/admin/security/csrf') return { status: 200, body: envelope({ csrf_token: 'owner-uat-csrf' }) };
+
+  const invitationPath = `/api/v1/collaborator-invitations/${uatIds.invitation}`;
+  const invitationTerminal = scenario === 'invalid'
+    ? { status: 404, code: 'INVITATION_INVALID' }
+    : scenario === 'expired'
+      ? { status: 410, code: 'INVITATION_EXPIRED' }
+      : scenario === 'used'
+        ? { status: 410, code: 'INVITATION_USED' }
+        : null;
+  if (pathname === `${invitationPath}/resolve` && method === 'POST') {
+    return invitationTerminal
+      ? { status: invitationTerminal.status, body: { error: { code: invitationTerminal.code } } }
+      : { status: 200, body: envelope(makeInvitationPreview(scenario)) };
+  }
+  if (pathname === `${invitationPath}/preview` && method === 'GET') {
+    return invitationTerminal
+      ? { status: invitationTerminal.status, body: { error: { code: invitationTerminal.code } } }
+      : { status: 200, body: envelope(makeInvitationPreview(scenario)) };
+  }
+  if (pathname === `${invitationPath}/accept` && method === 'POST') {
+    return invitationTerminal
+      ? { status: invitationTerminal.status, body: { error: { code: invitationTerminal.code } } }
+      : { status: 201, body: envelope({ user_id: uatIds.user, display_name: 'Pemilik UAT', email: 'owner@kepotret.test', permission_version: 1, permissions: { can_setup: false, can_moderate: true, can_export_zip: false }, joined_at: uatNow }) };
+  }
 
   if (pathname === '/api/v1/guest/access/resolve') return { status: 200, body: envelope(makeGuestPreview(scenario)) };
   if (pathname === '/api/v1/guest/sessions') return { status: 201, body: envelope(makeGuestContext(scenario).guest_session) };
@@ -45,8 +71,8 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
   if (pathname === '/api/v1/admin/packages') return { status: 200, body: list([{ package_id: uatIds.package, code: 'PAKET-UAT', name: 'Paket Pesta UAT', versions: [{ package_version_id: uatIds.packageVersion, price_amount: 75000, currency: 'IDR', quota_total: 100, sale_enabled: true, effective_at: uatNow, retired_at: null }] }]) };
   if (pathname === '/api/v1/admin/event-categories') return { status: 200, body: list([{ category_id: uatIds.package, code: 'WEDDING', label_id: 'Pernikahan', label_en: 'Wedding', display_order: 1, active: true }]) };
   if (pathname === '/api/v1/admin/operational-configs') return { status: 200, body: list([{ config_key: 'maintenance_mode', typed_value: false, revision: 1, updated_at: uatNow }]) };
-  if (pathname === '/api/v1/admin/issues') return { status: 200, body: list(scenario === 'empty' ? [] : [{ issue_id: uatIds.issue, related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: uatNow, acknowledged_at: null, resolved_at: null }]) };
-  if (pathname === `/api/v1/admin/issues/${uatIds.issue}`) return { status: 200, body: envelope({ issue_id: uatIds.issue, related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: uatNow, acknowledged_at: null, resolved_at: null }) };
+  if (pathname === '/api/v1/admin/issues') return { status: 200, body: list(scenario === 'empty' ? [] : [operationalIssue]) };
+  if (pathname === `/api/v1/admin/issues/${uatIds.issue}`) return { status: 200, body: envelope(operationalIssue) };
   if (pathname === '/api/v1/admin/audit-logs') return { status: 200, body: list([{ audit_id: uatIds.issue, actor_type: 'ADMIN', actor_id: uatIds.user, album_id: uatIds.album, action: 'UAT_FIXTURE_VIEW', object_type: 'ALBUM', object_ref: uatIds.album, request_id: null, result: 'SUCCESS', safe_change_summary: 'Synthetic Owner UAT fixture entry.', created_at: uatNow }]) };
   if (pathname === `/api/v1/admin/audit-logs/${uatIds.issue}`) return { status: 200, body: envelope({ summary: { audit_id: uatIds.issue, actor_type: 'ADMIN', actor_id: uatIds.user, album_id: uatIds.album, action: 'UAT_FIXTURE_VIEW', object_type: 'ALBUM', object_ref: uatIds.album, request_id: null, result: 'SUCCESS', safe_change_summary: 'Synthetic Owner UAT fixture entry.', created_at: uatNow } }) };
   if (pathname === '/api/v1/admin/admins') return { status: 200, body: list([{ admin_user_id: uatIds.user, email: 'superadmin@kepotret.test', display_name: 'Superadmin UAT', grant_status: 'ACTIVE', granted_at: uatNow, revoked_at: null, last_session_at: uatNow }]) };
@@ -70,7 +96,7 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
     if (endpoint === 'entitlement') return { status: 200, body: envelope({ album_id: uatIds.album, quota_total: 100, reserved_count: 2, committed_count: 24, payment_cutoff_at: uatSchedule.payment_cutoff_at }) };
     if (endpoint === 'lifecycle') return { status: 200, body: envelope({ album_id: uatIds.album, retention_state: scenario === 'recovery-media' ? 'RECOVERY' : 'ACTIVE', server_time: uatNow, recovery_access_granted_at: scenario === 'recovery-media' ? uatNow : null, normal_access_end_at: '2027-10-01T00:00:00Z', recovery_end_at: '2027-11-01T00:00:00Z', backup_cleanup_deadline_at: '2027-12-01T00:00:00Z' }) };
     if (endpoint === 'export-capabilities') return { status: 200, body: envelope({ can_export_all: true, can_export_selected: true, max_photos_per_job: 100, selection_revision: 1 }) };
-    if (endpoint === 'activity') return { status: 200, body: list(scenario === 'empty' ? [] : [{ activity_id: uatIds.issue, activity_code: 'ALBUM_CREATED', actor_display_name: 'Pemilik UAT', created_at: uatNow, safe_summary: 'Album UAT dibuat.' }]) };
+    if (endpoint === 'activity') return { status: 200, body: list(scenario === 'empty' ? [] : [uatActivityItem]) };
     if (endpoint === 'photos' || endpoint === 'photos/trash') return { status: 200, body: list(scenario === 'empty' ? [] : [{ photo_id: uatIds.photo, moderation_status: 'APPROVED', created_at: uatNow, deleted_at: null, photographer_display_name: 'Ari UAT', like_count: 3, media: photoMedia, actions: { can_approve: false, can_hide: true, can_unhide: false, can_delete: true, can_download: true, can_share: true }, can_restore: true }]) };
     if (endpoint === `photos/${uatIds.photo}`) return { status: 200, body: envelope({ photo_id: uatIds.photo, moderation_status: 'APPROVED', created_at: uatNow, photographer_display_name: 'Ari UAT', like_count: 3, media: photoMedia, actions: { can_approve: false, can_hide: true, can_unhide: false, can_delete: true, can_download: true, can_share: true } }) };
     if (endpoint === 'collaborators') return { status: 200, body: list([{ user_id: uatIds.user, display_name: 'Kolaborator UAT', email: 'collaborator@kepotret.test', permission_version: 1, permissions: { can_setup: false, can_moderate: true, can_export_zip: false }, joined_at: uatNow }]) };
