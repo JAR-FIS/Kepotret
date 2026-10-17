@@ -1,15 +1,23 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({ activity: vi.fn(), album: vi.fn() }));
 vi.mock('@/lib/api/browser', () => ({ getApiV1AlbumsAlbumIdActivity: api.activity, getApiV1AlbumsAlbumId: api.album }));
 
 import { AlbumActivity } from '@/features/host/components/album-activity';
+import type { AlbumActivityItem } from '@/lib/api/generated/index.schemas';
 import messages from '@/messages/en.json';
 
-const page = (data: Array<{ activity_id: string; occurred_at: string; activity_code: 'SETTINGS_UPDATED'; actor_label: string | null }>, next_cursor: string | null, has_more: boolean) => ({ status: 200, data: { data, meta: { next_cursor, has_more } } });
-const item = (id: string) => ({ activity_id: id, occurred_at: '2026-09-29T10:00:00Z', activity_code: 'SETTINGS_UPDATED' as const, actor_label: 'Host' });
+const page = (data: AlbumActivityItem[], next_cursor: string | null, has_more: boolean) => ({ status: 200, data: { data, meta: { next_cursor, has_more } } });
+const item = (id: string, activity_code: AlbumActivityItem['activity_code'] = 'SETTINGS_UPDATED'): AlbumActivityItem => ({ activity_id: id, occurred_at: '2026-09-29T10:00:00Z', activity_code, actor_label: 'Host' });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => { resolve = resolvePromise; reject = rejectPromise; });
+  return { promise, resolve, reject };
+}
 
 function renderActivity(albumId = 'album-1') {
   return render(<NextIntlClientProvider locale="en" messages={messages}><AlbumActivity albumId={albumId} /></NextIntlClientProvider>);
@@ -56,6 +64,67 @@ describe('H52 safe album activity', () => {
     await waitFor(() => expect(api.activity).toHaveBeenLastCalledWith('album-2', { limit: 25, cursor: undefined }));
     expect(screen.queryByText(/PDT|PST/)).not.toBeInTheDocument();
     expect(screen.getByText(/GMT\+7|WIB/)).toBeInTheDocument();
+  });
+
+  it('ignores a late album A success and keeps album B pagination isolated', async () => {
+    const albumA = deferred<ReturnType<typeof page>>();
+    const albumBItem = item('activity-b1', 'SCHEDULE_UPDATED');
+    const albumBNext = item('activity-b2', 'DESIGN_UPDATED');
+    api.activity.mockReturnValueOnce(albumA.promise)
+      .mockResolvedValueOnce(page([albumBItem], 'album-b-cursor', true))
+      .mockResolvedValueOnce(page([albumBNext], null, false));
+    const rendered = renderActivity('album-a');
+    await waitFor(() => expect(api.activity).toHaveBeenCalledWith('album-a', { limit: 25, cursor: undefined }));
+    rendered.rerender(<NextIntlClientProvider locale="en" messages={messages}><AlbumActivity albumId="album-b" /></NextIntlClientProvider>);
+
+    expect(await screen.findByText('Event schedule updated')).toBeInTheDocument();
+    await act(async () => { albumA.resolve(page([item('activity-a')], null, false)); await albumA.promise; });
+    expect(screen.getByText('Event schedule updated')).toBeInTheDocument();
+    expect(screen.queryByText('Album settings updated')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more activity' }));
+    expect(await screen.findByText('Album design updated')).toBeInTheDocument();
+    expect(api.activity).toHaveBeenCalledWith('album-b', { limit: 25, cursor: 'album-b-cursor' });
+    expect(screen.queryByText('Album settings updated')).not.toBeInTheDocument();
+  });
+
+  it.each([401, 403])('ignores a late album A authorization response (%s) after album B is active', async (status) => {
+    const albumA = deferred<{ status: number; data: unknown }>();
+    api.activity.mockReturnValueOnce(albumA.promise).mockResolvedValueOnce(page([item('activity-b', 'SCHEDULE_UPDATED')], null, false));
+    const rendered = renderActivity('album-a');
+    await waitFor(() => expect(api.activity).toHaveBeenCalledWith('album-a', { limit: 25, cursor: undefined }));
+    rendered.rerender(<NextIntlClientProvider locale="en" messages={messages}><AlbumActivity albumId="album-b" /></NextIntlClientProvider>);
+
+    expect(await screen.findByText('Event schedule updated')).toBeInTheDocument();
+    await act(async () => { albumA.resolve({ status, data: {} }); await albumA.promise; });
+    expect(screen.getByText('Event schedule updated')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Your session needs refreshing' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Access unavailable' })).not.toBeInTheDocument();
+  });
+
+  it('ignores a late album A network rejection after album B is active', async () => {
+    const albumA = deferred<ReturnType<typeof page>>();
+    api.activity.mockReturnValueOnce(albumA.promise).mockResolvedValueOnce(page([item('activity-b', 'SCHEDULE_UPDATED')], null, false));
+    const rendered = renderActivity('album-a');
+    await waitFor(() => expect(api.activity).toHaveBeenCalledWith('album-a', { limit: 25, cursor: undefined }));
+    rendered.rerender(<NextIntlClientProvider locale="en" messages={messages}><AlbumActivity albumId="album-b" /></NextIntlClientProvider>);
+
+    expect(await screen.findByText('Event schedule updated')).toBeInTheDocument();
+    await act(async () => { albumA.reject(new TypeError('Album A request failed')); await albumA.promise.catch(() => undefined); });
+    expect(screen.getByText('Event schedule updated')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Activity could not be loaded' })).not.toBeInTheDocument();
+  });
+
+  it('does not apply an Activity response after unmount', async () => {
+    const request = deferred<ReturnType<typeof page>>();
+    api.activity.mockReturnValueOnce(request.promise);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const rendered = renderActivity();
+    await waitFor(() => expect(api.activity).toHaveBeenCalledTimes(1));
+    rendered.unmount();
+
+    await act(async () => { request.resolve(page([item('activity-after-unmount')], null, false)); await request.promise; });
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -23,20 +23,26 @@ export function AlbumActivity({ albumId }: { albumId: string }) {
   const online = useConnectivity();
   const [page, setPage] = useState<ActivityPage>({ albumId, items: [], cursor: null, hasMore: false });
   const [view, setView] = useState<{ albumId: string; state: ActivityViewState }>({ albumId, state: 'loading' });
-  const [busy, setBusy] = useState(false);
+  const [busyState, setBusy] = useState<{ albumId: string; busy: boolean }>({ albumId, busy: false });
   const [zone, setZone] = useState<{ albumId: string; timeZone: string | null }>({ albumId, timeZone: null });
   const blockedAlbumId = useRef<string | null>(null);
+  const activeAlbumId = useRef(albumId);
+  const requestGeneration = useRef(0);
   const items = page.albumId === albumId ? page.items : [];
   const cursor = page.albumId === albumId ? page.cursor : null;
   const hasMore = page.albumId === albumId && page.hasMore;
   const state = view.albumId === albumId ? view.state : 'loading';
+  const busy = busyState.albumId === albumId && busyState.busy;
   const timeZone = zone.albumId === albumId ? zone.timeZone : null;
 
   const load = useCallback(async (nextCursor?: string) => {
-    if (blockedAlbumId.current === albumId) return;
-    setBusy(true);
+    if (activeAlbumId.current !== albumId || blockedAlbumId.current === albumId) return;
+    const generation = requestGeneration.current;
+    const isCurrentRequest = () => activeAlbumId.current === albumId && requestGeneration.current === generation;
+    setBusy({ albumId, busy: true });
     try {
       const result = await getApiV1AlbumsAlbumIdActivity(albumId, { limit: PAGE_SIZE, cursor: nextCursor });
+      if (!isCurrentRequest()) return;
       if (blockedAlbumId.current === albumId) return;
       if (result.status === 401 || result.status === 403) {
         blockedAlbumId.current = albumId;
@@ -46,6 +52,7 @@ export function AlbumActivity({ albumId }: { albumId: string }) {
       }
       if (result.status !== 200) { setView({ albumId, state: 'error' }); return; }
       setPage((current) => {
+        if (!isCurrentRequest()) return current;
         const currentItems = current.albumId === albumId ? current.items : [];
         const nextItems = nextCursor
           ? [...currentItems, ...result.data.data.filter((item) => !currentItems.some((known) => known.activity_id === item.activity_id))]
@@ -53,11 +60,23 @@ export function AlbumActivity({ albumId }: { albumId: string }) {
         return { albumId, items: nextItems, cursor: result.data.meta.next_cursor ?? null, hasMore: result.data.meta.has_more };
       });
       setView({ albumId, state: 'ready' });
-    } catch { if (blockedAlbumId.current !== albumId) setView({ albumId, state: 'error' }); }
-    finally { setBusy(false); }
+    } catch {
+      if (isCurrentRequest() && blockedAlbumId.current !== albumId) setView({ albumId, state: 'error' });
+    }
+    finally { if (isCurrentRequest()) setBusy({ albumId, busy: false }); }
+  }, [albumId]);
+  useLayoutEffect(() => {
+    activeAlbumId.current = albumId;
+    requestGeneration.current += 1;
+    blockedAlbumId.current = null;
+    return () => {
+      if (activeAlbumId.current === albumId) {
+        activeAlbumId.current = '';
+        requestGeneration.current += 1;
+      }
+    };
   }, [albumId]);
   useEffect(() => {
-    blockedAlbumId.current = null;
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, [albumId, load]);
