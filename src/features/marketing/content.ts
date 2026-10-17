@@ -36,7 +36,7 @@ export const content = {
     hero: {
       eyebrow: 'DOKUMENTASI PARTISIPATIF UNTUK BERBAGAI ACARA',
       title: 'Satu momen. Banyak sudut.',
-      titleFirstLine: 'Satu momen',
+      titleFirstLine: 'Satu momen.',
       titleSecondLine: 'Banyak sudut',
       description: 'Jangan sampai momen dari sudut lain terlewat. Bisa jadi, justru di sanalah bagian paling istimewa tersimpan. Bagikan satu QR dan biarkan orang-orang di acara ikut motret langsung dari HP.',
       proof: ['Foto terkumpul dalam satu album', 'Tanpa install aplikasi & tanpa akun peserta'],
@@ -247,7 +247,7 @@ export const content = {
     hero: {
       eyebrow: 'PARTICIPATORY DOCUMENTATION FOR EVERY OCCASION',
       title: 'One moment. Many perspectives.',
-      titleFirstLine: 'One moment',
+      titleFirstLine: 'One moment.',
       titleSecondLine: 'Many perspectives',
       description: 'Do not miss the moments seen from another angle. The most special part may be waiting there. Share one QR code and let people at your event take photos directly from their phones.',
       proof: ['Photos gathered in one album', 'No app installation or participant account needed'],

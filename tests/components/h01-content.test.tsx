@@ -8,10 +8,12 @@ describe('H01 locked headline and content', () => {
   it.each([
     ['id', 'Satu momen. Banyak sudut.'],
     ['en', 'One moment. Many perspectives.'],
-  ] as const)('renders one decorative lime terminal dot for %s', (locale, title) => {
+  ] as const)('renders the locked visible punctuation and one decorative lime terminal dot for %s', (locale, title) => {
     const copy = getContent(locale).hero;
     const { container } = render(<H01HeroHeadline title={copy.title} firstLine={copy.titleFirstLine} secondLine={copy.titleSecondLine} />);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible();
+    expect(container.querySelector('[data-hero-first-line]')?.textContent).toBe(locale === 'id' ? 'Satu momen.' : 'One moment.');
+    expect(container.querySelector('[data-hero-second-line]')?.textContent).toBe(locale === 'id' ? 'Banyak sudut' : 'Many perspectives');
     expect(container.querySelectorAll('[data-hero-lime-dot]')).toHaveLength(1);
     expect(container.querySelector('[data-hero-lime-dot]')).toHaveAttribute('aria-hidden', 'true');
   });

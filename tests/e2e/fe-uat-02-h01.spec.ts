@@ -3,6 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 const viewports = [
   { name: 'desktop-1440', width: 1440, height: 900 },
   { name: 'desktop-1280', width: 1280, height: 800 },
+  { name: 'tablet-1100', width: 1100, height: 800 },
+  { name: 'tablet-1024', width: 1024, height: 800 },
   { name: 'mobile-390', width: 390, height: 844 },
   { name: 'mobile-360', width: 360, height: 800 },
 ];
@@ -52,10 +54,16 @@ test('FE-UAT-02 H01 composition remains correct across desktop/mobile, locales, 
   for (const viewport of viewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/');
-    const mobile = viewport.width < 1024;
+    const mobile = viewport.width < 1280;
     if (mobile) {
       await openMobileMenu(page, true);
       await expect(page.locator('header nav:visible')).toBeVisible();
+      if (viewport.width >= 1024) {
+        await expect(page.locator('header > div > div').first()).toBeHidden();
+        await expect(page.getByRole('button', { name: /Tutup menu navigasi|Close navigation menu/ })).toBeVisible();
+        const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
+        expect(dimensions.content, `${viewport.name} mobile header does not overflow horizontally`).toBeLessThanOrEqual(dimensions.viewport);
+      }
       await closeMobileMenu(page, true);
     } else {
       const nav = page.locator('header > div nav');
@@ -69,6 +77,48 @@ test('FE-UAT-02 H01 composition remains correct across desktop/mobile, locales, 
 
     for (const locale of ['id', 'en'] as const) {
       await setLocale(page, locale, mobile);
+      if (mobile && viewport.width >= 1024) {
+        await openMobileMenu(page, true);
+        const mobileHeader = await page.locator('#mobile-site-menu').evaluate((element) => ({
+          clipped: [...element.querySelectorAll('a, button')]
+            .filter((control) => control.scrollWidth > control.clientWidth + 1)
+            .map((control) => control.textContent?.trim() ?? control.getAttribute('aria-label') ?? control.tagName),
+          documentWidth: document.documentElement.scrollWidth,
+          viewportWidth: document.documentElement.clientWidth,
+        }));
+        expect(mobileHeader.clipped, `${viewport.name} ${locale} mobile header has no clipped controls`).toEqual([]);
+        expect(mobileHeader.documentWidth, `${viewport.name} ${locale} mobile header does not overflow horizontally`).toBeLessThanOrEqual(mobileHeader.viewportWidth);
+        await closeMobileMenu(page, true);
+      }
+      if (!mobile) {
+        const nav = page.locator('header > div nav');
+        const actions = page.locator('header > div > div').first();
+        const layout = await page.evaluate(() => {
+          const navigation = document.querySelector('header > div nav');
+          const actionGroup = document.querySelector('header > div > div:nth-child(3)');
+          if (!navigation || !actionGroup) return null;
+          const navBounds = navigation.getBoundingClientRect();
+          const actionBounds = actionGroup.getBoundingClientRect();
+          const clipped = [...navigation.querySelectorAll('a'), ...actionGroup.querySelectorAll('a, button')]
+            .filter((element) => element.scrollWidth > element.clientWidth + 1)
+            .map((element) => element.textContent?.trim() ?? element.getAttribute('aria-label') ?? element.tagName);
+          return {
+            navRight: navBounds.right,
+            navCenter: navBounds.left + navBounds.width / 2,
+            actionLeft: actionBounds.left,
+            documentWidth: document.documentElement.scrollWidth,
+            viewportWidth: document.documentElement.clientWidth,
+            clipped,
+          };
+        });
+        expect(layout, `${viewport.name} header controls exist`).not.toBeNull();
+        expect(layout!.navRight, `${viewport.name} ${locale} nav does not overlap right actions`).toBeLessThanOrEqual(layout!.actionLeft);
+        expect(Math.abs(layout!.navCenter - viewport.width / 2), `${viewport.name} ${locale} nav remains centered`).toBeLessThan(2);
+        expect(layout!.clipped, `${viewport.name} ${locale} header text is not clipped`).toEqual([]);
+        expect(layout!.documentWidth, `${viewport.name} ${locale} header does not overflow horizontally`).toBeLessThanOrEqual(layout!.viewportWidth);
+        await expect(nav).toBeVisible();
+        await expect(actions).toBeVisible();
+      }
       const title = locale === 'id' ? 'Satu momen. Banyak sudut.' : 'One moment. Many perspectives.';
       await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
       await expect(page.locator('[data-hero-lime-dot]')).toHaveCount(1);
