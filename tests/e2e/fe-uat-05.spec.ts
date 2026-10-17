@@ -35,9 +35,18 @@ test('@cross-browser H53 LIVE is a preview and cannot be submitted by the curren
 
 test('@cross-browser H41 status badges follow only the server capture state', async ({ page }) => {
   await installUatApi(page);
-  for (const [scenario, label] of [['scheduled', 'Terjadwal'], ['live', 'Sedang berlangsung'], ['ended', 'Selesai']] as const) {
+  const phases = [
+    { scenario: 'scheduled', status: 'Terjadwal', timer: 'Menuju acara dimulai: 60 m 00 dtk', start: /Acara dimulai:/ },
+    { scenario: 'live', status: 'Sedang berlangsung', timer: 'Sisa waktu pengambilan: 540 m 00 dtk' },
+    { scenario: 'ended', status: 'Selesai' },
+  ] as const;
+  for (const phase of phases) {
+    const { scenario, status } = phase;
     await page.goto(`/album/${uatIds.album}?uat=${scenario}`);
-    await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(status, { exact: true }).first()).toBeVisible();
+    if ('timer' in phase) await expect(page.getByRole('timer')).toHaveText(phase.timer);
+    else await expect(page.getByRole('timer')).toHaveCount(0);
+    if ('start' in phase) await expect(page.getByText(phase.start)).toBeVisible();
   }
 });
 

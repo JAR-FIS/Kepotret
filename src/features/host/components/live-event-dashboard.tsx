@@ -43,12 +43,20 @@ export function LiveEventDashboard({ albumId }: { albumId: string }) {
   if (state === 'forbidden') return <ForbiddenState title={shared('forbiddenTitle')} description={shared('forbiddenDescription')} />;
   if (state === 'error' || !overview) return <ErrorState title={shared('errorTitle')} description={t('unavailable')} retryLabel={shared('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
 
-  const countdown = overview.capture_end ? Math.max(0, Math.floor((Date.parse(overview.capture_end) - Date.parse(overview.server_time)) / 1000) - serverElapsed) : null;
+  const countdownTarget = overview.capture_state === 'NOT_STARTED'
+    ? overview.capture_start
+    : overview.capture_state === 'OPEN'
+      ? overview.capture_end
+      : null;
+  const countdown = countdownTarget
+    ? Math.max(0, Math.floor((Date.parse(countdownTarget) - Date.parse(overview.server_time)) / 1000) - serverElapsed)
+    : null;
   const isOwner = overview.actor_access.relationship === 'OWNER';
   const canModerate = overview.actor_access.collaborator_permissions?.can_moderate === true;
   const canExport = isOwner || overview.actor_access.collaborator_permissions?.can_export_zip === true;
   const formatTime = (value: string) => formatEventDateTime(value, locale, overview.timezone);
   const eventStatus = overview.capture_state === 'OPEN' ? 'live' : overview.capture_state === 'CLOSED' ? 'ended' : 'scheduled';
+  const captureMessage = overview.capture_state === 'OPEN' ? t('captureOpen') : overview.capture_state === 'NOT_STARTED' ? t('captureNotStarted') : t('captureClosed');
   const EventStatusIcon = eventStatus === 'live' ? CircleCheck : eventStatus === 'ended' ? CircleX : Clock3;
   const eventStatusStyle = eventStatus === 'live'
     ? 'border-green-700 bg-green-100 text-green-950 dark:border-green-300 dark:bg-green-950 dark:text-green-100'
@@ -60,11 +68,12 @@ export function LiveEventDashboard({ albumId }: { albumId: string }) {
       <p className="text-xs font-bold uppercase tracking-[.15em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p>
       <h2 id="live-dashboard-title" className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{overview.event_name ?? t('unnamed')}</h2>
       <p className={`mt-3 inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1 text-sm font-bold ${eventStatusStyle}`}><EventStatusIcon size={16} aria-hidden="true" />{t(`eventState.${eventStatus}`)}</p>
-      <p className="mt-2 text-sm">{overview.capture_state === 'OPEN' ? t('captureOpen') : t('captureClosed')}</p>
+      <p className="mt-2 text-sm">{captureMessage}</p>
       {overview.event_location && <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{overview.event_location}</p>}
       <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('serverTime', { time: formatTime(overview.server_time) })}</p>
+      {overview.capture_state === 'NOT_STARTED' && overview.capture_start && <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t('eventStartsAt', { time: formatTime(overview.capture_start) })}</p>}
       {overview.capture_start && <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t('captureWindow', { start: formatTime(overview.capture_start), end: overview.capture_end ? formatTime(overview.capture_end) : t('unknown') })}</p>}
-      {countdown !== null && <p role="timer" className="mt-3 inline-flex rounded-[var(--radius-md)] bg-red-100 px-3 py-2 text-lg font-bold text-red-950 dark:bg-red-950 dark:text-red-100">{t('countdown', { minutes: Math.floor(countdown / 60), seconds: String(countdown % 60).padStart(2, '0') })}</p>}
+      {countdown !== null && countdown > 0 && <p role="timer" className={`mt-3 inline-flex rounded-[var(--radius-md)] px-3 py-2 text-lg font-bold ${overview.capture_state === 'OPEN' ? 'bg-red-100 text-red-950 dark:bg-red-950 dark:text-red-100' : 'bg-blue-100 text-blue-950 dark:bg-blue-950 dark:text-blue-100'}`}>{t(overview.capture_state === 'OPEN' ? 'countdown' : 'untilStart', { minutes: Math.floor(countdown / 60), seconds: String(countdown % 60).padStart(2, '0') })}</p>}
     </div>
     <div className="grid gap-4 sm:grid-cols-2">
       <Metric title={t('quota')} value={overview.quota_total === null || overview.committed_count === null ? t('unknown') : t('quotaValue', { committed: overview.committed_count, quota: overview.quota_total })} description={overview.reserved_current_count === null ? undefined : t('reservedUsage', { count: overview.reserved_current_count })} />
