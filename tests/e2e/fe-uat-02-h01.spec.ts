@@ -134,7 +134,7 @@ test('FE-UAT-02 H01 composition remains correct across desktop/mobile, locales, 
           : 'The number of participants does not determine your Kepotret package. Choose the photo capacity your event needs, then invite as many people as you like to capture the moment.';
         const differentiationText = await page.getByText(differentiationCopy).evaluate((element) => getComputedStyle(element).color);
         if (dark) {
-          expect(howBg).toBe('rgb(107, 107, 107)');
+          expect(howBg).toBe('rgb(24, 24, 24)');
           expect(differentiationText).toBe('rgb(10, 10, 10)');
           await expect(page.locator('header img[src="/brand/logo_white.svg"]')).toBeVisible();
         } else expect(differentiationText).toBe('rgb(10, 10, 10)');

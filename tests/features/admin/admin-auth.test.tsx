@@ -49,4 +49,25 @@ describe('FE-8 Admin authentication boundary', () => {
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
   });
+
+  it('shows and hides the password without changing the entered value or form submission', async () => {
+    login.mockResolvedValue({ status: 202, data: {} });
+    render(<NextIntlClientProvider locale="en" messages={enMessages}><AdminLogin /></NextIntlClientProvider>);
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'admin@example.test' } });
+    const password = screen.getByLabelText('Password');
+    fireEvent.change(password, { target: { value: 'private-password' } });
+    expect(password).toHaveAttribute('type', 'password');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(password).toHaveAttribute('type', 'text');
+    expect(password).toHaveValue('private-password');
+    expect(screen.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(password).toHaveAttribute('type', 'password');
+    expect(password).toHaveValue('private-password');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to MFA verification' }));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/admin/mfa'));
+    expect(login).toHaveBeenCalledWith({ email: 'admin@example.test', password: 'private-password' }, { headers: { 'X-CSRF-Token': 'admin-csrf-test' } });
+  });
 });

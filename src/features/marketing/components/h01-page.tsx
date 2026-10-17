@@ -118,7 +118,7 @@ function HeroVisual({ locale, copy }: { locale: Locale; copy: Copy }) {
 }
 
 function HowSection({ copy }: { copy: Copy }) {
-  return <section id="cara-kerja" className="scroll-mt-20 bg-[#0a0a0a] text-white dark:bg-[#6b6b6b]">
+  return <section id="cara-kerja" className="scroll-mt-20 bg-[#0a0a0a] text-white dark:bg-[#181818]">
     <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-20 sm:px-6 sm:py-24 lg:py-28">
       <SectionIntro eyebrow={copy.how.eyebrow} title={<>{copy.how.titleLead} <span className="text-[var(--color-primary)]">{copy.how.titleAccent}</span></>} description={copy.how.description} dark />
       <ol className="mt-12 grid gap-7 md:grid-cols-3 md:gap-9">
@@ -166,7 +166,7 @@ function BenefitsSection({ locale, copy }: { locale: Locale; copy: Copy }) {
 
 function DifferentiationSection({ copy }: { copy: Copy }) {
   const icons = [Download, ShieldCheck, UsersRound, ImageIcon];
-  return <section className="dark:bg-[#6b6b6b]">
+  return <section className="dark:bg-[#181818]">
     <div className="h01-reveal mx-auto max-w-[1240px] px-4 pb-20 sm:px-6 sm:pb-24 lg:pb-28">
       <div className="rounded-[28px] bg-[linear-gradient(110deg,#eefdb0,#f4fdc7_35%,#f6fdd7_68%,#f9fee6)] p-6 text-[#0a0a0a] sm:p-10 lg:p-12">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-14">
@@ -202,7 +202,7 @@ function UseCasesSection({ locale, copy }: { locale: Locale; copy: Copy }) {
 
 function GuestSection({ copy }: { copy: Copy }) {
   const icons = [QrCode, UserRound, Camera, Aperture];
-  return <section className="bg-[#0a0a0a] text-white dark:bg-[#6b6b6b]">
+  return <section className="bg-[#0a0a0a] text-white dark:bg-[#181818]">
     <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-20 sm:px-6 sm:py-24 lg:py-28">
       <SectionIntro eyebrow={copy.guest.eyebrow} title={copy.guest.title} description={copy.guest.description} dark />
       <ol className="mt-12 grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-8 lg:grid-cols-4 lg:gap-7">
@@ -241,7 +241,7 @@ function PricingSection({ locale, copy }: { locale: Locale; copy: Copy }) {
 
 function TrustSection({ copy }: { copy: Copy }) {
   const icons = [LockKeyhole, ShieldCheck, Clock3];
-  return <section className="bg-[var(--color-surface-muted)] dark:bg-[#6b6b6b]">
+  return <section className="bg-[var(--color-surface-muted)] dark:bg-[#181818]">
     <div className="h01-reveal mx-auto grid max-w-[1240px] gap-9 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:gap-14 lg:py-28">
       <div><SectionIntro eyebrow={copy.trust.eyebrow} title={copy.trust.title} description={copy.trust.description} /><Link href="/keamanan" className="mt-7 inline-flex min-h-11 items-center gap-2 font-semibold underline underline-offset-4">{copy.trust.cta}<ArrowRight size={16} aria-hidden="true" /></Link></div>
       <ul className="grid gap-5 sm:grid-cols-3">
@@ -261,7 +261,7 @@ function FaqSection({ copy }: { copy: Copy }) {
 }
 
 function FinalCta({ copy }: { copy: Copy }) {
-  return <section className="bg-[#0a0a0a] text-white dark:bg-[#6b6b6b]">
+  return <section className="bg-[#0a0a0a] text-white dark:bg-[#181818]">
     <div className="h01-reveal mx-auto grid max-w-[1240px] items-center gap-8 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.8fr_1.2fr_auto] lg:gap-10 lg:py-24">
       <div className="relative mx-auto h-[180px] w-full max-w-[420px] sm:h-[220px]" aria-hidden="true">
         <div className="absolute left-[6%] top-[18%] h-[68%] w-[37%] -rotate-6 overflow-hidden rounded-[20px] border-4 border-white shadow-xl"><Image src="/media/marketing/events/wedding-02.jpg" alt="" fill sizes="(max-width: 767px) 37vw, 155px" className="object-cover" /></div>

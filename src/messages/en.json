@@ -84,6 +84,8 @@
       "auth_superadmin_sign_in": "Superadmin sign in",
       "auth_use_admin_credentials_provisioned": "Use Admin credentials provisioned through the approved internal process.",
       "auth_password": "Password",
+      "auth_show_password": "Show password",
+      "auth_hide_password": "Hide password",
       "auth_continue_to_mfa_verification": "Continue to MFA verification",
       "auth_there_is_no_public_signup_google_s": "There is no public signup, Google sign-in, or password reset here.",
       "auth_back_to_kepotret": "Back to Kepotret",

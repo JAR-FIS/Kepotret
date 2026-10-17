@@ -25,9 +25,16 @@ describe('gallery settings visibility', () => {
 
   it('accepts only GUEST and HOST_ONLY and sends GUEST to the contract unchanged', async () => {
     render(<NextIntlClientProvider locale="en" messages={messages}><GallerySettings albumId="album-1" /></NextIntlClientProvider>);
-    const visibility = await screen.findByLabelText('Gallery visibility');
-    expect(visibility).toHaveValue('GUEST');
-    expect(Array.from((visibility as HTMLSelectElement).options).map((option) => option.value)).toEqual(['GUEST', 'HOST_ONLY']);
+    const visibility = await screen.findByRole('combobox', { name: 'Gallery visibility' });
+    expect(visibility).toHaveTextContent('Guests can view after reveal');
+    fireEvent.click(visibility);
+    const options = screen.getByRole('listbox', { name: 'Gallery visibility' });
+    expect(Array.from(options.querySelectorAll('[role="option"]')).map((option) => option.textContent)).toEqual(['Guests can view after reveal', 'Host only']);
+    fireEvent.keyDown(options, { key: 'ArrowDown' });
+    fireEvent.keyDown(options, { key: 'Enter' });
+    expect(visibility).toHaveTextContent('Host only');
+    fireEvent.click(visibility);
+    fireEvent.click(screen.getByRole('option', { name: 'Guests can view after reveal' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith('album-1', {
       expected_revision: 7, visibility: 'GUEST', moderation_mode: 'APPROVAL', likes_enabled: true,
@@ -37,15 +44,16 @@ describe('gallery settings visibility', () => {
 
   it('supports HOST_ONLY without a compatibility visibility value', async () => {
     render(<NextIntlClientProvider locale="en" messages={messages}><GallerySettings albumId="album-1" /></NextIntlClientProvider>);
-    const visibility = await screen.findByLabelText('Gallery visibility');
-    fireEvent.change(visibility, { target: { value: 'HOST_ONLY' } });
-    expect(visibility).toHaveValue('HOST_ONLY');
+    const visibility = await screen.findByRole('combobox', { name: 'Gallery visibility' });
+    fireEvent.click(visibility);
+    fireEvent.click(screen.getByRole('option', { name: 'Host only' }));
+    expect(visibility).toHaveTextContent('Host only');
   });
 
   it('uses CSRF and refreshes revision after a conflict', async () => {
     api.patch.mockResolvedValueOnce({ status: 409, data: {} });
     render(<NextIntlClientProvider locale="en" messages={messages}><GallerySettings albumId="album-1" /></NextIntlClientProvider>);
-    await screen.findByLabelText('Gallery visibility');
+    await screen.findByRole('combobox', { name: 'Gallery visibility' });
     fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
     expect(await screen.findByText('Album settings changed. Reload before saving again.')).toBeInTheDocument();
     await waitFor(() => expect(api.settings).toHaveBeenCalledTimes(2));
@@ -55,7 +63,7 @@ describe('gallery settings visibility', () => {
   it('blocks settings mutations while offline', async () => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
     render(<NextIntlClientProvider locale="en" messages={messages}><GallerySettings albumId="album-1" /></NextIntlClientProvider>);
-    await screen.findByLabelText('Gallery visibility');
+    await screen.findByRole('combobox', { name: 'Gallery visibility' });
     expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled();
     expect(api.patch).not.toHaveBeenCalled();
   });

@@ -82,16 +82,19 @@ describe('shared read-only assistant', () => {
   it('focuses the input on open and returns focus to the launcher on Escape', () => {
     renderAssistant();
     const launcher = screen.getByRole('button', { name: 'Open AI Assistant' });
-    expect(launcher).toHaveClass('size-12', 'rounded-full');
+    expect(launcher).toHaveClass('size-14', 'rounded-full', 'motion-reduce:transition-none');
     expect(launcher).not.toHaveTextContent('Open AI Assistant');
     fireEvent.click(launcher);
-    expect(launcher).toHaveAttribute('aria-hidden', 'true');
-    expect(launcher).toHaveAttribute('tabindex', '-1');
+    expect(launcher).toHaveAttribute('aria-expanded', 'true');
+    expect(launcher).not.toHaveAttribute('aria-hidden');
     const input = screen.getByLabelText('Message to the Assistant');
     expect(input).toHaveFocus();
-    expect(screen.getByRole('dialog')).not.toHaveAttribute('aria-modal');
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveClass('duration-200', 'motion-reduce:duration-0');
+    expect(screen.getAllByRole('button').filter((button) => ['How do event albums work?', 'What can I do on this page?', 'How do guests capture photos?'].includes(button.textContent ?? ''))).toHaveLength(3);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(dialog).toHaveAttribute('aria-hidden', 'true');
     expect(launcher).toHaveFocus();
   });
 

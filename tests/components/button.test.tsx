@@ -10,7 +10,7 @@ describe('Button', () => {
     render(<Button disabled onClick={onClick}>Continue</Button>);
     const button = screen.getByRole('button', { name: 'Continue' });
     expect(button).toBeDisabled();
-    expect(button).toHaveClass('rounded-full', 'disabled:cursor-not-allowed', 'disabled:opacity-50');
+    expect(button).toHaveClass('rounded-full', 'cursor-pointer', 'disabled:cursor-not-allowed', 'disabled:opacity-50');
     fireEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
   });
@@ -20,7 +20,7 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Saving' });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('aria-busy', 'true');
-    expect(button).toHaveClass('focus-visible:outline-2', 'focus-visible:outline-[var(--color-focus)]');
+    expect(button).toHaveClass('cursor-pointer', 'disabled:cursor-not-allowed', 'focus-visible:outline-2', 'focus-visible:outline-[var(--color-focus)]');
   });
 
   it('renders distinct primary, secondary, and ghost actions with native submit behavior', () => {
@@ -42,5 +42,6 @@ describe('IconButton', () => {
     render(<form><IconButton label="Close"><span aria-hidden="true">x</span></IconButton></form>);
     const button = screen.getByRole('button', { name: 'Close' });
     expect(button).toHaveAttribute('type', 'button');
+    expect(button).toHaveClass('cursor-pointer', 'disabled:cursor-not-allowed');
   });
 });
