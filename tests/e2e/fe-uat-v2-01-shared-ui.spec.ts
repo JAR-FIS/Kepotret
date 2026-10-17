@@ -15,6 +15,24 @@ async function setLocale(page: import('@playwright/test').Page, locale: 'id' | '
   await page.context().addCookies([{ name: 'kepotret-locale', value: locale, domain: 'localhost', path: '/' }]);
 }
 
+async function chooseLocale(page: import('@playwright/test').Page, locale: 'id' | 'en') {
+  if (await page.locator('html').getAttribute('lang') === locale) return;
+  const currentShort = locale === 'en' ? 'ID' : 'ENG';
+  await page.locator(`button[aria-label$=": ${currentShort}"]`).first().click();
+  await page.getByRole('listbox').last().getByRole('option').nth(locale === 'en' ? 1 : 0).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', locale);
+}
+
+async function setTheme(page: import('@playwright/test').Page, dark: boolean, mobile = false) {
+  const isDark = await page.locator('html').evaluate((element) => element.classList.contains('dark'));
+  if (isDark === dark) return;
+  if (mobile) await page.getByRole('button', { name: /buka menu navigasi|open navigation menu/i }).click();
+  const label = dark ? /ganti ke tema gelap|switch to dark theme/i : /ganti ke tema terang|switch to light theme/i;
+  await page.getByRole('button', { name: label }).click();
+  await expect.poll(() => page.locator('html').evaluate((element) => element.classList.contains('dark'))).toBe(dark);
+  if (mobile) await page.getByRole('button', { name: /tutup menu navigasi|close navigation menu/i }).click();
+}
+
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {
   const { viewport, documentWidth } = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, documentWidth: document.documentElement.scrollWidth }));
   expect(documentWidth).toBeLessThanOrEqual(viewport + 1);
@@ -22,11 +40,9 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 
 test('@cross-browser FE-UAT-V2-01 Assistant, H20 password, H01 Dark Mode, and Host selects remain accessible', async ({ page }, testInfo) => {
   test.setTimeout(120_000);
-  await page.addInitScript(() => localStorage.setItem('kepotret-theme', 'light'));
   await installUatApi(page);
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await setLocale(page, 'id');
   await page.goto('/');
   const launcherId = page.getByRole('button', { name: 'Buka Asisten AI' });
   await expect(launcherId).toBeVisible();
@@ -45,11 +61,9 @@ test('@cross-browser FE-UAT-V2-01 Assistant, H20 password, H01 Dark Mode, and Ho
   await expect(assistantId).toBeHidden();
   await expect(launcherId).toBeFocused();
 
-  await setLocale(page, 'en');
+  await chooseLocale(page, 'en');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  await page.getByRole('button', { name: /buka menu navigasi|open navigation menu/i }).click();
-  await page.getByRole('button', { name: /ganti ke tema gelap|switch to dark theme/i }).click();
+  await setTheme(page, true, true);
   const launcherEn = page.locator('button[aria-controls="assistant-dialog"]');
   await expect(launcherEn).toHaveAccessibleName('Open AI Assistant');
   await expect(launcherEn).toBeVisible();
@@ -80,14 +94,11 @@ test('@cross-browser FE-UAT-V2-01 Assistant, H20 password, H01 Dark Mode, and Ho
   await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
-  const darkThemeToggle = page.getByRole('button', { name: /ganti ke tema gelap|switch to dark theme/i });
-  const lightThemeToggle = page.getByRole('button', { name: /ganti ke tema terang|switch to light theme/i });
-  if (await lightThemeToggle.count()) await lightThemeToggle.click();
+  await setTheme(page, false);
   await page.locator('#cara-kerja').scrollIntoViewIfNeeded();
   expect(await page.locator('#cara-kerja').evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(10, 10, 10)');
   await capture(page, testInfo, 'h01-light.png');
-  await darkThemeToggle.click();
+  await setTheme(page, true);
   const darkSections = await page.locator('section').evaluateAll((elements) => elements.filter((element) => element.className.includes('dark:bg-[#181818]')).map((element) => getComputedStyle(element).backgroundColor));
   expect(darkSections.length).toBeGreaterThanOrEqual(4);
   expect(darkSections.every((color) => color === 'rgb(24, 24, 24)')).toBe(true);
@@ -140,7 +151,6 @@ test('@cross-browser FE-UAT-V2-01 Assistant, H20 password, H01 Dark Mode, and Ho
   await capture(page, testInfo, 'host-button-hover-en-light.png');
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/album/${uatIds.album}/galeri`);
   const mobileStatus = page.getByRole('combobox', { name: 'Moderation status' });
   await mobileStatus.click();
   const mobileMenu = page.getByRole('listbox', { name: 'Moderation status' });
@@ -152,6 +162,7 @@ test('@cross-browser FE-UAT-V2-01 Assistant, H20 password, H01 Dark Mode, and Ho
   await page.keyboard.press('Escape');
 
   await page.setViewportSize({ width: 1440, height: 900 });
+  await setTheme(page, false);
   await page.goto(`/album/${uatIds.album}/pengaturan`);
   const visibility = page.getByRole('combobox', { name: 'Gallery visibility' });
   await visibility.click();
@@ -160,8 +171,9 @@ test('@cross-browser FE-UAT-V2-01 Assistant, H20 password, H01 Dark Mode, and Ho
   await capture(page, testInfo, 'h57-visibility-menu-en-light.png');
 
   await setLocale(page, 'id');
-  await page.goto(`/album/${uatIds.album}/pengaturan`);
-  await page.evaluate(() => document.documentElement.classList.add('dark'));
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Pengaturan album' })).toBeVisible();
+  await setTheme(page, true);
   const visibilityId = page.getByRole('combobox', { name: 'Visibilitas galeri' });
   await visibilityId.click();
   const visibilityMenuId = page.getByRole('listbox', { name: 'Visibilitas galeri' });
