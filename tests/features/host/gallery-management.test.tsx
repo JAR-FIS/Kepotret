@@ -64,7 +64,7 @@ describe('host gallery management', () => {
   it('explains that soft delete does not release quota', async () => {
     api.trash.mockResolvedValue({ status: 200, data: { data: [deletedPhoto], meta: { has_more: false, next_cursor: null } } });
     renderManager({ albumId: 'album-1', trash: true });
-    expect(await screen.findByText(/continue to count toward album capacity/i)).toBeInTheDocument();
+    expect(await screen.findByText(/still count toward the album quota/i)).toBeInTheDocument();
     expect(await screen.findByText('Nia')).toBeInTheDocument();
   });
 

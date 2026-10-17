@@ -85,8 +85,19 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
   if (albumMatch) {
     const endpoint = albumMatch[1] ?? '';
     const live = scenario === 'live';
-    if (!endpoint) return { status: 200, body: envelope(makeAlbum(scenario, scenario === 'collaborator')) };
-    if (endpoint === 'live-overview') return { status: 200, body: envelope(makeLiveOverview(scenario, scenario === 'collaborator')) };
+    if (!endpoint) {
+      const ready = ['live', 'scheduled', 'ended'].includes(scenario);
+      const album = makeAlbum(ready ? 'live' : 'draft', scenario === 'collaborator');
+      if (scenario === 'scheduled') album.capture_state = 'NOT_STARTED';
+      if (scenario === 'ended') album.capture_state = 'CLOSED';
+      return { status: 200, body: envelope(album) };
+    }
+    if (endpoint === 'live-overview') {
+      const overview = makeLiveOverview(scenario, scenario === 'collaborator');
+      if (scenario === 'scheduled') overview.capture_state = 'NOT_STARTED';
+      if (scenario === 'ended') overview.capture_state = 'CLOSED';
+      return { status: 200, body: envelope(overview) };
+    }
     if (endpoint === 'schedule') return { status: 200, body: envelope(uatSchedule) };
     if (endpoint === 'settings') return { status: 200, body: envelope(uatSettings) };
     if (endpoint === 'design') return { status: 200, body: envelope({ cover_asset_id: null, cover_preview: null, setup_revision: 3 }) };
@@ -94,8 +105,11 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
     if (endpoint === 'capture-readiness') return { status: 200, body: envelope({ album_id: uatIds.album, state: scenario === 'waiting' ? 'WAITING' : scenario === 'closed' ? 'CLOSED' : 'READY', can_capture: scenario !== 'waiting' && scenario !== 'closed', server_time: uatNow, capture_start: uatCaptureStart, capture_end: uatCaptureEnd, reveal_at: dateLater, reveal_state: scenario === 'closed' ? 'REVEALED' : 'HIDDEN', album_remaining_count: 76, guest_remaining_count: 10 }) };
     if (endpoint === 'package-options') return { status: 200, body: envelope({ album_id: uatIds.album, current_quota_total: live ? 100 : 30, reserved_count: 2, committed_count: 24, payment_cutoff_at: uatSchedule.payment_cutoff_at, server_time: uatNow, can_create_checkout: true, checkout_block_reason: null, active_checkout: null, options: [{ package_id: uatIds.package, package_version_id: uatIds.packageVersion, code: 'PAKET-UAT', name: 'Paket Pesta UAT', price_amount: 75000, currency: 'IDR', quota_total: 100 }] }) };
     if (endpoint === 'entitlement') return { status: 200, body: envelope({ album_id: uatIds.album, quota_total: 100, reserved_count: 2, committed_count: 24, payment_cutoff_at: uatSchedule.payment_cutoff_at }) };
-    if (endpoint === 'lifecycle') return { status: 200, body: envelope({ album_id: uatIds.album, retention_state: scenario === 'recovery-media' ? 'RECOVERY' : 'ACTIVE', server_time: uatNow, recovery_access_granted_at: scenario === 'recovery-media' ? uatNow : null, normal_access_end_at: '2027-10-01T00:00:00Z', recovery_end_at: '2027-11-01T00:00:00Z', backup_cleanup_deadline_at: '2027-12-01T00:00:00Z' }) };
-    if (endpoint === 'export-capabilities') return { status: 200, body: envelope({ can_export_all: true, can_export_selected: true, max_photos_per_job: 100, selection_revision: 1 }) };
+    if (endpoint === 'lifecycle') {
+      const recovery = scenario === 'recovery-active' || scenario === 'recovery-media';
+      return { status: 200, body: envelope({ album_id: uatIds.album, retention_state: recovery ? 'RECOVERY' : 'ACTIVE', server_time: uatNow, recovery_access_granted_at: recovery ? uatNow : null, normal_access_end_at: '2027-10-01T00:00:00Z', recovery_end_at: '2027-11-01T00:00:00Z', backup_cleanup_deadline_at: '2027-12-01T00:00:00Z', can_activate_recovery: false, can_open_recovery_media: recovery, can_create_recovery_export: recovery }) };
+    }
+    if (endpoint === 'export-capabilities') return { status: 200, body: envelope({ max_photos_per_job: 100, eligible_photo_count: 24, allow_all: true, allow_selected: true }) };
     if (endpoint === 'activity') return { status: 200, body: list(scenario === 'empty' ? [] : [uatActivityItem]) };
     if (endpoint === 'photos' || endpoint === 'photos/trash') return { status: 200, body: list(scenario === 'empty' ? [] : [{ photo_id: uatIds.photo, moderation_status: 'APPROVED', created_at: uatNow, deleted_at: null, photographer_display_name: 'Ari UAT', like_count: 3, media: photoMedia, actions: { can_approve: false, can_hide: true, can_unhide: false, can_delete: true, can_download: true, can_share: true }, can_restore: true }]) };
     if (endpoint === `photos/${uatIds.photo}`) return { status: 200, body: envelope({ photo_id: uatIds.photo, moderation_status: 'APPROVED', created_at: uatNow, photographer_display_name: 'Ari UAT', like_count: 3, media: photoMedia, actions: { can_approve: false, can_hide: true, can_unhide: false, can_delete: true, can_download: true, can_share: true } }) };
@@ -128,12 +142,25 @@ function makeExportJob(scenario: string) {
 
 export async function installUatApi(page: Page) {
   let requestCount = 0;
+  let syntheticCover: { cover_asset_id: string; cover_preview: { url: string; expires_at: string }; setup_revision: number } | null = null;
+  let coverRevision = 3;
   await page.route('**/api/v1/**', async (route: Route) => {
     requestCount += 1;
     const request = route.request();
     const url = new URL(request.url());
     let scenario = 'normal';
     try { scenario = new URL(page.url()).searchParams.get('uat') ?? 'normal'; } catch { /* about:blank before app navigation */ }
+    if (url.pathname === `/api/v1/albums/${uatIds.album}/design`) {
+      if (request.method() === 'PATCH') {
+        const body = request.postDataJSON() as { cover_asset_id?: string | null };
+        coverRevision += 1;
+        syntheticCover = body.cover_asset_id ? { cover_asset_id: body.cover_asset_id, cover_preview: { url: 'https://media.test/owner-uat/cover.svg', expires_at: '2026-10-01T08:15:00Z' }, setup_revision: coverRevision } : null;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope(syntheticCover ?? { cover_asset_id: null, cover_preview: null, setup_revision: coverRevision })) });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope(syntheticCover ?? { cover_asset_id: null, cover_preview: null, setup_revision: coverRevision })) });
+      return;
+    }
     const result = requestFor(url.pathname, request.method(), scenario);
     await route.fulfill({ status: result.status, contentType: 'application/json', body: JSON.stringify(result.body) });
   });

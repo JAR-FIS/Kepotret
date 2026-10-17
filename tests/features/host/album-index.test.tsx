@@ -92,11 +92,17 @@ describe('FE-3 Host album surfaces', () => {
     await waitFor(() => expect(screen.getByText(draft.album_id)).toBeInTheDocument());
   });
 
-  it('presents final participant count from album detail only', async () => {
-    getAlbum.mockResolvedValue({ status: 200, data: { data: readyAlbum } });
+  it('presents final participant count only from the authorized live dashboard projection', async () => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: { ...readyAlbum, capture_state: 'CLOSED' } } });
+    getLiveOverview.mockResolvedValue({ status: 200, data: { data: {
+      album_id: readyAlbum.album_id, server_time: '2026-09-29T10:00:00Z', event_name: 'Ended event', event_location: null, timezone: 'Asia/Jakarta', readiness: 'READY', capture_state: 'CLOSED', reveal_state: 'REVEALED',
+      capture_start: '2026-09-29T09:00:00Z', capture_end: '2026-09-29T10:05:00Z', reveal_at: '2026-10-01T10:00:00Z', quota_total: 100, committed_count: 20, reserved_current_count: 0,
+      live_guest_session_count: 0, guest_count_final: 27, actor_access: readyAlbum.actor_access,
+    } } });
     renderHost(<AlbumOverview albumId={readyAlbum.album_id} />);
     expect(await screen.findByText('27')).toBeInTheDocument();
     expect(getAlbum).toHaveBeenCalledWith(readyAlbum.album_id);
+    expect(getLiveOverview).toHaveBeenCalledWith(readyAlbum.album_id);
   });
 
   it('shows H41 only for a live capture state and uses the server projection for time, quota and guest count', async () => {
@@ -117,11 +123,16 @@ describe('FE-3 Host album surfaces', () => {
     expect(screen.getByRole('link', { name: 'Buka galeri' })).toHaveAttribute('href', `/album/${albumId}/galeri`);
   });
 
-  it('keeps a non-live album on the H27 overview and does not request H41', async () => {
-    getAlbum.mockResolvedValue({ status: 200, data: { data: readyAlbum } });
+  it('shows the H41 scheduled badge for a ready album that has not started', async () => {
+    getAlbum.mockResolvedValue({ status: 200, data: { data: { ...readyAlbum, capture_state: 'NOT_STARTED' } } });
+    getLiveOverview.mockResolvedValue({ status: 200, data: { data: {
+      album_id: readyAlbum.album_id, server_time: '2026-09-29T08:00:00Z', event_name: 'Scheduled event', event_location: null, timezone: 'Asia/Jakarta', readiness: 'READY', capture_state: 'NOT_STARTED', reveal_state: 'HIDDEN',
+      capture_start: '2026-09-29T09:00:00Z', capture_end: '2026-09-29T10:05:00Z', reveal_at: null, quota_total: 100, committed_count: 0, reserved_current_count: 0,
+      live_guest_session_count: 0, guest_count_final: null, actor_access: readyAlbum.actor_access,
+    } } });
     renderHost(<AlbumOverview albumId={readyAlbum.album_id} />);
-    expect(await screen.findByText('27')).toBeInTheDocument();
-    expect(getLiveOverview).not.toHaveBeenCalled();
+    expect(await screen.findByText('Terjadwal', { exact: true })).toBeInTheDocument();
+    expect(getLiveOverview).toHaveBeenCalledWith(readyAlbum.album_id);
   });
 
   it.each([

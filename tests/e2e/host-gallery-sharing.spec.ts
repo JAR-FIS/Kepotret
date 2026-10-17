@@ -58,7 +58,7 @@ test('Host moderates, soft deletes and restores without implying quota release',
   expect(deleteCalls).toBe(1);
   await page.getByRole('link', { name: 'Sampah' }).click();
   await expect(page.getByRole('heading', { name: 'Sampah' })).toBeVisible();
-  await expect(page.getByText(/Foto yang dihapus tetap dihitung dalam kapasitas album/)).toBeVisible();
+  await expect(page.getByText(/Foto yang dipindahkan ke Sampah tetap dihitung dalam kuota album/)).toBeVisible();
   await page.getByRole('button', { name: 'Pulihkan' }).click();
   await expect.poll(() => deleted).toBe(false);
 });

@@ -14,6 +14,7 @@ import { getApiV1Albums } from '@/lib/api/browser';
 import type { AlbumSummary } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
 import { AlbumStatus, albumStatusKey } from '@/features/host/components/album-status';
+import { formatEventDateTime } from '@/lib/time/event-time';
 
 type State = 'loading' | 'ready' | 'error' | 'unauthenticated' | 'forbidden';
 
@@ -84,7 +85,7 @@ export function AssignedAlbums({ dashboard = false }: { dashboard?: boolean }) {
         <Link href={hostRoutes.album(album.album_id)} className="group flex min-h-24 min-w-0 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:bg-[var(--color-muted)] sm:px-6">
           <div className="min-w-0">
             <p className="break-words text-lg font-semibold">{album.event_name ?? t('assigned.unnamed')}</p>
-            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{album.capture_start && album.capture_end ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(album.capture_start)) : t('assigned.scheduleNotSet')}</p>
+            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{album.capture_start && album.capture_end ? formatEventDateTime(album.capture_start, locale, album.timezone) : t('assigned.scheduleNotSet')}</p>
             <div className="mt-3"><AlbumStatus album={album} label={host(`albums.${albumStatusKey(album)}`)} /></div>
             <PermissionBadges album={album} />
           </div>

@@ -13,6 +13,7 @@ import { getApiV1AlbumsAlbumId } from '@/lib/api/browser';
 import type { AlbumDetail } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
 import { AlbumStatus, albumStatusKey } from '@/features/host/components/album-status';
+import { formatEventDateTime } from '@/lib/time/event-time';
 import { LiveEventDashboard } from '@/features/host/components/live-event-dashboard';
 
 export function AlbumOverview({ albumId }: { albumId: string }) {
@@ -38,17 +39,17 @@ export function AlbumOverview({ albumId }: { albumId: string }) {
   if (state === 'unauthenticated') return <ReauthState title={t('reauthTitle')} description={t('reauthDescription')} action={<Link href="/masuk-ulang" className="underline">{t('reauthTitle')}</Link>} />;
   if (state === 'forbidden') return <ForbiddenState title={t('forbiddenTitle')} description={t('forbiddenDescription')} />;
   if (state === 'error' || !album) return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={t('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
-  if (album.capture_state === 'OPEN') return <LiveEventDashboard albumId={albumId} />;
+  if (album.readiness === 'READY') return <LiveEventDashboard albumId={albumId} />;
 
   const summary = album;
   const isOwner = album.actor_access.relationship === 'OWNER';
   const canModerate = album.actor_access.relationship === 'COLLABORATOR'
     && album.actor_access.collaborator_permissions?.can_moderate === true;
-  const formatTime = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(value));
+  const formatTime = (value: string) => formatEventDateTime(value, locale, album.timezone);
   return <div className="space-y-5">
     <nav aria-label={t('nav.albumLabel')} className="grid gap-3 sm:grid-cols-2">{(isOwner || canModerate) && <Link href={hostRoutes.gallery(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('gallery.title')}<ArrowRight aria-hidden="true" size={17} /></Link>}<Link href={hostRoutes.sharing(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('sharing.title')}<ArrowRight aria-hidden="true" size={17} /></Link></nav>
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-[family-name:var(--font-display)] text-xl font-bold">{t(`detail.${album.readiness === 'READY' ? 'ready' : album.readiness === 'PAYMENT_PENDING' ? 'paymentPending' : 'draft'}`)}</h2><AlbumStatus album={summary} label={t(`albums.${albumStatusKey(summary)}`)} /></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-[family-name:var(--font-display)] text-xl font-bold">{t(`detail.${album.readiness === 'PAYMENT_PENDING' ? 'paymentPending' : 'draft'}`)}</h2><AlbumStatus album={summary} label={t(`albums.${albumStatusKey(summary)}`)} /></div>
       <p className="mt-4 text-xl font-semibold">{album.event_name ?? t('detail.eventNameMissing')}</p>
       {album.event_location && <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('detail.location')}: {album.event_location}</p>}
       <p className="mt-4 flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs text-[var(--color-muted-foreground)]"><span>{t('detail.id')}</span><span className="break-all font-mono text-sm text-[var(--color-foreground)]">{album.album_id}</span></p>

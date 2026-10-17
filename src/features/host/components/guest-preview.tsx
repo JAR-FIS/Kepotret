@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { CircleCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { ErrorState } from '@/components/ui/error-state';
@@ -13,15 +14,12 @@ import {
   getApiV1AlbumsAlbumIdSettings,
 } from '@/lib/api/browser';
 import type { AlbumDetail, AlbumDesign, AlbumSchedule, AlbumSettings } from '@/lib/api/generated/index.schemas';
+import { formatEventDateTime } from '@/lib/time/event-time';
 
 type PreviewData = { album: AlbumDetail; schedule: AlbumSchedule; design: AlbumDesign; settings: AlbumSettings };
 
 function formatDate(value: string, locale: string, timeZone: string) {
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'id-ID', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone,
-  }).format(new Date(value));
+  return formatEventDateTime(value, locale === 'en' ? 'en-US' : 'id-ID', timeZone);
 }
 
 function useServerCountdown(schedule: AlbumSchedule | null) {
@@ -97,14 +95,12 @@ export function GuestPreview({ albumId }: { albumId: string }) {
           {captureState === 'NOT_STARTED' && <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('waiting')}</p>}
           <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('revealAt', { time: formatDate(schedule.reveal_at, locale, schedule.timezone) })}</p>
           <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('captureWindow', { start: formatDate(schedule.capture_start, locale, schedule.timezone), end: formatDate(schedule.capture_end, locale, schedule.timezone) })}</p>
-          {revealState === 'HIDDEN' && revealSeconds > 0 && <p role="timer" aria-label={t('revealCountdown')} className="mt-1 text-sm font-medium">{`${Math.floor(revealSeconds / 86400)}d ${Math.floor((revealSeconds % 86400) / 3600)}h ${Math.floor((revealSeconds % 3600) / 60)}m ${revealSeconds % 60}s`}</p>}
+          {revealState === 'HIDDEN' && revealSeconds > 0 && <p role="timer" aria-label={t('revealCountdown')} className="mt-2 inline-flex rounded-full bg-gray-200 px-3 py-1.5 text-sm font-bold text-gray-950 dark:bg-gray-700 dark:text-white">{`${Math.floor(revealSeconds / 86400)}d ${Math.floor((revealSeconds % 86400) / 3600)}h ${Math.floor((revealSeconds % 3600) / 60)}m ${revealSeconds % 60}s`}</p>}
           <p className="mt-2 text-sm">{revealCopy}</p>
         </div>
-        <p className="text-sm text-[var(--color-muted-foreground)]">{settings.visibility === 'GUEST' ? t('guestVisible') : t('hidden')}</p>
-        <p className="text-sm text-[var(--color-muted-foreground)]">{settings.moderation_mode === 'APPROVAL' ? t('approval') : t('instant')}</p>
-        <p className="text-sm text-[var(--color-muted-foreground)]">{settings.likes_enabled ? t('likesEnabled') : t('likesDisabled')}</p>
-        <p className="text-sm text-[var(--color-muted-foreground)]">{settings.downloads_enabled ? t('downloadsEnabled') : t('downloadsDisabled')}</p>
-        <p className="text-sm text-[var(--color-muted-foreground)]">{settings.share_enabled ? t('sharingEnabled') : t('sharingDisabled')}</p>
+        <ul className="space-y-3">
+          {[settings.visibility === 'GUEST' ? t('guestVisible') : t('hidden'), settings.moderation_mode === 'APPROVAL' ? t('approval') : t('instant'), settings.likes_enabled ? t('likesEnabled') : t('likesDisabled'), settings.downloads_enabled ? t('downloadsEnabled') : t('downloadsDisabled'), settings.share_enabled ? t('sharingEnabled') : t('sharingDisabled')].map((rule) => <li key={rule} className="flex items-start gap-3 text-sm text-[var(--color-muted-foreground)]"><CircleCheck size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--color-primary)]" /><span>{rule}</span></li>)}
+        </ul>
         <p className="text-xs text-[var(--color-muted-foreground)]">{t('pinNotice')}</p>
         <button type="button" disabled className="min-h-11 w-full rounded-xl bg-[var(--color-primary)] px-4 font-semibold text-[var(--color-primary-foreground)] opacity-60">{t('guestCta')}</button>
         <p className="text-center text-xs text-[var(--color-muted-foreground)]">{t('cameraPreview')}</p>
