@@ -87,7 +87,7 @@ export function GuestPreview({ albumId }: { albumId: string }) {
         <div className="relative z-10 text-white">
           <p className="mb-3 inline-flex rounded-full border border-white/70 bg-black/35 px-3 py-1 text-xs font-bold uppercase tracking-wide">{t('previewBadge')}</p>
           <p className="text-xs font-bold uppercase tracking-[.15em]">{t('album')}</p>
-          <h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold">{album.event_name ?? t('unnamed')}</h2>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{album.event_name ?? t('unnamed')}</h2>
           {album.event_location && <p className="mt-1 text-sm">{album.event_location}</p>}
         </div>
       </div>

@@ -82,7 +82,11 @@ describe('shared read-only assistant', () => {
   it('focuses the input on open and returns focus to the launcher on Escape', () => {
     renderAssistant();
     const launcher = screen.getByRole('button', { name: 'Open AI Assistant' });
+    expect(launcher).toHaveClass('size-12', 'rounded-full');
+    expect(launcher).not.toHaveTextContent('Open AI Assistant');
     fireEvent.click(launcher);
+    expect(launcher).toHaveAttribute('aria-hidden', 'true');
+    expect(launcher).toHaveAttribute('tabindex', '-1');
     const input = screen.getByLabelText('Message to the Assistant');
     expect(input).toHaveFocus();
     expect(screen.getByRole('dialog')).not.toHaveAttribute('aria-modal');

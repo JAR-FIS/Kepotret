@@ -86,7 +86,7 @@ export function InvitationHistory({ albumId }: { albumId: string }) {
   if (state === 'error') return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={host('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
 
   return <div className="max-w-5xl space-y-5">
-    <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p><h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold">{t('title')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p></section>
+    <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p></section>
     {message && <p role="status" className="text-sm text-[var(--color-muted-foreground)]">{message}</p>}
     {!rows.length ? <EmptyState title={t('emptyTitle')} description={t('emptyDescription')} icon={<Mail size={25} />} /> : <ul className="space-y-3">
       {rows.map((row) => <li key={row.invitation_id} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">

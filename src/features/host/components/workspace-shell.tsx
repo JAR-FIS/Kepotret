@@ -72,7 +72,7 @@ export function HostShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <Link href="/help" aria-label={t('nav.help')} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-[var(--color-muted)] lg:hidden"><BookOpen aria-hidden="true" size={18} /></Link>
-            <LocaleControl label={t('nav.language')} indonesianLabel={t('nav.indonesian')} englishLabel={t('nav.english')} indonesianShort={t('nav.indonesianShort')} englishShort={t('nav.englishShort')} />
+            <LocaleControl label={t('nav.language')} indonesianLabel={t('nav.indonesian')} englishLabel={t('nav.english')} />
             <ThemeToggle lightLabel={t('nav.switchToLight')} darkLabel={t('nav.switchToDark')} />
             <Link href="/akun" aria-label={t('nav.account')} className="hidden size-11 items-center justify-center rounded-full border border-[var(--color-border)] hover:bg-[var(--color-muted)] sm:inline-flex"><UserRound aria-hidden="true" size={18} /></Link>
           </div>
@@ -183,5 +183,5 @@ function WorkspaceNavigation({
 
 export function HostPageTitle({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
   const t = useTranslations('host');
-  return <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('workspaceLabel')}</p><h1 className="font-[var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{description}</p>}</div>{action}</div>;
+  return <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('workspaceLabel')}</p><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{description}</p>}</div>{action}</div>;
 }

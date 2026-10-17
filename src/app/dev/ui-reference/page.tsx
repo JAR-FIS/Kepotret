@@ -40,7 +40,7 @@ export default function UiReferencePage() {
           <HeaderShell className="flex flex-wrap items-center justify-between gap-4">
             <Link href="/" aria-label="Kepotret home" className="inline-flex items-center gap-3">
               <Image src="/brand/icon.svg" alt="" width={36} height={36} className="h-9 w-9 dark:invert" priority />
-              <span className="font-[var(--font-display)] text-xl font-bold tracking-tight">Kepotret</span>
+              <span className="font-[family-name:var(--font-display)] text-xl font-bold tracking-tight">Kepotret</span>
             </Link>
             <Cluster className="gap-2">
               <LocaleControl label={copy.language} indonesianLabel={copy.indonesian} englishLabel={copy.english} />
@@ -51,7 +51,7 @@ export default function UiReferencePage() {
           <Grid className="gap-8 py-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:py-24">
             <div>
               <p className="mb-5 text-sm font-bold uppercase tracking-[0.2em] text-[var(--color-focus)]">{copy.eyebrow}</p>
-              <h1 className="max-w-3xl font-[var(--font-display)] text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">{copy.title}</h1>
+              <h1 className="max-w-3xl font-[family-name:var(--font-display)] text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">{copy.title}</h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-[var(--color-muted-foreground)] sm:text-lg">{copy.description}</p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button><Camera size={18} aria-hidden="true" />{copy.primaryAction}</Button>
@@ -68,7 +68,7 @@ export default function UiReferencePage() {
             >
               <Surface className="p-6 sm:p-8">
                 <CheckCircle2 className="text-[var(--color-focus)]" aria-hidden="true" />
-                <p className="mt-5 font-[var(--font-display)] text-2xl font-bold">{copy.status}</p>
+                <p className="mt-5 font-[family-name:var(--font-display)] text-2xl font-bold">{copy.status}</p>
                 <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{copy.motionDescription}</p>
               </Surface>
             </motion.div>
@@ -76,7 +76,7 @@ export default function UiReferencePage() {
 
           <ContentShell className="px-0">
             <Stack aria-labelledby="shared-foundation-title" className="gap-8">
-              <h2 id="shared-foundation-title" className="font-[var(--font-display)] text-2xl font-bold">{copy.shell}</h2>
+              <h2 id="shared-foundation-title" className="font-[family-name:var(--font-display)] text-2xl font-bold">{copy.shell}</h2>
               <LoadingState label={copy.loading} description={copy.loadingDescription} />
               <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} icon={<ImageIcon />} />
               <ErrorState title={copy.errorTitle} description={copy.errorDescription} retryLabel={copy.retry} onRetry={() => setRetryCount((count) => count + 1)} />

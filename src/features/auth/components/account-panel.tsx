@@ -51,7 +51,7 @@ export function AccountPanel() {
   if (state.kind === 'error') return <ErrorState title={copy.accountTitle} description={copy.accountError} retryLabel={copy.retry} onRetry={() => { setState({ kind: 'loading' }); void getApiV1AuthMe().then((result) => { if (result.status === 200) setState({ kind: 'ready', displayName: result.data.data.display_name ?? null, email: result.data.data.email }); else if (result.status === 401) setState({ kind: 'unauthenticated' }); else setState({ kind: 'error' }); }).catch(() => setState({ kind: 'error' })); }} />;
 
   return <div>
-    {state.displayName && <h2 className="font-[var(--font-display)] text-xl font-bold">{state.displayName}</h2>}
+    {state.displayName && <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">{state.displayName}</h2>}
     <p className="mt-1 break-words text-sm text-[var(--color-muted-foreground)]">{state.email}</p>
     {signOutError && <p role="alert" className="mt-4 text-sm text-[var(--color-destructive)]">{copy.accountError}</p>}
     <Button type="button" onClick={signOut} loading={pending} variant="secondary" className="mt-6">{copy.signOut}</Button>

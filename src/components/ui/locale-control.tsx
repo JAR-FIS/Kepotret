@@ -6,14 +6,10 @@ export function LocaleControl({
   label,
   indonesianLabel,
   englishLabel,
-  indonesianShort,
-  englishShort,
 }: {
   label: string;
   indonesianLabel: string;
   englishLabel: string;
-  indonesianShort?: string;
-  englishShort?: string;
 }) {
   const { locale, setLocale } = useAppLocale();
   return (
@@ -21,12 +17,13 @@ export function LocaleControl({
       <span className="sr-only">{label}</span>
       <select
         aria-label={label}
-        className={`min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-sm text-[var(--color-foreground)] ${indonesianShort && englishShort ? 'w-[4.5rem] sm:w-auto' : ''}`}
+        title={locale === 'id' ? indonesianLabel : englishLabel}
+        className="min-h-11 w-[5rem] rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-semibold text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] sm:w-auto"
         value={locale}
         onChange={(event) => setLocale(event.target.value as 'id' | 'en')}
       >
-        <option value="id">{indonesianShort ?? indonesianLabel}</option>
-        <option value="en">{englishShort ?? englishLabel}</option>
+        <option value="id">ID</option>
+        <option value="en">ENG</option>
       </select>
     </label>
   );

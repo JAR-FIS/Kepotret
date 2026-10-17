@@ -65,6 +65,7 @@ function renderHost(node: React.ReactNode) {
 
 describe('FE-3 setup flow contract surfaces', () => {
   beforeEach(() => {
+    vi.setSystemTime(new Date('2026-09-27T00:00:00.000Z'));
     Object.values(api).forEach((mock) => mock.mockReset());
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: album } });
     api.getCategories.mockResolvedValue({ status: 200, data: { data: [category], meta: { next_cursor: null, has_more: false } } });

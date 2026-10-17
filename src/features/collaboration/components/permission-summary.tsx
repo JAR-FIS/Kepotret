@@ -40,7 +40,7 @@ export function PermissionSummary({ albumId }: { albumId: string }) {
   return <div className="max-w-4xl space-y-6">
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
       <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p>
-      <h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold">{t('title')}</h2>
+      <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</h2>
       <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description', { eventName: album.event_name ?? t('unnamed') })}</p>
       <ul className="mt-6 grid gap-3 md:grid-cols-3">
         {keys.map((key) => <li key={key} className="rounded-[var(--radius-md)] border border-[var(--color-border)] p-4">

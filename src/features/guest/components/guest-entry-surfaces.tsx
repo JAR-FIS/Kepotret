@@ -15,7 +15,7 @@ export function GuestWelcome({ preview, formatTime, onContinue }: { preview: Gue
   const phase = preview.capture_state === 'OPEN' ? t('phaseOpen') : preview.capture_state === 'CLOSED' ? t('phaseClosed') : t('phaseNotStarted');
   return <>
     <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-primary)]">{t('eventInvitation')}</p>
-    <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold">{preview.event_name}</h1>
+    <h1 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{preview.event_name}</h1>
     {preview.event_location && <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{preview.event_location}</p>}
     <p className="mt-4 flex items-center gap-2 text-sm"><Clock3 size={16} />{preview.capture_start ? `${formatTime(preview.capture_start)}${preview.capture_end ? ` – ${formatTime(preview.capture_end)}` : ''}` : phase}</p>
     <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{phase}</p>
@@ -29,7 +29,7 @@ export function GuestJoinForm({ displayName, setDisplayName, pin, setPin, pinReq
 }) {
   const t = useTranslations('guest');
   return <>
-    <h1 className="font-[var(--font-display)] text-2xl font-bold">{t('joinTitle')}</h1>
+    <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold">{t('joinTitle')}</h1>
     <form className="mt-6 space-y-4" onSubmit={(event) => { event.preventDefault(); onContinue(); }}>
       <label className="block text-sm font-medium">{t('name')}<input required value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="nickname" className="mt-1.5 min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3" /></label>
       {pinRequired && <label className="block text-sm font-medium">{t('pin')}<input required type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={(event) => setPin(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3" /></label>}
@@ -44,7 +44,7 @@ export function GuestConsent({ checked, setChecked, error, onBack, onContinue, b
 }) {
   const t = useTranslations('guest');
   return <>
-    <h1 className="font-[var(--font-display)] text-2xl font-bold">{t('consentTitle')}</h1>
+    <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold">{t('consentTitle')}</h1>
     <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('consentDescription')}</p>
     <label className="mt-5 flex items-start gap-3 text-sm leading-6">
       <input type="checkbox" checked={checked} onChange={(event) => setChecked(event.target.checked)} className="mt-1 size-4 shrink-0 accent-[var(--color-primary)]" />
@@ -106,7 +106,7 @@ export function CaptureSuccess({ photoUrl, canCapture, onSave, onNext }: { photo
   return <section className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
     <span aria-hidden="true" className="pointer-events-none absolute left-3 top-3 size-5 border-l-2 border-t-2 border-[var(--color-primary)]" />
     <span aria-hidden="true" className="pointer-events-none absolute bottom-3 right-3 size-5 border-b-2 border-r-2 border-[var(--color-primary)]" />
-    <div className="flex items-start gap-3"><span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"><CircleCheck size={23} aria-hidden="true" /></span><div><h2 role="status" className="font-[var(--font-display)] text-xl font-bold">{t('saved')}</h2><p className="mt-1 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('savedSupport')}</p></div></div>
+    <div className="flex items-start gap-3"><span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"><CircleCheck size={23} aria-hidden="true" /></span><div><h2 role="status" className="font-[family-name:var(--font-display)] text-xl font-bold">{t('saved')}</h2><p className="mt-1 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('savedSupport')}</p></div></div>
     {photoUrl && <Image src={photoUrl} alt={t('savedPreviewAlt')} width={600} height={800} unoptimized className="mx-auto mt-5 max-h-80 w-auto max-w-full rounded-[var(--radius-md)] bg-[var(--color-muted)] object-contain" />}
     {!photoUrl && <p className="mt-5 text-sm text-[var(--color-muted-foreground)]">{t('saveUnavailable')}</p>}
     <div className="mt-5 grid gap-3 sm:grid-cols-2">{photoUrl && <Button className="w-full" onClick={onSave}><Download size={18} aria-hidden="true" />{t('saveToDevice')}</Button>}{canCapture && <Button variant={photoUrl ? 'secondary' : 'primary'} className="w-full" onClick={onNext}><Camera size={18} aria-hidden="true" />{t('captureAgain')}</Button>}</div>

@@ -34,7 +34,7 @@ export function ActivationResult({ albumId }: { albumId: string }) {
   if (state === 'error') return <ErrorState title={shared('errorTitle')} description={shared('errorDescription')} retryLabel={shared('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
 
   return <section className="max-w-2xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 sm:p-8">
-    <h2 className="font-[var(--font-display)] text-2xl font-bold">{state === 'ready' ? t('complete') : state === 'paymentPending' ? t('paymentPending') : t('pending')}</h2>
+    <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold">{state === 'ready' ? t('complete') : state === 'paymentPending' ? t('paymentPending') : t('pending')}</h2>
     <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{state === 'ready' ? t('completeDescription') : state === 'paymentPending' ? t('paymentPendingDescription') : t('pendingDescription')}</p>
     {state === 'ready' && <Link href={hostRoutes.albums} className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]">{t('dashboard')}</Link>}
   </section>;

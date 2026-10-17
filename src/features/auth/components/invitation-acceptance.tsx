@@ -112,7 +112,7 @@ export function InvitationAcceptance({ invitationId, locale }: { invitationId: s
   if (state === 'loading') return <LoadingState label={t('loading')} />;
   if (state === 'error') return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={t('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
   if (state === 'invalid' || state === 'expired' || state === 'used') return null;
-  if (state === 'mismatch') return <section role="alert" className="space-y-3"><h2 className="font-[var(--font-display)] text-xl font-bold">{t('mismatchTitle')}</h2><p className="text-sm leading-6 text-[var(--color-muted-foreground)]">{t('mismatchDescription')}</p><p className="break-all text-sm font-semibold">{signedInEmail}</p><Link href="/akun" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">{t('useAnotherAccount')}</Link></section>;
+  if (state === 'mismatch') return <section role="alert" className="space-y-3"><h2 className="font-[family-name:var(--font-display)] text-xl font-bold">{t('mismatchTitle')}</h2><p className="text-sm leading-6 text-[var(--color-muted-foreground)]">{t('mismatchDescription')}</p><p className="break-all text-sm font-semibold">{signedInEmail}</p><Link href="/akun" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">{t('useAnotherAccount')}</Link></section>;
 
   if (state === 'accepted') return <p role="status" className="text-sm font-semibold">{t('accepted')}</p>;
   if (!preview) return null;
@@ -122,7 +122,7 @@ export function InvitationAcceptance({ invitationId, locale }: { invitationId: s
     <p className="text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p>
     <section className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--color-muted-foreground)]">{t('eventLabel')}</p>
-      <h2 className="mt-2 break-words font-[var(--font-display)] text-xl font-bold">{preview.event_name ?? t('unnamed')}</h2>
+      <h2 className="mt-2 break-words font-[family-name:var(--font-display)] text-xl font-bold">{preview.event_name ?? t('unnamed')}</h2>
       <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('expires', { date: new Intl.DateTimeFormat(appLocale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(preview.expires_at)) })}</p>
       {preview.invited_email_hint && <p className="mt-2 break-all text-sm text-[var(--color-muted-foreground)]">{t('invitedEmailHint', { email: preview.invited_email_hint })}</p>}
     </section>

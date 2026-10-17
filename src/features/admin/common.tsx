@@ -67,7 +67,7 @@ export function AdminPage({ title, description, children }: { title: string; des
   return <main className="mx-auto w-full max-w-7xl px-4 py-7 pb-24 sm:px-6 lg:px-8 lg:py-10">
     <header className="mb-7 border-b border-[var(--color-border)] pb-6">
       <p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('operationsLabel')}</p>
-      <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
       {description && <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--color-muted-foreground)]">{description}</p>}
     </header>
     <div className="space-y-6">{children}</div>
@@ -76,7 +76,7 @@ export function AdminPage({ title, description, children }: { title: string; des
 
 export function AdminCard({ title, children, className = '' }: { title?: string; children: React.ReactNode; className?: string }) {
   return <section className={`min-w-0 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-5 ${className}`}>
-    {title && <h2 className="mb-4 font-[var(--font-display)] text-lg font-bold">{title}</h2>}
+    {title && <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-bold">{title}</h2>}
     {children}
   </section>;
 }

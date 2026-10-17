@@ -79,7 +79,7 @@ function Hero({ locale, copy }: { locale: Locale; copy: Copy }) {
   return <section className="mx-auto grid max-w-[1240px] items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[0.94fr_1.06fr] lg:gap-8 lg:py-20">
     <div className="relative z-10">
       <p className="mb-5 inline-flex rounded-full border border-[var(--color-border)] px-3 py-2 text-[11px] font-bold tracking-[0.08em]">{copy.hero.eyebrow}</p>
-      <h1 className="max-w-2xl font-[var(--font-display)] text-[clamp(2.65rem,7vw,5rem)] font-bold leading-[0.98] tracking-[-0.055em]">{copy.hero.title.split('. ').map((part, index) => <span key={part}>{part}{index === 0 && <><span>.</span><br /></>}</span>)}<span aria-hidden="true" className="ml-1 inline-block h-3 w-3 rounded-full bg-[var(--color-primary)] align-baseline" /></h1>
+      <h1 className="max-w-2xl font-[family-name:var(--font-display)] text-[clamp(2.65rem,7vw,5rem)] font-bold leading-[0.98] tracking-[-0.055em]">{copy.hero.title.split('. ').map((part, index) => <span key={part}>{part}{index === 0 && <><span>.</span><br /></>}</span>)}<span aria-hidden="true" className="ml-1 inline-block h-3 w-3 rounded-full bg-[var(--color-primary)] align-baseline" /></h1>
       <p className="mt-5 max-w-xl text-base leading-7 text-[var(--color-muted-foreground)] sm:text-lg sm:leading-8">{copy.hero.description}</p>
       <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
         {copy.hero.proof.map((item) => <li key={item} className="flex items-center gap-2"><Check size={16} aria-hidden="true" className="shrink-0" />{item}</li>)}
@@ -123,7 +123,7 @@ function HowSection({ copy }: { copy: Copy }) {
       <ol className="mt-10 grid gap-5 md:grid-cols-3">
         {copy.how.steps.map((step, index) => <li key={step.title} className="relative border-t border-white/20 pt-5 md:pt-6">
           <span className="mb-5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-bold text-[#0a0a0a]">0{index + 1}</span>
-          <h3 className="font-[var(--font-display)] text-2xl font-bold">{step.title}</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-2xl font-bold">{step.title}</h3>
           <p className="mt-2 max-w-sm text-sm leading-6 text-white/75">{step.description}</p>
           {index < 2 && <ArrowDown aria-hidden="true" size={19} className="absolute right-2 top-7 hidden rotate-[-90deg] text-[var(--color-primary)] md:block" />}
         </li>)}
@@ -143,12 +143,12 @@ function BenefitsSection({ copy }: { copy: Copy }) {
         <div className="absolute right-[25%] top-[21%] h-32 w-24 rotate-[6deg] rounded-[16px] border border-white bg-white/70 shadow-[var(--shadow-soft)]" aria-hidden="true" />
         <div className="relative max-w-sm rounded-2xl bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]">
           <Camera aria-hidden="true" size={22} />
-          <h3 className="mt-3 font-[var(--font-display)] text-xl font-bold">{copy.benefits.items[0].title}</h3>
+          <h3 className="mt-3 font-[family-name:var(--font-display)] text-xl font-bold">{copy.benefits.items[0].title}</h3>
           <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{copy.benefits.items[0].description}</p>
         </div>
       </div>
       <ul className="grid content-center gap-6 sm:grid-cols-2 lg:grid-cols-1">
-        {copy.benefits.items.slice(1).map((item, index) => { const Icon = icons[index + 1]!; return <li key={item.title} className="flex gap-4"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-muted)]"><Icon size={19} aria-hidden="true" /></span><div><h3 className="font-[var(--font-display)] text-lg font-bold">{item.title}</h3><p className="mt-1 text-sm leading-6 text-[var(--color-muted-foreground)]">{item.description}</p></div></li>; })}
+        {copy.benefits.items.slice(1).map((item, index) => { const Icon = icons[index + 1]!; return <li key={item.title} className="flex gap-4"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-muted)]"><Icon size={19} aria-hidden="true" /></span><div><h3 className="font-[family-name:var(--font-display)] text-lg font-bold">{item.title}</h3><p className="mt-1 text-sm leading-6 text-[var(--color-muted-foreground)]">{item.description}</p></div></li>; })}
       </ul>
     </div>
   </section>;
@@ -161,7 +161,7 @@ function DifferentiationSection({ copy }: { copy: Copy }) {
       <div className="grid gap-9 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div><SectionIntro eyebrow={copy.differentiation.eyebrow} title={copy.differentiation.title} description={copy.differentiation.description} dark /></div>
         <ul className="grid gap-6 sm:grid-cols-2">
-          {copy.differentiation.items.map((item, index) => { const Icon = icons[index]!; return <li key={item.title} className="flex gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/70"><Icon size={19} aria-hidden="true" /></span><div><h3 className="font-[var(--font-display)] font-bold">{item.title}</h3><p className="mt-1 text-sm leading-6 text-[#282828]">{item.description}</p></div></li>; })}
+          {copy.differentiation.items.map((item, index) => { const Icon = icons[index]!; return <li key={item.title} className="flex gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/70"><Icon size={19} aria-hidden="true" /></span><div><h3 className="font-[family-name:var(--font-display)] font-bold">{item.title}</h3><p className="mt-1 text-sm leading-6 text-[#282828]">{item.description}</p></div></li>; })}
         </ul>
       </div>
     </div>
@@ -176,7 +176,7 @@ function UseCasesSection({ locale, copy }: { locale: Locale; copy: Copy }) {
         <div className="relative aspect-[4/3] overflow-hidden bg-[var(--color-surface-muted)]">
           <Image src={photo.src} alt={photo.alt[locale]} fill sizes="(max-width: 639px) calc(100vw - 2rem), (max-width: 1023px) calc(50vw - 2rem), (max-width: 1279px) calc(33vw - 2rem), 380px" className="object-cover" style={photo.objectPosition ? { objectPosition: photo.objectPosition } : undefined} />
         </div>
-        <div className="p-4"><h3 className="font-[var(--font-display)] font-bold">{item.title}</h3><p className="mt-1 text-xs leading-5 text-[var(--color-muted-foreground)]">{item.description}</p></div>
+        <div className="p-4"><h3 className="font-[family-name:var(--font-display)] font-bold">{item.title}</h3><p className="mt-1 text-xs leading-5 text-[var(--color-muted-foreground)]">{item.description}</p></div>
       </li>; })}
     </ul>
   </section>;
@@ -190,7 +190,7 @@ function GuestSection({ copy }: { copy: Copy }) {
       <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {copy.guest.steps.map((item, index) => { const Icon = icons[index]!; return <li key={item.title} className="rounded-[16px] border border-white/15 p-4 sm:p-5">
           <div className="flex items-center justify-between"><span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-bold text-[#0a0a0a]">0{index + 1}</span><Icon size={22} className="text-[var(--color-primary)]" aria-hidden="true" /></div>
-          <h3 className="mt-5 font-[var(--font-display)] text-lg font-bold">{item.title}</h3><p className="mt-2 text-sm leading-6 text-white/70">{item.description}</p>
+          <h3 className="mt-5 font-[family-name:var(--font-display)] text-lg font-bold">{item.title}</h3><p className="mt-2 text-sm leading-6 text-white/70">{item.description}</p>
         </li>; })}
       </ol>
       <div className="mt-6 flex flex-wrap gap-2">{copy.guest.badges.map((badge) => <span key={badge} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/20 px-3 text-sm"><Check size={15} aria-hidden="true" className="text-[var(--color-primary)]" />{badge}</span>)}</div>
@@ -214,7 +214,7 @@ function TrustSection({ copy }: { copy: Copy }) {
     <div className="mx-auto grid max-w-[1240px] gap-8 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
       <div><SectionIntro eyebrow={copy.trust.eyebrow} title={copy.trust.title} description={copy.trust.description} /><Link href="/keamanan" className="mt-5 inline-flex min-h-11 items-center gap-2 font-semibold underline underline-offset-4">{copy.trust.cta}<span aria-hidden="true">→</span></Link></div>
       <ul className="grid gap-4 sm:grid-cols-3">
-        {copy.trust.items.map((item, index) => { const Icon = icons[index]!; return <li key={item.title} className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"><Icon size={20} aria-hidden="true" /><h3 className="mt-3 font-[var(--font-display)] font-bold">{item.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{item.description}</p></li>; })}
+        {copy.trust.items.map((item, index) => { const Icon = icons[index]!; return <li key={item.title} className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"><Icon size={20} aria-hidden="true" /><h3 className="mt-3 font-[family-name:var(--font-display)] font-bold">{item.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{item.description}</p></li>; })}
       </ul>
     </div>
   </section>;
@@ -230,7 +230,7 @@ function FaqSection({ copy }: { copy: Copy }) {
 function FinalCta({ copy }: { copy: Copy }) {
   return <section className="bg-[#0a0a0a] text-white">
     <div className="mx-auto flex max-w-[1240px] flex-col items-start gap-5 px-4 py-12 sm:px-6 sm:py-14 md:flex-row md:items-center md:justify-between">
-      <div><h2 className="max-w-2xl font-[var(--font-display)] text-3xl font-bold leading-tight tracking-tight sm:text-4xl">{copy.final.title}</h2><p className="mt-2 max-w-xl text-sm leading-6 text-white/75">{copy.final.description}</p></div>
+      <div><h2 className="max-w-2xl font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight sm:text-4xl">{copy.final.title}</h2><p className="mt-2 max-w-xl text-sm leading-6 text-white/75">{copy.final.description}</p></div>
       <div className="shrink-0"><Link href="/masuk" className="inline-flex min-h-12 items-center rounded-[10px] bg-[var(--color-primary)] px-5 font-bold text-[#0a0a0a]">{copy.nav.createAlbum}<span className="ml-2" aria-hidden="true">→</span></Link><p className="mt-2 text-center text-xs text-white/65">{copy.final.microcopy}</p></div>
     </div>
   </section>;
@@ -239,7 +239,7 @@ function FinalCta({ copy }: { copy: Copy }) {
 function SectionIntro({ eyebrow, title, description, dark = false }: { eyebrow: string; title: string; description?: string; dark?: boolean }) {
   return <div>
     <p className={`mb-3 text-xs font-bold tracking-[0.12em] ${dark ? 'text-[var(--color-primary-foreground)]' : 'text-[var(--color-muted-foreground)]'}`}>{eyebrow}</p>
-    <h2 className="max-w-2xl font-[var(--font-display)] text-3xl font-bold leading-[1.08] tracking-tight sm:text-4xl">{title}</h2>
+    <h2 className="max-w-2xl font-[family-name:var(--font-display)] text-3xl font-bold leading-[1.08] tracking-tight sm:text-4xl">{title}</h2>
     {description && <p className={`mt-4 max-w-xl text-sm leading-6 ${dark ? 'text-white/75' : 'text-[var(--color-muted-foreground)]'}`}>{description}</p>}
   </div>;
 }
