@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { formatEventDateTime } from '@/lib/time/event-time';
 import {
   getApiV1AlbumsAlbumIdCaptureReadiness,
   getApiV1CaptureAttemptsAttemptId,
@@ -558,7 +559,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     link.click();
     link.remove();
   }
-  const formatTime = (value?: string | null) => value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: event?.timezone }).format(new Date(value)) : '';
+  const formatTime = (value?: string | null) => value ? formatEventDateTime(value, locale, event?.timezone) : '';
   const nameValid = displayNameLength(displayName) >= 1 && displayNameLength(displayName) <= 50;
   const revealRemaining = readiness?.reveal_at ? Math.max(0, Date.parse(readiness.reveal_at) - Date.parse(readiness.server_time) - elapsedSeconds * 1000) : 0;
   const revealCountdown = t('countdown', {
@@ -590,8 +591,8 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
           onBack={() => { setMessage(''); setStage('join'); }} onContinue={() => void acceptConsent()} busy={busy}
         />}
         {(stage === 'ready' || stage === 'closed' || stage === 'camera' || stage === 'review' || stage === 'uploading' || stage === 'saved') && <>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-primary)]">{locale === 'id' ? 'Acara' : 'Event'}</p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{event?.event_name}</h1>
+          <div className="text-center"><p className="inline-flex min-h-8 items-center rounded-full bg-[var(--color-foreground)] px-3 py-1 text-xs font-bold text-[var(--color-background)]">{locale === 'id' ? 'Acara' : 'Event'}</p>
+          <h1 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{event?.event_name}</h1></div>
           {stage === 'closed' && <div className="mt-6 rounded-lg bg-[var(--color-muted)] p-4"><p className="font-semibold">{t('closed')}</p>{readiness?.reveal_at && <><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('photosReveal')}: {formatTime(readiness.reveal_at)}</p><p className="mt-1 font-mono text-sm" aria-live="off">{revealCountdown}</p></>}</div>}
           {stage === 'ready' && <div className="mt-6"><CaptureWaitingState readiness={readiness} isOffline={!isOnline} revalidating={onlineRefreshing || !readinessFresh} cameraError={cameraError} onOpenCamera={() => void openCamera()} formatTime={formatTime} /></div>}
           {stage === 'camera' && <CameraViewfinder videoRef={videoRef} isReady={cameraReady} isBusy={busy} isOffline={!isOnline || onlineRefreshing} onSwitch={() => { const next = facing === 'environment' ? 'user' : 'environment'; stopCamera(); setStage('ready'); setCameraReady(false); setFacing(next); void openCamera(next); }} onShutter={() => void shutter()} cameraError={cameraError} />}

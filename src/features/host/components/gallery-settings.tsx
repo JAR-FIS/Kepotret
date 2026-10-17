@@ -72,11 +72,11 @@ export function GallerySettings({ albumId }: { albumId: string }) {
     <Toggle label={t('likes')} checked={Boolean(draft.likes_enabled)} onChange={(value) => setDraft({ ...draft, likes_enabled: value })} />
     <Toggle label={t('downloads')} checked={Boolean(draft.downloads_enabled)} onChange={(value) => setDraft({ ...draft, downloads_enabled: value })} />
     <Toggle label={t('sharing')} checked={Boolean(draft.share_enabled)} onChange={(value) => setDraft({ ...draft, share_enabled: value })} />
-  </div><div className="mt-5 flex flex-wrap items-center gap-3"><Button disabled={!isOnline} loading={busy} onClick={() => void save()}>{t('save')}</Button><Button variant="ghost" disabled={!isOnline} onClick={() => void load()}>{t('refresh')}</Button>{message && <p role="status" className="text-sm">{message}</p>}</div></section>;
+  </div><div className="mt-5 flex flex-wrap items-center gap-3"><Button className="rounded-full font-bold" disabled={!isOnline} loading={busy} onClick={() => void save()}>{t('save')}</Button><Button className="rounded-full font-bold" variant="ghost" disabled={!isOnline} onClick={() => void load()}>{t('refresh')}</Button>{message && <p role="status" className="text-sm">{message}</p>}</div></section>;
 }
 
 function Choice({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: [string, string][] }) {
-  return <label className="grid gap-2 text-sm font-medium">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
+  return <label className="grid gap-2 text-sm font-medium">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-[var(--color-foreground)] shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
 }
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {

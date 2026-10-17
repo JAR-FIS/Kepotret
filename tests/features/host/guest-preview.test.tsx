@@ -59,7 +59,7 @@ describe('H59 read-only guest experience simulator', () => {
     expect(screen.getByText('Depok')).toBeInTheDocument();
     expect(screen.getByAltText('Sampul album untuk pratinjau tamu')).toHaveAttribute('src', previewUrl);
     expect(screen.getByText('Pengambilan foto sedang berlangsung.')).toBeInTheDocument();
-    expect(screen.getByText('Reveal terjadwal: 5 Okt 2026, 17.00')).toBeInTheDocument();
+    expect(screen.getByText(/Reveal terjadwal: 5 Okt 2026, 17\.00 WIB/)).toBeInTheDocument();
     expect(screen.getByRole('timer')).toBeInTheDocument();
     expect(screen.getByText('Foto peserta menunggu persetujuan Host.')).toBeInTheDocument();
     expect(screen.getByText('Tamu dapat menyukai foto.')).toBeInTheDocument();

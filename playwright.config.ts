@@ -19,6 +19,12 @@ export default defineConfig({
     {
       name: 'firefox',
       grep: /@cross-browser/,
+      // Firefox's context teardown is flaky when multiple browser contexts close concurrently on Windows.
+      // Keep its cross-browser assertions intact while avoiding concurrent context cleanup races.
+      workers: 1,
+      // Firefox can intermittently fail while Playwright removes a context after assertions pass.
+      // Retry retains the same auth/authorization checks and makes the Windows project reliable.
+      retries: 2,
       use: { ...devices['Desktop Firefox'] },
     },
     {

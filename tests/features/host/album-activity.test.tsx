@@ -2,8 +2,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const api = vi.hoisted(() => ({ activity: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1AlbumsAlbumIdActivity: api.activity }));
+const api = vi.hoisted(() => ({ activity: vi.fn(), album: vi.fn() }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1AlbumsAlbumIdActivity: api.activity, getApiV1AlbumsAlbumId: api.album }));
 
 import { AlbumActivity } from '@/features/host/components/album-activity';
 import messages from '@/messages/en.json';
@@ -16,7 +16,7 @@ function renderActivity() {
 }
 
 describe('H52 safe album activity', () => {
-  beforeEach(() => { api.activity.mockReset(); Object.defineProperty(navigator, 'onLine', { configurable: true, value: true }); });
+  beforeEach(() => { api.activity.mockReset(); api.album.mockReset().mockResolvedValue({ status: 200, data: { data: { timezone: 'Asia/Jakarta' } } }); Object.defineProperty(navigator, 'onLine', { configurable: true, value: true }); });
 
   it('renders only the safe activity projection and requests a bounded first page', async () => {
     api.activity.mockResolvedValue(page([item('activity-1')], 'next-1', true));
@@ -24,6 +24,8 @@ describe('H52 safe album activity', () => {
     expect(await screen.findByText('Album settings updated')).toBeInTheDocument();
     expect(screen.getByText('By Host')).toBeInTheDocument();
     expect(api.activity).toHaveBeenCalledWith('album-1', { limit: 25, cursor: undefined });
+    expect(api.album).toHaveBeenCalledWith('album-1');
+    expect(screen.getByText(/GMT\+7|WIB/)).toBeInTheDocument();
     expect(screen.queryByText(/billing|payment|admin audit/i)).not.toBeInTheDocument();
   });
 

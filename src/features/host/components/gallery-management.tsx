@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, MessageCircle, RefreshCw, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -26,6 +26,7 @@ import {
 import type { GetApiV1AlbumsAlbumIdPhotosSort, ManagementPhoto, ModerationStatus, TrashPhoto } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
 import { DeliveryImage } from '@/features/gallery/components/delivery-image';
+import { formatEventDateTime } from '@/lib/time/event-time';
 
 type LoadState = 'loading' | 'ready' | 'forbidden' | 'error';
 const PAGE_SIZE = 25;
@@ -49,6 +50,7 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
   const [message, setMessage] = useState('');
   const [pendingDelete, setPendingDelete] = useState<ManagementPhoto | null>(null);
   const [ownerAccess, setOwnerAccess] = useState<boolean | null>(null);
+  const [timeZone, setTimeZone] = useState<string | null>(null);
 
   const load = useCallback(async (nextCursor?: string, reset = false) => {
     setBusy(true);
@@ -67,6 +69,7 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
       if (album.status !== 200) { setState('error'); return; }
       const isOwner = album.data.data.actor_access.relationship === 'OWNER';
       setOwnerAccess(isOwner);
+      setTimeZone(album.data.data.timezone);
       if (!isOwner && (trash || !album.data.data.actor_access.collaborator_permissions?.can_moderate)) { setState('forbidden'); return; }
       if (trash) {
         const result = await getApiV1AlbumsAlbumIdPhotosTrash(albumId, { cursor: nextCursor, limit: PAGE_SIZE });
@@ -190,7 +193,7 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
     finally { setBusy(false); }
   }
 
-  const time = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  const time = (value: string) => formatEventDateTime(value, locale, timeZone);
   if (state === 'loading') return <p role="status">{t('loading')}</p>;
   if (state === 'forbidden') return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><p role="alert">{t('forbidden')}</p></section>;
   if (state === 'error') return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><p role="alert">{!isOnline ? t('offline') : t('error')}</p><Button className="mt-4" disabled={!isOnline} onClick={() => void load(undefined, true)} loading={busy}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button></section>;
@@ -198,8 +201,8 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
 
   if (photoId && !trash) return <section className="space-y-4">
     <Link href={hostRoutes.gallery(albumId)} className="inline-flex min-h-11 items-center gap-2 text-sm underline"><ArrowLeft size={16} aria-hidden="true" />{t('title')}</Link>
-    {detail?.photo_id === photoId ? <article className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-6">
-      <DeliveryImage src={detail.media.url} alt={locale === 'id' ? 'Foto acara' : 'Event photo'} unavailableLabel={t('unavailable')} loading="eager" className="mx-auto max-h-[65vh] w-auto max-w-full rounded" />
+    {detail?.photo_id === photoId ? <article className="mx-auto w-full max-w-5xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-6">
+      <DeliveryImage src={detail.media.url} alt={locale === 'id' ? 'Foto acara' : 'Event photo'} unavailableLabel={t('unavailable')} loading="eager" className="mx-auto max-h-[60vh] w-auto max-w-full rounded" />
       <p className="mt-4 font-medium">{detail.photographer_display_name}</p>
       <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{time(detail.created_at)} · {detail.moderation_status}</p>
       {!isOnline && <p role="status" className="mt-3 text-sm">{t('offline')}</p>}
@@ -211,7 +214,7 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
 
   const items = trash ? deleted : photos;
   return <div className="space-y-5">
-    {!trash && <div className="flex flex-wrap items-center gap-3"><label className="flex min-h-11 items-center gap-2 text-sm">{t('sort')}<select className="min-h-11 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2" value={sort} onChange={(e) => setSort(e.target.value as GetApiV1AlbumsAlbumIdPhotosSort)}><option value="NEWEST">{t('newest')}</option><option value="OLDEST">{t('oldest')}</option></select></label><label className="flex min-h-11 items-center gap-2 text-sm">{t('status')}<select className="min-h-11 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2" value={filter} onChange={(e) => setFilter(e.target.value as ModerationStatus | '')}><option value="">{t('all')}</option><option value="PENDING">{t('pending')}</option><option value="PUBLISHED">{t('published')}</option><option value="HIDDEN">{t('hidden')}</option></select></label><Button variant="ghost" disabled={!isOnline} loading={busy} onClick={() => void load(undefined, true)}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button>{ownerAccess && <Link className="ml-auto inline-flex min-h-11 items-center rounded border border-[var(--color-border)] px-3 text-sm font-semibold" href={hostRoutes.trash(albumId)}>{t('trash')}</Link>}</div>}
+    {!trash && <div className="flex flex-wrap items-center gap-3"><label className="flex min-h-11 items-center gap-2 text-sm">{t('sort')}<select className="min-h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]" value={sort} onChange={(e) => setSort(e.target.value as GetApiV1AlbumsAlbumIdPhotosSort)}><option value="NEWEST">{t('newest')}</option><option value="OLDEST">{t('oldest')}</option></select></label><label className="flex min-h-11 items-center gap-2 text-sm">{t('status')}<select className="min-h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]" value={filter} onChange={(e) => setFilter(e.target.value as ModerationStatus | '')}><option value="">{t('all')}</option><option value="PENDING">{t('pending')}</option><option value="PUBLISHED">{t('published')}</option><option value="HIDDEN">{t('hidden')}</option></select></label><Button variant="ghost" disabled={!isOnline} loading={busy} onClick={() => void load(undefined, true)}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button>{ownerAccess && <Link aria-label={t('trash')} title={t('trash')} className="ml-auto inline-flex size-11 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]" href={hostRoutes.trash(albumId)}><Trash2 size={18} aria-hidden="true" /><span className="sr-only">{t('trash')}</span></Link>}</div>}
     {trash && <p className="rounded-[var(--radius-md)] bg-[var(--color-muted)] p-3 text-sm">{t('quotaNote')}</p>}
     {!isOnline && <p role="status" className="text-sm">{t('offline')}</p>}
     {message && <p role="status" className="text-sm">{message}</p>}
@@ -222,5 +225,9 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
 }
 
 function PhotoActions({ photo, busy, offline, run, labels, onShare, onDownload, shareLabels, downloadLabel, hideIndividualDownload = false }: { photo: ManagementPhoto; busy: boolean; offline: boolean; run: (action: 'approve' | 'hide' | 'unhide' | 'delete') => void; labels: ReturnType<typeof useTranslations<'host.gallery'>>; onShare: (intent: 'copy' | 'whatsapp') => void; onDownload: () => void; shareLabels: ReturnType<typeof useTranslations<'host.sharing'>>; downloadLabel: string; hideIndividualDownload?: boolean }) {
-  return <div className="mt-3 flex flex-wrap gap-2">{photo.actions.can_approve && <Button disabled={offline} loading={busy} onClick={() => run('approve')}>{labels('approve')}</Button>}{photo.actions.can_hide && <Button disabled={offline} variant="secondary" loading={busy} onClick={() => run('hide')}>{labels('hide')}</Button>}{photo.actions.can_unhide && <Button disabled={offline} variant="secondary" loading={busy} onClick={() => run('unhide')}>{labels('unhide')}</Button>}{photo.actions.can_delete && <Button disabled={offline} variant="danger" loading={busy} onClick={() => run('delete')}>{labels('delete')}</Button>}{!hideIndividualDownload && photo.actions.can_download && <Button disabled={offline} variant="secondary" loading={busy} onClick={onDownload}><Download size={16} aria-hidden="true" />{downloadLabel}</Button>}{photo.actions.can_share && <><Button disabled={offline} variant="secondary" loading={busy} onClick={() => onShare('copy')}>{shareLabels('copy')}</Button><Button disabled={offline} variant="secondary" loading={busy} onClick={() => onShare('whatsapp')}>WhatsApp</Button></>}</div>;
+  return <div className="mt-4 flex flex-wrap gap-2.5">{photo.actions.can_approve && <IconAction label={labels('approve')} disabled={offline} busy={busy} variant="primary" onClick={() => run('approve')}><Check size={18} aria-hidden="true" /></IconAction>}{photo.actions.can_hide && <IconAction label={labels('hide')} disabled={offline} busy={busy} variant="secondary" onClick={() => run('hide')}><EyeOff size={18} aria-hidden="true" /></IconAction>}{photo.actions.can_unhide && <IconAction label={labels('unhide')} disabled={offline} busy={busy} variant="secondary" onClick={() => run('unhide')}><Eye size={18} aria-hidden="true" /></IconAction>}{photo.actions.can_delete && <IconAction label={labels('delete')} disabled={offline} busy={busy} variant="danger" onClick={() => run('delete')}><Trash2 size={18} aria-hidden="true" /></IconAction>}{!hideIndividualDownload && photo.actions.can_download && <IconAction label={downloadLabel} disabled={offline} busy={busy} variant="secondary" onClick={onDownload}><Download size={18} aria-hidden="true" /></IconAction>}{photo.actions.can_share && <><IconAction label={shareLabels('copy')} disabled={offline} busy={busy} variant="secondary" onClick={() => onShare('copy')}><Copy size={18} aria-hidden="true" /></IconAction><IconAction label="WhatsApp" disabled={offline} busy={busy} variant="secondary" onClick={() => onShare('whatsapp')}><MessageCircle size={18} aria-hidden="true" /></IconAction></>}</div>;
+}
+
+function IconAction({ label, children, disabled, busy, variant, onClick }: { label: string; children: React.ReactNode; disabled: boolean; busy: boolean; variant: 'primary' | 'secondary' | 'danger'; onClick: () => void }) {
+  return <span className="group relative inline-flex"><Button type="button" aria-label={label} title={label} disabled={disabled} loading={busy} variant={variant} onClick={onClick} className="size-11 p-0">{children}</Button><span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-[var(--radius-sm)] bg-[var(--color-foreground)] px-2 py-1 text-xs font-medium text-[var(--color-background)] opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">{label}</span></span>;
 }

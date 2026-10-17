@@ -13,14 +13,14 @@ type StepControls = { onBack: () => void; onContinue: () => void; busy: boolean 
 export function GuestWelcome({ preview, formatTime, onContinue }: { preview: GuestAccessPreview; formatTime: (value?: string | null) => string; onContinue: () => void }) {
   const t = useTranslations('guest');
   const phase = preview.capture_state === 'OPEN' ? t('phaseOpen') : preview.capture_state === 'CLOSED' ? t('phaseClosed') : t('phaseNotStarted');
-  return <>
-    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-primary)]">{t('eventInvitation')}</p>
+  return <div className="text-center">
+    <p className="inline-flex min-h-8 items-center rounded-full bg-[var(--color-foreground)] px-3 py-1 text-xs font-bold text-[var(--color-background)]">{t('eventInvitation')}</p>
     <h1 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{preview.event_name}</h1>
     {preview.event_location && <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{preview.event_location}</p>}
-    <p className="mt-4 flex items-center gap-2 text-sm"><Clock3 size={16} />{preview.capture_start ? `${formatTime(preview.capture_start)}${preview.capture_end ? ` – ${formatTime(preview.capture_end)}` : ''}` : phase}</p>
+    <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm"><Clock3 size={16} aria-hidden="true" />{preview.capture_start ? `${formatTime(preview.capture_start)}${preview.capture_end ? ` – ${formatTime(preview.capture_end)}` : ''}` : phase}</p>
     <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{phase}</p>
-    <Button onClick={onContinue} className="mt-6 w-full">{t('welcomeContinue')}</Button>
-  </>;
+    <Button onClick={onContinue} className="mt-6 w-full rounded-full font-bold">{t('welcomeContinue')}</Button>
+  </div>;
 }
 
 export function GuestJoinForm({ displayName, setDisplayName, pin, setPin, pinRequired, nameValid, error, onBack, onContinue, busy }: StepControls & {
@@ -69,12 +69,12 @@ export function CaptureWaitingState({ readiness, isOffline, revalidating, camera
 }) {
   const t = useTranslations('guest');
   const waiting = readiness?.state === 'WAITING';
-  return <div className="space-y-4">
+  return <div className="space-y-4 text-center">
     <p className="text-sm text-[var(--color-muted-foreground)]">{readiness?.can_capture ? t('captureReady') : t('captureWait')}</p>
     {waiting && readiness?.capture_start && <p className="text-sm">{t('photosBeginAt')}: {formatTime(readiness.capture_start)}</p>}
     {readiness?.state === 'QUOTA_FULL' && <p role="status">{t('quotaFull')}</p>}
     {readiness?.state === 'GUEST_LIMIT_REACHED' && <p role="status">{t('guestLimit')}</p>}
-    <Button onClick={onOpenCamera} loading={revalidating} disabled={!readiness?.can_capture || isOffline || revalidating} className="w-full"><Camera size={18} />{t('startCamera')}</Button>
+    <Button onClick={onOpenCamera} loading={revalidating} disabled={!readiness?.can_capture || isOffline || revalidating} className="w-full rounded-full font-bold"><Camera size={18} />{t('startCamera')}</Button>
     {cameraError && <p role="alert" className="text-sm text-[var(--color-destructive)]">{cameraError}</p>}
   </div>;
 }
