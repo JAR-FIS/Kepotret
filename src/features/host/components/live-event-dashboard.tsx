@@ -49,7 +49,7 @@ export function LiveEventDashboard({ albumId }: { albumId: string }) {
   return <section aria-labelledby="live-dashboard-title" className="space-y-5">
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
       <p className="text-xs font-bold uppercase tracking-[.15em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p>
-      <h2 id="live-dashboard-title" className="mt-2 font-[var(--font-display)] text-2xl font-bold">{overview.event_name ?? t('unnamed')}</h2>
+      <h2 id="live-dashboard-title" className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{overview.event_name ?? t('unnamed')}</h2>
       <p className="mt-2 text-sm">{overview.capture_state === 'OPEN' ? t('captureOpen') : t('captureClosed')}</p>
       {overview.event_location && <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{overview.event_location}</p>}
       <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('serverTime', { time: formatTime(overview.server_time) })}</p>

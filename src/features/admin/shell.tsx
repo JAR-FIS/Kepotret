@@ -61,7 +61,7 @@ export function AdminShell({ session, locale, onLogout, children }: { session: A
         <div className="flex min-w-0 flex-col leading-tight"><span className="truncate text-sm font-semibold">{labels.signedIn}: {session.display_name ?? session.email}</span><span className="text-xs text-[var(--color-muted-foreground)]">{labels.expires} {formatAdminDate(session.session_expires_at, locale)}</span></div>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <Link href="/help/admin" className="hidden min-h-11 items-center gap-2 rounded px-2 text-sm font-semibold hover:bg-[var(--color-muted)] md:inline-flex"><BookOpen size={16} aria-hidden="true" />{labels.help}</Link>
-          <LocaleControl label={labels.language} indonesianLabel="Bahasa Indonesia" englishLabel="English" indonesianShort="ID" englishShort="EN" />
+          <LocaleControl label={labels.language} indonesianLabel="Bahasa Indonesia" englishLabel="English" />
           <ThemeToggle lightLabel={labels.light} darkLabel={labels.dark} />
           <Button variant="ghost" className="size-11 px-0" aria-label={labels.logout} onClick={onLogout}><LogOut size={18} aria-hidden="true" /></Button>
         </div>

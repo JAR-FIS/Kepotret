@@ -281,7 +281,12 @@ test('local JPEG download appears only after COMMITTED and matches the uploaded 
     await route.fulfill({ status: 200 });
   });
   await page.route('**/api/v1/capture-attempts/*/commit', route => route.fulfill({ status: 201, json: { data: { status: 'COMMITTED' } } }));
-  page.on('request', request => { if (request.url().includes('/photos/') || request.url().includes('/media/')) mediaRequests += 1; });
+  page.on('request', request => {
+    const pathname = new URL(request.url()).pathname;
+    if ((pathname.includes('/photos/') || pathname.includes('/media/')) && !pathname.startsWith('/_next/static/media/')) {
+      mediaRequests += 1;
+    }
+  });
   await captureForUploadRecovery(page, state);
   await expect(page.getByRole('button', { name: 'Save to device' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Use photo' }).click();

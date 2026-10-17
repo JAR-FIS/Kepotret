@@ -16,6 +16,7 @@ describe('LocaleControl', () => {
     );
     const select = screen.getByRole('combobox', { name: 'Language' });
     expect(select).toHaveValue('id');
+    expect(select).toHaveTextContent('IDENG');
     fireEvent.change(select, { target: { value: 'en' } });
     expect(select).toHaveValue('en');
     expect(refresh).toHaveBeenCalledOnce();

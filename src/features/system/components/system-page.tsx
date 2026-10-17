@@ -11,7 +11,7 @@ export function SystemPage({ locale, kind }: { locale: Locale; kind: 'denied' | 
       : { title: copy.system.compatibilityTitle, description: copy.system.compatibilityDescription };
 
   return <AuthPageFrame>
-    <h1 className="font-[var(--font-display)] text-3xl font-bold">{item.title}</h1>
+    <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold">{item.title}</h1>
     <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{item.description}</p>
     {kind === 'compatibility' && <>
       <ul className="mt-6 space-y-3 text-sm leading-6">

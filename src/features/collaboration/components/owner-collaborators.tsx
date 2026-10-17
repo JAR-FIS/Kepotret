@@ -122,7 +122,7 @@ export function OwnerCollaborators({ albumId }: { albumId: string }) {
 
   return <div className="max-w-5xl space-y-5">
     <section className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:flex-row sm:items-end sm:justify-between sm:p-7">
-      <div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p><h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold">{t('title')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p></div>
+      <div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p></div>
       <div className="flex flex-wrap gap-2"><Link href={hostRoutes.setup(albumId, 'kolaborator')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 text-sm font-semibold">{t('invite')}<ArrowRight size={16} aria-hidden="true" /></Link><Link href={hostRoutes.invitations(albumId)} className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-md)] px-4 text-sm font-semibold underline">{t('history')}</Link></div>
     </section>
     {message && <p role="status" className="text-sm text-[var(--color-muted-foreground)]">{message}</p>}

@@ -26,7 +26,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             <Image src="/brand/logo.svg" alt="Kepotret" width={132} height={42} className="h-9 w-[120px] object-contain object-left dark:hidden" />
             <Image src="/brand/logo_white.svg" alt="Kepotret" width={132} height={42} className="hidden h-9 w-[120px] object-contain object-left dark:block" />
           </Link>
-          <p className="mt-3 font-[var(--font-display)] font-semibold">{footer.brandLine}</p>
+          <p className="mt-3 font-[family-name:var(--font-display)] font-semibold">{footer.brandLine}</p>
           <p className="mt-1 text-sm leading-6 text-[var(--color-muted-foreground)]">{footer.descriptor}</p>
         </div>
         <FooterGroup title={footer.product} links={products} />

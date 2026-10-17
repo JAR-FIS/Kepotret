@@ -80,12 +80,12 @@ export function GuestLimitForm({ albumId }: { albumId: string }) {
 
   return <form onSubmit={submit} className="max-w-3xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
     <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p>
-    <h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold tracking-tight">{t('label')}</h2>
+    <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">{t('label')}</h2>
     <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p>
     <fieldset className="mt-6"><legend className="text-sm font-semibold">{t('choose')}</legend><div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
       {Object.values(AlbumSettingsPatchRequestPerGuestLimit).map(value => {
         const unavailable = value > quota;
-        return <label key={value} className={`relative flex min-h-20 cursor-pointer flex-col justify-center rounded-[var(--radius-md)] border px-4 py-3 transition-colors ${limit === value ? 'border-[var(--color-foreground)] bg-[var(--color-muted)]' : 'border-[var(--color-border)]'} ${unavailable ? 'cursor-not-allowed opacity-45' : 'hover:border-[var(--color-foreground)]'}`}><input type="radio" name="per-guest-limit" value={value} checked={limit === value} disabled={unavailable} onChange={() => { setLimit(value); setMessage(null); }} className="absolute right-3 top-3 size-4 accent-[var(--color-foreground)]" /><span className="font-[var(--font-display)] text-2xl font-bold">{value}</span><span className="text-xs text-[var(--color-muted-foreground)]">{t('photos')}</span>{value === 30 && !unavailable && <span className="mt-1 text-xs font-semibold">{t('recommended')}</span>}</label>;
+        return <label key={value} className={`relative flex min-h-20 cursor-pointer flex-col justify-center rounded-[var(--radius-md)] border px-4 py-3 transition-colors ${limit === value ? 'border-[var(--color-foreground)] bg-[var(--color-muted)]' : 'border-[var(--color-border)]'} ${unavailable ? 'cursor-not-allowed opacity-45' : 'hover:border-[var(--color-foreground)]'}`}><input type="radio" name="per-guest-limit" value={value} checked={limit === value} disabled={unavailable} onChange={() => { setLimit(value); setMessage(null); }} className="absolute right-3 top-3 size-4 accent-[var(--color-foreground)]" /><span className="font-[family-name:var(--font-display)] text-2xl font-bold">{value}</span><span className="text-xs text-[var(--color-muted-foreground)]">{t('photos')}</span>{value === 30 && !unavailable && <span className="mt-1 text-xs font-semibold">{t('recommended')}</span>}</label>;
       })}
     </div></fieldset>
     <p className="mt-5 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('quotaNote', { count: new Intl.NumberFormat(locale).format(quota) })}</p>

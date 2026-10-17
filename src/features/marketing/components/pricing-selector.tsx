@@ -46,7 +46,7 @@ export function PricingSelector({ locale }: { locale: Locale }) {
     <div className="mt-6 grid gap-5 sm:grid-cols-[1fr_auto] sm:items-end">
       <div aria-live="polite" aria-atomic="true">
         <p className="text-sm text-[var(--color-muted-foreground)]">{selected.displayCount} {copy.photoUnit}</p>
-        <p className="font-[var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{amount}</p>
+        <p className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{amount}</p>
       </div>
       <ul className="space-y-2 text-sm text-[var(--color-muted-foreground)]">
         {copy.proof.map((item) => <li key={item} className="flex items-start gap-2"><span aria-hidden="true" className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--color-primary)] ring-1 ring-[var(--color-foreground)]" />{item}</li>)}

@@ -570,7 +570,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
 
   return <main className="min-h-screen bg-[var(--color-background)] px-4 py-7 text-[var(--color-foreground)] sm:py-12">
     <div className="mx-auto flex min-h-[78vh] w-full max-w-lg flex-col justify-center">
-      <header className="mb-6 text-center"><p className="font-[var(--font-display)] text-2xl font-bold">{t('title')}</p><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('subtitle')}</p></header>
+      <header className="mb-6 text-center"><p className="font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</p><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('subtitle')}</p></header>
       {!isOnline && <OfflineNotice />}
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm sm:p-7">
         {stage === 'loading' && <p role="status">{t('checkingInvitation')}</p>}
@@ -591,7 +591,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
         />}
         {(stage === 'ready' || stage === 'closed' || stage === 'camera' || stage === 'review' || stage === 'uploading' || stage === 'saved') && <>
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-primary)]">{locale === 'id' ? 'Acara' : 'Event'}</p>
-          <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold">{event?.event_name}</h1>
+          <h1 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{event?.event_name}</h1>
           {stage === 'closed' && <div className="mt-6 rounded-lg bg-[var(--color-muted)] p-4"><p className="font-semibold">{t('closed')}</p>{readiness?.reveal_at && <><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('photosReveal')}: {formatTime(readiness.reveal_at)}</p><p className="mt-1 font-mono text-sm" aria-live="off">{revealCountdown}</p></>}</div>}
           {stage === 'ready' && <div className="mt-6"><CaptureWaitingState readiness={readiness} isOffline={!isOnline} revalidating={onlineRefreshing || !readinessFresh} cameraError={cameraError} onOpenCamera={() => void openCamera()} formatTime={formatTime} /></div>}
           {stage === 'camera' && <CameraViewfinder videoRef={videoRef} isReady={cameraReady} isBusy={busy} isOffline={!isOnline || onlineRefreshing} onSwitch={() => { const next = facing === 'environment' ? 'user' : 'environment'; stopCamera(); setStage('ready'); setCameraReady(false); setFacing(next); void openCamera(next); }} onShutter={() => void shutter()} cameraError={cameraError} />}

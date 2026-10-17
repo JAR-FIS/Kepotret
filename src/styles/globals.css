@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   color-scheme: light;
   --color-background: #ffffff;
@@ -15,8 +17,8 @@
   --color-muted-foreground: #6b6b6b;
   --color-destructive: #b42318;
   --color-focus: #0a0a0a;
-  --font-display: 'Space Grotesk', 'Arial Narrow', sans-serif;
-  --font-body: 'Plus Jakarta Sans', Arial, sans-serif;
+  --font-display: var(--font-space-grotesk), 'Arial Narrow', sans-serif;
+  --font-body: var(--font-plus-jakarta-sans), Arial, sans-serif;
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
