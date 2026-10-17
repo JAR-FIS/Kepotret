@@ -15,16 +15,13 @@ test('FE-8 H20 uses the dedicated Admin CSRF and sends a valid password challeng
   await page.route('**/api/v1/auth/**', route => { ordinaryAuthCalls += 1; return route.fulfill({ status: 401, json: { error: { code: 'UNAUTHENTICATED' } } }); });
 
   await page.goto('/admin/masuk');
-  await page.waitForLoadState('networkidle');
   await expect(page.getByRole('heading', { name: /superadmin sign in|masuk sebagai superadmin/i })).toBeVisible();
   await expect(page.getByRole('link', { name: /google|sign up|forgot/i })).toHaveCount(0);
+  await expect(page.locator('form[data-admin-auth-ready="true"]')).toBeVisible();
   const email = page.getByLabel(/email/i);
   const password = page.getByLabel(/password|kata sandi/i);
   await email.fill('admin@example.test');
   await password.fill('example-password');
-  // WebKit can hydrate the server-rendered form between fills; restore any field it reset.
-  if (await email.inputValue() !== 'admin@example.test') await email.fill('admin@example.test');
-  if (await password.inputValue() !== 'example-password') await password.fill('example-password');
   await expect(email).toHaveValue('admin@example.test');
   await expect(password).toHaveValue('example-password');
   await page.getByRole('button', { name: /continue to mfa|lanjutkan ke verifikasi mfa/i }).click();

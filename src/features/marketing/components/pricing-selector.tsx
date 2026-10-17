@@ -9,6 +9,7 @@ export function PricingSelector({ locale }: { locale: Locale }) {
   const copy = getContent(locale).pricing;
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selected = priceOptions[selectedIndex]!;
+  const displayCount = new Intl.NumberFormat(locale === 'id' ? 'id-ID' : 'en-US').format(selected.photos);
   const amount = selected.price === 0
     ? copy.free
     : `${locale === 'id' ? 'Rp' : 'IDR'}${new Intl.NumberFormat(locale === 'id' ? 'id-ID' : 'en-US').format(selected.price)}`;
@@ -28,7 +29,7 @@ export function PricingSelector({ locale }: { locale: Locale }) {
       max={priceOptions.length - 1}
       step={1}
       value={selectedIndex}
-      aria-valuetext={`${selected.displayCount} ${copy.photoUnit}, ${amount}`}
+      aria-valuetext={`${displayCount} ${copy.photoUnit}, ${amount}`}
       onChange={(event) => setSelectedIndex(Number(event.target.value))}
       className="h01-range w-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--color-focus)]"
     />
@@ -37,7 +38,7 @@ export function PricingSelector({ locale }: { locale: Locale }) {
     </ol>
     <div className="mt-6 grid gap-5 sm:grid-cols-[1fr_auto] sm:items-end">
       <div aria-live="polite" aria-atomic="true" className="sm:row-span-2">
-        <p className="text-sm text-[var(--color-muted-foreground)]">{selected.displayCount} {copy.photoUnit}</p>
+        <p className="text-sm text-[var(--color-muted-foreground)]">{displayCount} {copy.photoUnit}</p>
         <p className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{amount}</p>
       </div>
       <ul className="space-y-2 text-sm text-[var(--color-muted-foreground)]">

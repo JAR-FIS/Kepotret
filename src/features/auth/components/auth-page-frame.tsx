@@ -2,13 +2,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-export function AuthPageFrame({ children }: { children: ReactNode }) {
+export function AuthPageFrame({ children, headerControls }: { children: ReactNode; headerControls?: ReactNode }) {
   return <main className="grid min-h-[calc(100vh-0px)] place-items-center bg-[var(--color-surface-muted)] px-4 py-10">
     <div className="w-full max-w-lg">
-      <Link href="/" aria-label="Kepotret" className="mx-auto mb-6 flex w-fit rounded-sm">
-        <Image src="/brand/logo.svg" alt="Kepotret" width={146} height={48} className="h-10 w-[132px] object-contain dark:hidden" />
-        <Image src="/brand/logo_white.svg" alt="Kepotret" width={146} height={48} className="hidden h-10 w-[132px] object-contain dark:block" />
-      </Link>
+      <header className={`mb-5 flex items-center ${headerControls ? 'justify-between gap-2' : 'justify-center'}`}>
+        <Link href="/" aria-label="Kepotret" className="flex w-fit shrink-0 rounded-sm">
+          <Image src="/brand/logo.svg" alt="Kepotret" width={146} height={48} className="h-10 w-[132px] object-contain dark:hidden" />
+          <Image src="/brand/logo_white.svg" alt="Kepotret" width={146} height={48} className="hidden h-10 w-[132px] object-contain dark:block" />
+        </Link>
+        {headerControls}
+      </header>
       <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-soft)] sm:p-9">{children}</section>
       <Link href="/" className="mx-auto mt-5 inline-flex min-h-11 w-fit items-center text-sm font-semibold text-[var(--color-muted-foreground)] hover:underline">← {`Kepotret`}</Link>
     </div>
