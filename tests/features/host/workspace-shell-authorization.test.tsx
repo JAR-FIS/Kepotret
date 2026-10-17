@@ -1,10 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const app = vi.hoisted(() => ({ access: vi.fn(), pathname: '/album/11111111-1111-4111-8111-111111111111' }));
+const app = vi.hoisted(() => ({ access: vi.fn(), pathname: '/album/11111111-1111-4111-8111-111111111111', theme: 'light' }));
 vi.mock('next/navigation', () => ({ usePathname: () => app.pathname, useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock('next/image', () => ({ default: () => null }));
-vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }) }));
+// This test mock renders optimized Next Image props as a native element for assertions.
+// eslint-disable-next-line @next/next/no-img-element
+vi.mock('next/image', () => ({ default: ({ alt = '', ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => <img alt={alt} {...props} /> }));
+vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: app.theme, setTheme: vi.fn() }) }));
 vi.mock('@/lib/api/browser', () => ({ getApiV1AlbumsAlbumId: app.access }));
 
 import { HostShell } from '@/features/host/components/workspace-shell';
@@ -19,7 +21,18 @@ const renderShell = (actorAccess: unknown, readiness: string | null = 'DRAFT') =
 const clickMenu = (label: string) => fireEvent.click(screen.getAllByRole('button', { name: label })[0]!);
 
 describe('FE-7 server-projected workspace capabilities', () => {
-  beforeEach(() => app.access.mockReset());
+  beforeEach(() => { app.access.mockReset(); app.theme = 'light'; });
+
+  it('keeps the approved Create Album navigation and switches to the white logo in Dark Mode', async () => {
+    app.pathname = '/dashboard';
+    app.theme = 'dark';
+    render(<LocaleProvider><HostShell><p>workspace child</p></HostShell></LocaleProvider>);
+    expect(await screen.findByText('workspace child')).toBeInTheDocument();
+    expect(document.querySelector('a[href="/album/baru"]')).toBeInTheDocument();
+    expect(document.querySelector('a[href="/logout"]')).not.toBeInTheDocument();
+    expect(document.querySelector('img[src="/brand/logo.svg"]')).toHaveClass('dark:hidden');
+    expect(document.querySelector('img[src="/brand/logo_white.svg"]')).toHaveClass('hidden', 'dark:block');
+  });
 
   it('separates Owner rights from all collaborator capabilities', async () => {
     const owner = renderShell({ relationship: 'OWNER', permission_version: null, collaborator_permissions: null });

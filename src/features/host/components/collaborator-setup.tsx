@@ -75,13 +75,13 @@ export function CollaboratorSetup({ albumId }: { albumId: string }) {
       <h2 className="font-semibold">{t('title')}</h2>
       <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p>
       <label htmlFor="collaborator-email" className="mt-5 block text-sm font-semibold">{t('email')}</label>
-      <input id="collaborator-email" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-base" />
+      <input id="collaborator-email" type="email" required autoComplete="email" placeholder={t('emailPlaceholder')} value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-base" />
       <fieldset className="mt-5 space-y-3"><legend className="mb-3 text-sm font-semibold">{t('permissions')}</legend>
         {(['can_setup', 'can_moderate', 'can_export_zip'] as const).map((permission) => <label key={permission} className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={permissions[permission]} onChange={(event) => setPermissions((current) => ({ ...current, [permission]: event.target.checked }))} className="size-5 accent-[var(--color-foreground)]" />{t(permission)}</label>)}
       </fieldset>
-      <p className="mt-4 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('noBilling')}</p>
+      <p className="mt-4 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('woEoGuidance')} {t('noBilling')}</p>
       {message && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{message}</p>}
-      <Button type="submit" loading={pending} className="mt-5">{t('submit')}</Button>
+      <Button type="submit" loading={pending} className="mt-5 rounded-full font-bold">{t('submit')}</Button>
     </form>
     <section className="min-w-0 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><h2 className="font-semibold">{t('listTitle')}</h2>
       {invitations.length ? <ul className="mt-4 space-y-3">{invitations.map((invitation) => <li key={invitation.invitation_id} className="min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border)] p-4"><p className="break-all text-sm font-semibold">{invitation.email}</p><ul className="mt-2 flex flex-wrap gap-2">{(['can_setup', 'can_moderate', 'can_export_zip'] as const).filter((permission) => invitation.permissions[permission]).map((permission) => <li key={permission} className="rounded-full bg-[var(--color-muted)] px-3 py-1 text-xs">{t(permission)}</li>)}</ul></li>)}</ul> : <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('empty')}</p>}

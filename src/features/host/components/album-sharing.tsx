@@ -14,7 +14,7 @@ import { hostRoutes } from '@/features/host/routes';
 import type { AlbumSharing } from '@/lib/api/generated/index.schemas';
 
 type State = 'loading' | 'ready' | 'forbidden' | 'error';
-export function AlbumSharingPanel({ albumId, preparation = false }: { albumId: string; preparation?: boolean }) {
+function HostSharingPanel({ albumId }: { albumId: string }) {
   const t = useTranslations('host.sharing');
   const isOnline = useConnectivity();
   const [state, setState] = useState<State>('loading');
@@ -67,7 +67,15 @@ export function AlbumSharingPanel({ albumId, preparation = false }: { albumId: s
   async function copy() {
     if (!sharing) return;
     try { await navigator.clipboard.writeText(sharing.url); setMessage(t('copied')); }
-    catch { setMessage(t('error')); }
+    catch {
+      const input = document.getElementById('album-guest-url');
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+        if (document.execCommand('copy')) { setMessage(t('copied')); return; }
+      }
+      setMessage(t('error'));
+    }
   }
 
   async function downloadPdf() {
@@ -92,12 +100,25 @@ export function AlbumSharingPanel({ albumId, preparation = false }: { albumId: s
   if (state === 'forbidden') return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><p role="alert">{t('forbidden')}</p></section>;
   if (state === 'error' && !sharing) return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><p role="alert">{!isOnline ? t('offline') : message || t('error')}</p><Button className="mt-4" disabled={!isOnline} onClick={() => void load()}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button></section>;
   return <section className="space-y-5">
-    {preparation && <Link href={hostRoutes.sharing(albumId)} className="inline-flex min-h-11 items-center gap-2 text-sm underline"><ArrowLeft size={16} aria-hidden="true" />{t('title')}</Link>}
     {!isOnline && <p role="status" className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm">{t('offline')}</p>}
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><h2 className="text-lg font-semibold">{preparation ? t('preparation') : t('title')}</h2><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('description')}</p>{sharing && <><label className="mt-5 block text-sm font-medium">{t('url')}<input readOnly value={sharing.url} className="mt-2 min-h-11 w-full rounded border border-[var(--color-border)] bg-[var(--color-background)] px-3 font-mono text-xs" /></label><div className="mt-4 flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void copy()}><Copy size={16} aria-hidden="true" />{t('copy')}</Button><Button variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void downloadPdf()}><Download size={16} aria-hidden="true" />{t('pdf')}</Button><Button variant="ghost" disabled={!isOnline} onClick={() => void load()}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button>{!preparation && <Link className="inline-flex min-h-11 items-center rounded border border-[var(--color-border)] px-4 text-sm font-semibold" href={hostRoutes.preparation(albumId)}>{t('preparation')}</Link>}</div>{sharing.can_rotate && !preparation && <div className="mt-5 border-t border-[var(--color-border)] pt-4"><p className="text-sm text-[var(--color-muted-foreground)]">{t('rotateWarning')}</p><Button className="mt-3" variant="danger" disabled={!isOnline} loading={busy} onClick={() => setRotationDialogOpen(true)}>{t('rotate')}</Button></div>}</>}{message && <p role="status" className="mt-4 text-sm">{message}</p>}</div>
-      <div className="flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6">{sharing && <><QRCodeSVG value={sharing.url} size={220} marginSize={4} level="M" title={t('qrAlt')} /><p className="mt-4 text-center text-sm text-[var(--color-muted-foreground)]">{t('qrAlt')}</p></>}</div>
+      <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><h2 className="text-lg font-semibold">{t('title')}</h2><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('description')}</p>{sharing && <><label htmlFor="album-guest-url" className="mt-5 block text-sm font-medium">{t('url')}</label><div className="relative mt-2"><input id="album-guest-url" readOnly value={sharing.url} className="min-h-11 w-full rounded border border-[var(--color-border)] bg-[var(--color-background)] py-2 pl-3 pr-12 font-mono text-xs" /><button type="button" aria-label={t('copy')} onClick={() => void copy()} className="absolute inset-y-0 right-1 inline-flex w-10 items-center justify-center rounded-full hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"><Copy size={16} aria-hidden="true" /></button></div><div className="mt-4 flex flex-wrap gap-2"><Button variant="ghost" disabled={!isOnline} onClick={() => void load()}>{t('refresh')}</Button><Link className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 text-sm font-semibold" href="/help/host">{t('hostGuide')}</Link></div>{sharing.can_rotate && <div className="mt-5 border-t border-[var(--color-border)] pt-4"><p className="text-sm text-[var(--color-muted-foreground)]">{t('rotateWarning')}</p><Button className="mt-3 rounded-full font-bold" variant="danger" disabled={!isOnline} loading={busy} onClick={() => setRotationDialogOpen(true)}>{t('rotate')}</Button></div>}</>}{message && <p role="status" className="mt-4 text-sm">{message}</p>}</div>
+      <div className="flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6">{sharing && <><QRCodeSVG value={sharing.url} size={220} marginSize={4} level="M" title={t('qrAlt')} /><p className="mt-4 text-center text-sm text-[var(--color-muted-foreground)]">{t('qrAlt')}</p><Button type="button" variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void downloadPdf()} className="mt-5 w-full rounded-full font-bold"><Download size={16} aria-hidden="true" />{t('pdf')}</Button></>}</div>
     </div>
     <ConfirmDialog open={rotationDialogOpen} title={t('rotate')} description={t('confirmRotateDescription')} confirmLabel={t('confirmRotate')} cancelLabel={t('cancel')} disabled={busy || !isOnline} onCancel={() => setRotationDialogOpen(false)} onConfirm={() => { setRotationDialogOpen(false); void rotate(); }} />
   </section>;
+}
+
+export function GuestAlbumTutorial({ albumId }: { albumId: string }) {
+  const t = useTranslations('host.guestTutorial');
+  const steps = ['scan', 'name', 'consent', 'camera', 'capture', 'gallery', 'closed'] as const;
+  return <section className="max-w-3xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
+    <Link href={hostRoutes.sharing(albumId)} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline"><ArrowLeft size={16} aria-hidden="true" />{t('back')}</Link>
+    <p className="mt-5 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('intro')}</p>
+    <ol className="mt-6 space-y-4">{steps.map((step, index) => <li key={step} className="flex gap-4 rounded-[var(--radius-md)] border border-[var(--color-border)] p-4"><span aria-hidden="true" className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-bold text-[var(--color-primary-foreground)]">{index + 1}</span><p className="text-sm leading-6">{t(step)}</p></li>)}</ol>
+  </section>;
+}
+
+export function AlbumSharingPanel({ albumId, preparation = false }: { albumId: string; preparation?: boolean }) {
+  return preparation ? <GuestAlbumTutorial albumId={albumId} /> : <HostSharingPanel albumId={albumId} />;
 }

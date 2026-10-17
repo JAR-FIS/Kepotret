@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
-import { getApiV1AlbumsAlbumId, getApiV1AlbumsAlbumIdReview, getApiV1SecurityCsrf, postApiV1AlbumsAlbumIdConfirmSetup } from '@/lib/api/browser';
-import type { AlbumReadiness, SetupReview as SetupReviewData } from '@/lib/api/generated/index.schemas';
+import { getApiV1AlbumsAlbumId, getApiV1AlbumsAlbumIdReview, getApiV1Packages, getApiV1SecurityCsrf, postApiV1AlbumsAlbumIdConfirmSetup } from '@/lib/api/browser';
+import type { AlbumReadiness, PackageOption, SetupReview as SetupReviewData } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
 import { intentKey } from '@/features/host/lib/intent-key';
 
@@ -18,6 +18,7 @@ export function SetupReview({ albumId }: { albumId: string }) {
   const t = useTranslations('host.review');
   const shared = useTranslations('host');
   const router = useRouter();
+  const locale = useLocale();
   const [review, setReview] = useState<SetupReviewData | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [state, setState] = useState<'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error'>('loading');
@@ -25,6 +26,7 @@ export function SetupReview({ albumId }: { albumId: string }) {
   const [confirmedReadiness, setConfirmedReadiness] = useState<AlbumReadiness | null>(null);
   const [pending, setPending] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [packageCatalog, setPackageCatalog] = useState<PackageOption[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -36,9 +38,9 @@ export function SetupReview({ albumId }: { albumId: string }) {
         if (album.status === 403) { setState('forbidden'); return; }
         if (album.status !== 200) { setState('error'); return; }
         setIsOwner(album.data.data.actor_access.relationship === 'OWNER');
-        const result = await getApiV1AlbumsAlbumIdReview(albumId);
+        const [result, catalog] = await Promise.all([getApiV1AlbumsAlbumIdReview(albumId), getApiV1Packages()]);
         if (!active) return;
-        if (result.status === 200) { setReview(result.data.data); setState('ready'); }
+        if (result.status === 200) { setReview(result.data.data); setPackageCatalog(catalog.status === 200 ? catalog.data.data : []); setState('ready'); }
         else if (result.status === 401) setState('unauthenticated');
         else if (result.status === 403) setState('forbidden');
         else setState('error');
@@ -88,7 +90,8 @@ export function SetupReview({ albumId }: { albumId: string }) {
   if (state === 'error' || !review) return <ErrorState title={shared('errorTitle')} description={shared('errorDescription')} retryLabel={shared('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
 
   const snapshot = review.snapshot;
-  const formatTime = (value: string) => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: snapshot.event_basics.timezone }).format(new Date(value));
+  const formatTime = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: snapshot.event_basics.timezone }).format(new Date(value));
+  const selectedPackage = snapshot.selected_package_version_id ? packageCatalog.find((option) => option.package_version_id === snapshot.selected_package_version_id) : null;
 
   return <section className="max-w-3xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
     <h2 className="font-semibold">{t('title')}</h2>
@@ -102,13 +105,13 @@ export function SetupReview({ albumId }: { albumId: string }) {
       <div><dt className="text-sm text-[var(--color-muted-foreground)]">{t('pin')}</dt><dd>{snapshot.access.pin_enabled ? t('enabled') : t('disabled')}</dd></div>
       <div><dt className="text-sm text-[var(--color-muted-foreground)]">{t('guestLimit')}</dt><dd>{snapshot.settings.per_guest_limit ?? t('notSet')}</dd></div>
       <div><dt className="text-sm text-[var(--color-muted-foreground)]">{t('cover')}</dt><dd>{snapshot.design.cover_asset_id ?? t('notSet')}</dd></div>
-      <div><dt className="text-sm text-[var(--color-muted-foreground)]">{t('package')}</dt><dd>{snapshot.selected_package_version_id ?? t('free')}</dd></div>
+      <div><dt className="text-sm text-[var(--color-muted-foreground)]">{t('package')}</dt><dd>{snapshot.selected_package_version_id === null ? t('free') : selectedPackage ? t('paidPackage', { name: selectedPackage.name, quota: new Intl.NumberFormat(locale).format(selectedPackage.quota_total) }) : t('packageUnavailable')}</dd></div>
       <div><dt className="text-sm text-[var(--color-muted-foreground)]">{t('collaborators')}</dt><dd>{snapshot.collaborator_count}</dd></div>
     </dl>
     {review.issues.length > 0 && <div className="mt-6"><h3 className="font-semibold">{t('issues')}</h3><ul className="mt-3 space-y-2">{review.issues.map((issue, index) => <li key={`${issue.code}-${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] p-3"><span className="text-sm">{t('issueFallback', { code: issue.message_key ?? issue.code })} <span className="text-xs text-[var(--color-muted-foreground)]">({issue.severity})</span></span><Link className="font-semibold underline" href={hostRoutes.setup(albumId, issue.section)}>{t('fixSection')}</Link></li>)}</ul></div>}
     {message && <p role="alert" className="mt-4 text-sm text-[var(--color-muted-foreground)]">{t(message)}{message === 'conflict' && <> <button type="button" onClick={() => { setMessage(null); setConfirmedReadiness(null); setState('loading'); setAttempt((value) => value + 1); }} className="font-semibold underline">{shared('retry')}</button></>}</p>}
     {confirmedReadiness && <div role="status" className="mt-5 rounded-[var(--radius-md)] bg-[var(--color-muted)] p-4"><p className="font-semibold">{confirmedReadiness === 'READY' ? t('ready') : confirmedReadiness === 'PAYMENT_PENDING' ? t('paymentPending') : t('stillDraft')}</p><p className="mt-1 text-sm">{confirmedReadiness === 'READY' ? t('confirmedReady') : confirmedReadiness === 'PAYMENT_PENDING' ? t('confirmedPayment') : t('confirmedDraft')}</p></div>}
     {!isOwner && <p role="note" className="mt-5 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('ownerFinalizationOnly')}</p>}
-    {isOwner && <Button type="button" loading={pending} disabled={!review.complete || !!confirmedReadiness} onClick={confirmSetup} className="mt-6">{t('confirm')}</Button>}
+    {isOwner && <Button type="button" loading={pending} disabled={!review.complete || !!confirmedReadiness} onClick={confirmSetup} className="mt-6 rounded-full font-bold">{t('confirm')}</Button>}
   </section>;
 }
