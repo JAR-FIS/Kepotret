@@ -27,7 +27,8 @@ export function SiteHeader() {
     <header className="site-header sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur">
       <div className="mx-auto flex min-h-[72px] max-w-[1240px] items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" aria-label="Kepotret" className="shrink-0 rounded-sm">
-          <Image src="/brand/logo.svg" alt="Kepotret" width={138} height={44} priority className="h-9 w-[112px] object-contain object-left dark:invert sm:h-10 sm:w-[130px]" />
+          <Image src="/brand/logo.svg" alt="Kepotret" width={138} height={44} priority className="h-9 w-[112px] object-contain object-left dark:hidden sm:h-10 sm:w-[130px]" />
+          <Image src="/brand/logo_white.svg" alt="Kepotret" width={138} height={44} priority className="hidden h-9 w-[112px] object-contain object-left dark:block sm:h-10 sm:w-[130px]" />
         </Link>
 
         <nav aria-label={copy.how} className="hidden items-center gap-7 lg:flex">

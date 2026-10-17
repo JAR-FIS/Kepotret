@@ -17,7 +17,8 @@ export function AccountPageFrame({ children }: { children: ReactNode }) {
     <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="mx-auto flex min-h-[72px] max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link href="/" aria-label="Kepotret" className="shrink-0 rounded-sm">
-          <Image src="/brand/logo.svg" alt="Kepotret" width={138} height={44} className="h-9 w-[112px] object-contain object-left dark:invert sm:w-[130px]" />
+          <Image src="/brand/logo.svg" alt="Kepotret" width={138} height={44} className="h-9 w-[112px] object-contain object-left dark:hidden sm:w-[130px]" />
+          <Image src="/brand/logo_white.svg" alt="Kepotret" width={138} height={44} className="hidden h-9 w-[112px] object-contain object-left dark:block sm:w-[130px]" />
         </Link>
         <nav aria-label={copy.auth.accountTitle} className="flex items-center gap-2 sm:gap-4">
           <Link href="/akun" aria-current="page" className="hidden min-h-11 items-center text-sm font-semibold underline underline-offset-4 sm:inline-flex">{copy.auth.accountTitle}</Link>
