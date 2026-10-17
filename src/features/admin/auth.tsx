@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
   const t = useTranslations('admin.auth');
   return <main className="min-h-screen bg-[var(--color-background)] px-4 py-5 text-[var(--color-foreground)] sm:px-6">
     <header className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-      <Link href="/" aria-label="Kepotret" className="inline-flex min-h-11 items-center rounded bg-white px-2 py-1"><Image src="/brand/logo.svg" alt="Kepotret" width={106} height={35} priority /></Link>
+      <Link href="/" aria-label="Kepotret" className="inline-flex min-h-11 items-center rounded-sm px-1 py-1"><Image src="/brand/logo.svg" alt="Kepotret" width={106} height={35} className="dark:hidden" priority /><Image src="/brand/logo_white.svg" alt="Kepotret" width={106} height={35} className="hidden dark:block" priority /></Link>
       <div className="flex items-center gap-1"><LocaleControl label={t('language')} indonesianLabel="Bahasa Indonesia" englishLabel="English" /><ThemeToggle lightLabel={t('light')} darkLabel={t('dark')} /></div>
     </header>
     <div className="mx-auto grid min-h-[calc(100dvh-5rem)] max-w-6xl items-center gap-10 py-10 lg:grid-cols-[1fr_minmax(20rem,30rem)] lg:gap-20">
@@ -53,6 +53,7 @@ export function AdminLogin() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hydrated = useSyncExternalStore(() => () => undefined, () => true, () => false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +76,7 @@ export function AdminLogin() {
     <p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">H20 · {'SUPERADMIN'}</p>
     <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{t('auth_superadmin_sign_in')}</h2>
     <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('auth_use_admin_credentials_provisioned')}</p>
-    <form className="mt-6 space-y-4" onSubmit={(event) => void submit(event)}>
+    <form data-admin-auth-ready={hydrated ? 'true' : undefined} className="mt-6 space-y-4" onSubmit={(event) => void submit(event)}>
       <AdminField label={commonT('email')}><input className={adminInputClass} type="email" name="email" autoComplete="username" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} /></AdminField>
       <AdminField label={t('auth_password')}><input className={adminInputClass} type="password" name="password" autoComplete="current-password" required maxLength={256} value={password} onChange={(event) => setPassword(event.target.value)} disabled={busy} /></AdminField>
       {error && <AdminFeedback>{error}</AdminFeedback>}
@@ -131,7 +132,7 @@ export function AdminDenied() {
     <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">H22 · {t('auth_admin_access')}</p>
     <h2 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-bold">{t('auth_admin_access_is_unavailable')}</h2>
     <p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('auth_privileged_access_is_locked_or_una')}</p>
-    <Link href="/admin/masuk" className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]">{t('auth_back_to_admin_sign_in')}</Link>
+    <Link href="/admin/masuk" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-[var(--color-primary)] px-5 text-sm font-bold text-[var(--color-primary-foreground)]">{t('auth_back_to_admin_sign_in')}</Link>
   </AdminCard></AuthFrame>;
 }
 
