@@ -15,8 +15,8 @@ test('reference route stays usable without horizontal overflow at supported widt
     expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
   }
 
-  const locale = page.getByRole('combobox', { name: 'Bahasa' });
-  await locale.selectOption('en');
+  await page.getByRole('button', { name: 'Bahasa: ID' }).click();
+  await page.getByRole('listbox', { name: 'Bahasa' }).getByRole('option', { name: 'Bahasa Inggris' }).click();
   await expect(page.getByRole('heading', { name: 'Kepotret, made for real moments.' })).toBeVisible();
 
   for (const width of viewportWidths) {

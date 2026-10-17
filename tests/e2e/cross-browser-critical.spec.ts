@@ -33,11 +33,11 @@ test('public landing and ordinary sign-in remain usable with optimized, reserved
     await expect(image).toHaveAttribute('srcset', /_next\/image/);
     await expect(image).toHaveAttribute('sizes', /.+/);
   }
-  // The hero photo is preloaded; the below-the-fold use cases are lazy.
+  // The wedding hero remains eager and the below-the-fold use cases are lazy.
   const marketingImages = page.locator('img[src*="_next/image"]');
   expect(await marketingImages.count()).toBeGreaterThanOrEqual(10);
-  expect(await page.locator('link[rel="preload"][as="image"][imagesrcset*="event-02.jpg"]').count()).toBe(1);
-  expect(await page.locator('link[rel="preload"][as="image"][imagesrcset*="wedding-01.jpg"]').count()).toBe(0);
+  await expect(heroImages.first()).toHaveAttribute('src', /wedding-02\.jpg/);
+  await expect(heroImages.first()).not.toHaveAttribute('loading', 'lazy');
   expect(await page.locator('img[src*="_next/image"][loading="lazy"]').count()).toBeGreaterThanOrEqual(6);
   await page.goto('/masuk');
   await expect(page.getByRole('button', { name: /google/i })).toBeVisible();

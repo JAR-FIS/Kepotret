@@ -61,7 +61,8 @@ test('FE-7 surfaces fit required widths in both locales and themes', async ({ pa
   }
 
   await page.goto('/help/collaborator');
-  await page.getByRole('combobox', { name: 'Bahasa' }).selectOption('en');
+  await page.getByRole('button', { name: 'Bahasa: ID' }).click();
+  await page.getByRole('listbox', { name: 'Bahasa' }).getByRole('option', { name: 'Bahasa Inggris' }).click();
   await expect(page.getByRole('heading', { name: 'Work together with clear access.' })).toBeVisible();
   await page.getByRole('button', { name: 'Switch to dark theme' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);

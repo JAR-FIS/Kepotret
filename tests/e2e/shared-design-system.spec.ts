@@ -14,8 +14,7 @@ test('shared typography, language, theme, and logo work at desktop and mobile si
     await page.goto('/');
     if (viewport.width < 1024) await page.getByRole('button', { name: /menu navigasi|navigation menu/ }).click();
 
-    const locale = page.getByRole('combobox').first();
-    await expect(locale.locator('option')).toHaveText(['ID', 'ENG']);
+    await expect(page.getByRole('button', { name: 'Bahasa: ID' })).toHaveText('ID');
 
     const fontFamilies = await page.evaluate(() => ({
       body: getComputedStyle(document.body).fontFamily,
@@ -27,7 +26,14 @@ test('shared typography, language, theme, and logo work at desktop and mobile si
     expect(fontFamilies.heading).toContain(fontFamilies.displayVariable);
 
     for (const language of ['id', 'en'] as const) {
-      await locale.selectOption(language);
+      const current = await page.locator('html').getAttribute('lang');
+      if (current !== language) {
+        const triggerLabel = current === 'id' ? 'Bahasa: ID' : 'Language: ENG';
+        const listboxLabel = current === 'id' ? 'Bahasa' : 'Language';
+        const optionLabel = language === 'en' ? 'Bahasa Inggris' : 'Indonesian';
+        await page.getByRole('button', { name: triggerLabel }).click();
+        await page.getByRole('listbox', { name: listboxLabel }).getByRole('option', { name: optionLabel }).click();
+      }
       await expect(page.locator('html')).toHaveAttribute('lang', language);
 
       for (const theme of ['light', 'dark'] as const) {
