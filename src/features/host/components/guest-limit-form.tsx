@@ -91,6 +91,6 @@ export function GuestLimitForm({ albumId }: { albumId: string }) {
     <p className="mt-5 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('quotaNote', { count: new Intl.NumberFormat(locale).format(quota) })}</p>
     <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('distinction')}</p>
     {message && <p role="status" className="mt-4 text-sm">{t(message)}{message === 'conflict' && <> <button type="button" onClick={() => { setMessage(null); setState('loading'); setAttempt(value => value + 1); }} className="font-semibold underline">{t('reload')}</button></>}</p>}
-    <Button type="submit" loading={pending} disabled={limit === null || limit > quota || revision === null} className="mt-6">{t('save')}</Button>
+    <Button type="submit" loading={pending} disabled={limit === null || limit > quota || revision === null} className="mt-6 rounded-full font-bold">{t('save')}</Button>
   </form>;
 }

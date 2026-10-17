@@ -9,6 +9,7 @@ import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { getApiV1AlbumsAlbumId, getApiV1EventCategories, getApiV1SecurityCsrf, patchApiV1AlbumsAlbumId } from '@/lib/api/browser';
 import type { EventCategory } from '@/lib/api/generated/index.schemas';
+import { TimezonePicker } from '@/features/host/components/timezone-picker';
 
 export function EventBasics({ albumId }: { albumId: string }) {
   const t = useTranslations('host.eventBasics');
@@ -99,10 +100,8 @@ export function EventBasics({ albumId }: { albumId: string }) {
       </div>
       {!categories.length && <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('categoriesEmpty')}</p>}
     </fieldset>
-    <label htmlFor="event-timezone" className="mt-5 block text-sm font-semibold">{t('timezone')}</label>
-    <input id="event-timezone" required value={timezone} onChange={(event) => setTimezone(event.target.value)} disabled={timezoneLocked} placeholder="Asia/Jakarta" className="mt-2 min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-base disabled:opacity-70" />
-    <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{timezoneLocked ? t('timezoneLocked') : t('timezoneHelp')}</p>
+    <div className="mt-5"><TimezonePicker id="event-timezone" label={t('timezone')} value={timezone} onChange={setTimezone} disabled={timezoneLocked} placeholder="Asia/Jakarta" help={timezoneLocked ? t('timezoneLocked') : t('timezoneHelp')} /></div>
     {message && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t(message)}{message === 'conflict' && <> <button type="button" onClick={() => { setMessage(null); setState('loading'); setAttempt((value) => value + 1); }} className="font-semibold underline">{t('reload')}</button></>}</p>}
-    <Button type="submit" loading={pending} disabled={!eventName.trim() || !eventLocation.trim() || !categoryId || !timezone.trim() || revision === null || categories.length === 0} className="mt-6">{t('save')}</Button>
+    <Button type="submit" loading={pending} disabled={!eventName.trim() || !eventLocation.trim() || !categoryId || !timezone.trim() || revision === null || categories.length === 0} className="mt-6 rounded-full font-bold">{t('save')}</Button>
   </form>;
 }

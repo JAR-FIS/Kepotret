@@ -96,13 +96,32 @@ test('Owner QR retrieval, explicit link rotation, and QR PDF download use local 
   await download;
 });
 
-test('active WO/EO can retrieve the QR/PDF surface without seeing link rotation', async ({ page }) => {
+test('H40 guest tutorial is distinct and preserves camera-only access rules', async ({ page }) => {
+  await page.goto(`/album/${albumId}/berbagi/panduan`);
+  await expect(page.getByRole('heading', { name: 'Panduan untuk tamu' })).toBeVisible();
+  await expect(page.getByText(/Tamu tidak memerlukan akun/)).toBeVisible();
+  await expect(page.getByText(/Pindai QR acara/)).toBeVisible();
+  await expect(page.getByText(/Unggah foto dari galeri atau penyimpanan perangkat tidak tersedia/)).toBeVisible();
+  await expect(page.getByText(/D\+1, D\+3, D\+5, dan D\+7/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Kembali ke berbagi album' })).toHaveAttribute('href', `/album/${albumId}/berbagi`);
+  for (const width of [360, 390, 768, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 850 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  }
+  await page.screenshot({ path: 'docs/reviews/fe-uat-04/h40-guest-tutorial-synthetic.png', fullPage: true });
+});
+
+test('H39 keeps the Host guide link and QR PDF inside the authorized QR card', async ({ page }) => {
   await page.route(`**/api/v1/albums/${albumId}/sharing`, (route) => route.fulfill({ status: 200, json: { data: { url: 'https://kepotret.test/j/active', can_rotate: false } } }));
   await page.route(`**/api/v1/albums/${albumId}/qr.pdf`, (route) => route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.7 test' }));
-  await page.goto(`/album/${albumId}/berbagi/panduan`);
-  await expect(page.getByRole('textbox', { name: 'Tautan tamu' })).toHaveValue('https://kepotret.test/j/active');
-  await expect(page.getByRole('button', { name: 'Perbarui tautan akses' })).not.toBeVisible();
-  await expect(page.locator('svg title')).toContainText('Kode QR untuk membuka tautan acara');
+  await page.goto(`/album/${albumId}/berbagi`);
+  await expect(page.getByRole('link', { name: 'Panduan Host/WO/EO' })).toHaveAttribute('href', '/help/host');
+  const qrCard = page.locator('section').filter({ has: page.locator('svg:has(title)') });
+  await expect(qrCard.getByRole('button', { name: 'Unduh QR PDF' })).toBeVisible();
+  await page.screenshot({ path: 'docs/reviews/fe-uat-04/h39-host-sharing-synthetic.png', fullPage: true });
+  const download = page.waitForEvent('download');
+  await qrCard.getByRole('button', { name: 'Unduh QR PDF' }).click();
+  await download;
 });
 
 test('failed rotation keeps the current URL and QR and CSRF failure sends no rotation request', async ({ page }) => {

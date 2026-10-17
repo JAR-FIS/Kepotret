@@ -168,6 +168,7 @@ test('Confirm Setup reuses its UUIDv7 for a revision retry and changes it for a 
   } });
   await page.route(`**/api/v1/albums/${albumId}`, route => route.fulfill({ status: 200, json: { data: { actor_access: { relationship: 'OWNER', permission_version: 0, collaborator_permissions: null } } } }));
   await page.route(`**/api/v1/albums/${albumId}/review`, route => route.fulfill({ status: 200, json: review() }));
+  await page.route('**/api/v1/packages', route => route.fulfill({ status: 200, json: { data: [], meta: { has_more: false, next_cursor: null } } }));
   await page.route('**/api/v1/security/csrf', route => route.fulfill({ status: 200, json: { data: { csrf_token: 'test-csrf' } } }));
   await page.route(`**/api/v1/albums/${albumId}/confirm-setup`, route => {
     expect(route.request().headers()['x-csrf-token']).toBe('test-csrf');

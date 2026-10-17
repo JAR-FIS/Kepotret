@@ -5,7 +5,12 @@ const packageVersionId = '44444444-4444-4444-8444-444444444444';
 const transactionId = '55555555-5555-4555-8555-555555555555';
 const transaction = { transaction_id: transactionId, album_id: albumId, type: 'UPGRADE', status: 'PENDING', package_version_id: packageVersionId, package_name_snapshot: 'Plus', target_quota_total_snapshot: 300, amount: 75000, currency: 'IDR', payment_cutoff_at: '2026-10-20T10:00:00Z', provider_expires_at: '2026-10-20T10:00:00Z', created_at: '2026-10-01T10:00:00Z', paid_at: null };
 
+async function mockAlbumTimezone(page: import('@playwright/test').Page) {
+  await page.route(`**/api/v1/albums/${albumId}`, route => route.fulfill({ status: 200, json: { data: { album_id: albumId, timezone: 'Asia/Jakarta' } } }));
+}
+
 test('H37 uses server checkout eligibility and sends CSRF with a stable UUIDv7 before HTTPS navigation', async ({ page }) => {
+  await mockAlbumTimezone(page);
   await page.route('**/api/v1/albums/' + albumId + '/package-options', route => route.fulfill({ status: 200, json: { data: {
     album_id: albumId, current_quota_total: 30, reserved_count: 1, committed_count: 2,
     payment_cutoff_at: '2026-10-20T10:00:00Z', server_time: '2026-10-01T10:00:00Z',
@@ -36,6 +41,7 @@ test('H37 uses server checkout eligibility and sends CSRF with a stable UUIDv7 b
 });
 
 test('H38 ignores provider return query parameters and shows only the server payment status @release-critical', async ({ page }) => {
+  await mockAlbumTimezone(page);
   let entitlementRequests = 0;
   await page.route(`**/api/v1/albums/${albumId}/entitlement`, route => { entitlementRequests += 1; return route.fulfill({ status: 200, json: { data: { album_id: albumId, quota_total: 999, source: 'PURCHASE' } } }); });
   await page.route('**/api/v1/payments/' + transactionId, route => route.fulfill({ status: 200, json: { data: {
@@ -51,6 +57,7 @@ test('H38 ignores provider return query parameters and shows only the server pay
 });
 
 test('H38 shows Verifying before the first server response and displays the server entitlement on SUCCESS', async ({ page }) => {
+  await mockAlbumTimezone(page);
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   let entitlementRequests = 0;
@@ -73,6 +80,7 @@ test('H38 shows Verifying before the first server response and displays the serv
 
 for (const status of ['FAILURE', 'EXPIRED'] as const) {
   test(`H38 treats ${status} as terminal without presenting an upgraded entitlement`, async ({ page }) => {
+    await mockAlbumTimezone(page);
     let entitlementRequests = 0;
     await page.route(`**/api/v1/payments/${transactionId}`, route => route.fulfill({ status: 200, json: { data: { ...transaction, status } } }));
     await page.route(`**/api/v1/albums/${albumId}/entitlement`, route => { entitlementRequests += 1; return route.fulfill({ status: 200, json: { data: { album_id: albumId, quota_total: 487, source: 'PURCHASE' } } }); });
@@ -85,6 +93,7 @@ for (const status of ['FAILURE', 'EXPIRED'] as const) {
 
 for (const status of [401, 403] as const) {
   test(`H38 stops polling after HTTP ${status}`, async ({ page }) => {
+    await mockAlbumTimezone(page);
     let requests = 0;
     await page.route(`**/api/v1/payments/${transactionId}`, route => { requests += 1; return route.fulfill({ status, json: { error: { code: 'DENIED' } } }); });
     await page.goto(`/album/${albumId}/pembayaran/${transactionId}/status`);
@@ -97,6 +106,7 @@ for (const status of [401, 403] as const) {
 }
 
 test('H47/H48 show server transaction snapshots; H49 offers only higher-quota packages', async ({ page }) => {
+  await mockAlbumTimezone(page);
   await page.route(`**/api/v1/albums/${albumId}/payments**`, route => route.fulfill({ status: 200, json: { data: [transaction], meta: { has_more: false, next_cursor: null } } }));
   await page.route(`**/api/v1/payments/${transactionId}`, route => route.fulfill({ status: 200, json: { data: transaction } }));
   await page.goto(`/album/${albumId}/pembayaran`);
@@ -123,6 +133,7 @@ test('H47/H48 show server transaction snapshots; H49 offers only higher-quota pa
 });
 
 test('checkout preserves 401 and 403 returned by the CSRF endpoint', async ({ page }) => {
+  await mockAlbumTimezone(page);
   await page.route('**/api/v1/albums/' + albumId + '/package-options', route => route.fulfill({ status: 200, json: { data: {
     album_id: albumId, current_quota_total: 30, reserved_count: 0, committed_count: 0,
     payment_cutoff_at: '2026-10-20T10:00:00Z', server_time: '2026-10-01T10:00:00Z',

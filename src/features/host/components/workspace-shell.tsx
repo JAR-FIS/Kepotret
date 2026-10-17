@@ -53,7 +53,7 @@ export function HostShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-6 lg:flex">
-        <Link href={hostRoutes.dashboard} aria-label="Kepotret" className="mb-10 inline-flex"><span className="rounded bg-white px-2 py-1"><Image src="/brand/logo.svg" alt="" width={116} height={39} priority /></span></Link>
+        <Link href={hostRoutes.dashboard} aria-label="Kepotret" className="mb-10 inline-flex"><span className="rounded bg-white px-2 py-1 dark:bg-transparent dark:px-0 dark:py-0"><Image className="dark:hidden" src="/brand/logo.svg" alt="" width={116} height={39} priority /><Image className="hidden dark:block" src="/brand/logo_white.svg" alt="" width={116} height={39} priority /></span></Link>
         <nav aria-label={t('nav.label')} className="space-y-1">
           {links.map(({ href, label, icon: Icon }) => {
             const active = href === hostRoutes.albums ? pathname.startsWith('/album') : pathname === href || pathname.startsWith(`${href}/`);
@@ -61,13 +61,13 @@ export function HostShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <Link href="/help" className="mt-auto inline-flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-medium hover:bg-[var(--color-muted)]"><BookOpen aria-hidden="true" size={18} />{t('nav.help')}</Link>
-        <Link href={hostRoutes.createAlbum} className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]"><Plus aria-hidden="true" size={18} />{t('create')}</Link>
+        <Link href={hostRoutes.createAlbum} className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-4 text-sm font-bold text-[var(--color-primary-foreground)]"><Plus aria-hidden="true" size={18} />{t('create')}</Link>
       </aside>
       <div className="min-w-0 lg:pl-64">
         <header className="sticky top-0 z-10 flex min-h-16 items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)]/95 px-4 backdrop-blur sm:px-6 lg:px-10">
           <div className="flex items-center gap-3">
         {inAlbum && <Link aria-label={t('nav.albums')} href={hostRoutes.albums} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-[var(--color-muted)] lg:hidden"><ArrowLeft aria-hidden="true" size={19} /></Link>}
-            {!inAlbum && <Link href={hostRoutes.dashboard} aria-label="Kepotret" className="inline-flex lg:hidden"><span className="rounded bg-white px-1.5 py-1"><Image src="/brand/logo.svg" alt="" width={91} height={30} priority /></span></Link>}
+            {!inAlbum && <Link href={hostRoutes.dashboard} aria-label="Kepotret" className="inline-flex lg:hidden"><span className="rounded bg-white px-1.5 py-1 dark:bg-transparent dark:px-0 dark:py-0"><Image className="dark:hidden" src="/brand/logo.svg" alt="" width={91} height={30} priority /><Image className="hidden dark:block" src="/brand/logo_white.svg" alt="" width={91} height={30} priority /></span></Link>}
             {inAlbum && <span className="hidden text-sm text-[var(--color-muted-foreground)] lg:block">{t('albumWorkspace')}</span>}
           </div>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
@@ -92,7 +92,7 @@ export function HostShell({ children }: { children: React.ReactNode }) {
             const active = href === hostRoutes.albums ? pathname === hostRoutes.albums || pathname === hostRoutes.createAlbum : pathname === href || pathname.startsWith(`${href}/`);
             return <Link key={href} aria-current={active ? 'page' : undefined} href={href} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-medium ${active ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]'}`}><Icon aria-hidden="true" size={19} />{label}</Link>;
           })}
-          <Link href={hostRoutes.createAlbum} aria-current={pathname === hostRoutes.createAlbum ? 'page' : undefined} className="flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-medium"><Plus aria-hidden="true" size={19} />{t('create')}</Link>
+          <Link href={hostRoutes.createAlbum} aria-current={pathname === hostRoutes.createAlbum ? 'page' : undefined} className="flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-bold"><Plus aria-hidden="true" size={19} />{t('create')}</Link>
         </nav>}
         <main className="mx-auto min-w-0 max-w-7xl px-4 pb-24 pt-7 sm:px-6 lg:px-10 lg:pb-12">
           {children}

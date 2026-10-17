@@ -35,6 +35,8 @@ import idMessages from '@/messages/id.json';
 
 const albumId = '11111111-1111-4111-8111-111111111111';
 const category: EventCategory = { category_id: '22222222-2222-4222-8222-222222222222', code: 'SPORT', label_id: 'Olahraga', label_en: 'Sports', display_order: 1, active: true };
+// Synthetic UAT catalog records use deterministic fixture IDs; production options still come from the server catalog.
+const categories: EventCategory[] = [category, { category_id: '22222222-2222-4222-8222-222222222223', code: 'MEETING', label_id: 'Meeting', label_en: 'Meeting', display_order: 2, active: true }, { category_id: '22222222-2222-4222-8222-222222222224', code: 'PARTY', label_id: 'Pesta', label_en: 'Party', display_order: 3, active: true }];
 const packageOption: PackageOption = { package_id: '33333333-3333-4333-8333-333333333333', package_version_id: '44444444-4444-4444-8444-444444444444', code: 'PLUS', name: 'Plus', price_amount: 75000, currency: 'IDR', quota_total: 300 };
 const album: AlbumDetail = {
   album_id: albumId, event_name: null, event_location: null, event_category_id: null, timezone: 'Asia/Jakarta',
@@ -68,7 +70,7 @@ describe('FE-3 setup flow contract surfaces', () => {
     vi.setSystemTime(new Date('2026-09-27T00:00:00.000Z'));
     Object.values(api).forEach((mock) => mock.mockReset());
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: album } });
-    api.getCategories.mockResolvedValue({ status: 200, data: { data: [category], meta: { next_cursor: null, has_more: false } } });
+    api.getCategories.mockResolvedValue({ status: 200, data: { data: categories, meta: { next_cursor: null, has_more: false } } });
     api.getSchedule.mockResolvedValue({ status: 404, data: {} });
     api.getDesign.mockResolvedValue({ status: 200, data: { data: { cover_asset_id: null, cover_preview: null, setup_revision: 4 } } });
     api.getPackages.mockResolvedValue({ status: 200, data: { data: [packageOption], meta: { next_cursor: null, has_more: false } } });
@@ -88,6 +90,8 @@ describe('FE-3 setup flow contract surfaces', () => {
     expect(name).not.toHaveValue('Turnamen Badminton PB Bima Sakti');
     expect(api.getCategories).toHaveBeenCalledOnce();
     expect(screen.getByRole('radio', { name: 'Olahraga' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Meeting' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Pesta' })).toBeInTheDocument();
 
     fireEvent.change(name, { target: { value: '' } });
     fireEvent.change(location, { target: { value: 'Venue typed by Host' } });
@@ -117,6 +121,28 @@ describe('FE-3 setup flow contract surfaces', () => {
     expect(screen.getByLabelText('Tanggal berhenti memotret')).toHaveValue('2026-10-02');
     expect(screen.getByLabelText('Jam berhenti memotret')).toHaveValue('07:00');
     expect(screen.getByLabelText('Jeda reveal')).toHaveValue('3');
+  });
+
+  it('defaults to D+1, exposes LIVE only as a preview, and never submits a false delay', async () => {
+    api.getSchedule.mockResolvedValue({ status: 404, data: {} });
+    renderHost(<ScheduleSetup albumId={albumId} />);
+    await screen.findByLabelText('Tanggal mulai memotret');
+    const startDate = screen.getByLabelText('Tanggal mulai memotret');
+    const startTime = screen.getByLabelText('Jam mulai memotret');
+    const endDate = screen.getByLabelText('Tanggal berhenti memotret');
+    const endTime = screen.getByLabelText('Jam berhenti memotret');
+    const reveal = screen.getByLabelText('Jeda reveal');
+    expect(reveal).toHaveValue('1');
+    expect(startDate).toHaveAttribute('min', '2026-09-27');
+    expect(startDate).toHaveAttribute('max', '2026-12-27');
+    fireEvent.change(startDate, { target: { value: '2026-10-01' } });
+    fireEvent.change(startTime, { target: { value: '10:00' } });
+    fireEvent.change(endDate, { target: { value: '2026-10-02' } });
+    fireEvent.change(endTime, { target: { value: '10:00' } });
+    fireEvent.change(reveal, { target: { value: 'live' } });
+    expect(await screen.findByRole('status')).toHaveTextContent('Pratinjau LIVE saja');
+    expect(screen.getByRole('button', { name: 'Simpan jadwal' })).toBeDisabled();
+    expect(api.putSchedule).not.toHaveBeenCalled();
   });
 
   it('submits wall time converted to the event timezone rather than the browser timezone', async () => {
@@ -188,7 +214,7 @@ describe('FE-3 setup flow contract surfaces', () => {
   it('persists FREE30 as a null draft package selection', async () => {
     api.putPackage.mockResolvedValue({ status: 200, data: { data: album } });
     renderHost(<PackageOptions albumId={albumId} />);
-    fireEvent.click(await screen.findByRole('radio', { name: /FREE30/ }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Paket Gratis/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Simpan pilihan paket' }));
     await waitFor(() => expect(api.putPackage).toHaveBeenCalledWith(albumId, { expected_revision: 4, package_version_id: null }, { headers: { 'X-CSRF-Token': 'csrf' } }));
   });
@@ -208,6 +234,41 @@ describe('FE-3 setup flow contract surfaces', () => {
     expect(await screen.findByText('Server menemukan hal yang harus dilengkapi. Ikuti tautan untuk memperbaikinya.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Buka bagian' })).toHaveAttribute('href', `/album/${albumId}/setup/jadwal`);
     expect(screen.getByRole('button', { name: 'Konfirmasi setup' })).toBeDisabled();
+  });
+
+  it('keeps the authoritative paid package review when catalog metadata is unavailable', async () => {
+    api.getReview.mockResolvedValue({ status: 200, data: { data: { ...completeReview, snapshot: { ...completeReview.snapshot, selected_package_version_id: packageOption.package_version_id } } } });
+    api.getPackages.mockRejectedValueOnce(new TypeError('Network unavailable'));
+    api.confirmSetup.mockResolvedValue({ status: 200, data: { data: { ...album, readiness: 'PAYMENT_PENDING' } } });
+    renderHost(<SetupReview albumId={albumId} />);
+
+    expect(await screen.findByText('Server menyatakan setup telah lengkap.')).toBeInTheDocument();
+    expect(screen.getByText('Paket berbayar (detail paket tidak tersedia)')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Konfirmasi setup' }));
+    await waitFor(() => expect(api.confirmSetup).toHaveBeenCalledWith(albumId, { expected_setup_revision: 7 }, expect.objectContaining({ headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf', 'Idempotency-Key': expect.any(String) }) })));
+    expect(await screen.findByText('Setup dikonfirmasi; menunggu pembayaran')).toBeInTheDocument();
+    expect(api.routerPush).toHaveBeenCalledWith(`/album/${albumId}/checkout/${packageOption.package_version_id}`);
+  });
+
+  it('keeps a valid review when package catalog responds with an unavailable status', async () => {
+    api.getReview.mockResolvedValue({ status: 200, data: { data: { ...completeReview, snapshot: { ...completeReview.snapshot, selected_package_version_id: packageOption.package_version_id } } } });
+    api.getPackages.mockResolvedValueOnce({ status: 503, data: {} });
+    renderHost(<SetupReview albumId={albumId} />);
+
+    expect(await screen.findByText('Server menyatakan setup telah lengkap.')).toBeInTheDocument();
+    expect(screen.getByText('Paket berbayar (detail paket tidak tersedia)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Konfirmasi setup' })).toBeEnabled();
+  });
+
+  it.each([
+    [401, 'Sesi perlu diperbarui'],
+    [403, 'Akses tidak tersedia'],
+  ] as const)('preserves authoritative setup review authorization status %s', async (status, message) => {
+    api.getReview.mockResolvedValueOnce({ status, data: {} });
+    renderHost(<SetupReview albumId={albumId} />);
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Konfirmasi setup' })).not.toBeInTheDocument();
   });
 
   it('allows a collaborator to view setup review but never to finalize it', async () => {

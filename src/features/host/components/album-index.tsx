@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, Plus } from 'lucide-react';
 
@@ -10,12 +10,13 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
-import { getApiV1Albums } from '@/lib/api/browser';
-import type { AlbumSummary } from '@/lib/api/generated/index.schemas';
+import { getApiV1Albums, getApiV1AlbumsAlbumId, getApiV1Packages } from '@/lib/api/browser';
+import type { AlbumSummary, PackageOption } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
 import { AlbumStatus, albumStatusKey } from '@/features/host/components/album-status';
 
 type AlbumsState = { kind: 'loading' } | { kind: 'ready'; albums: AlbumSummary[] } | { kind: 'error' } | { kind: 'unauthenticated' } | { kind: 'forbidden' };
+type PackageInfo = { kind: 'free' } | { kind: 'paid'; name?: string; capacity?: number };
 
 export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
   const t = useTranslations('host');
@@ -24,6 +25,8 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
   const [cursor, setCursor] = useState<string | undefined>();
   const [loadingMore, setLoadingMore] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [packageInfo, setPackageInfo] = useState<Record<string, PackageInfo>>({});
+  const [projectedAlbumIds, setProjectedAlbumIds] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -51,21 +54,70 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
     finally { setLoadingMore(false); }
   }
 
+  const visibleAlbums = useMemo(() => state.kind === 'ready' ? (dashboard ? state.albums.slice(0, 5) : state.albums) : [], [state, dashboard]);
+  const projectedAlbumIdSet = new Set(projectedAlbumIds);
+  const unresolvedAlbums = visibleAlbums.filter((album) => !packageInfo[album.album_id] && !projectedAlbumIdSet.has(album.album_id));
+  const unresolvedAlbumIds = unresolvedAlbums.map((album) => album.album_id).join('|');
+  useEffect(() => {
+    if (!unresolvedAlbumIds) return;
+    let active = true;
+    void (async () => {
+      const catalogPromise = getApiV1Packages().catch(() => null);
+      const detailResults: (Awaited<ReturnType<typeof getApiV1AlbumsAlbumId>> | null)[] = [];
+      // Limit fan-out while still allowing the album list to load independently of optional projections.
+      for (let start = 0; start < unresolvedAlbums.length; start += 5) {
+        const chunk = unresolvedAlbums.slice(start, start + 5);
+        const settled = await Promise.allSettled(chunk.map((album) => getApiV1AlbumsAlbumId(album.album_id)));
+        detailResults.push(...settled.map((result) => result.status === 'fulfilled' ? result.value : null));
+        if (!active) return;
+      }
+      const catalogResult = await catalogPromise;
+      if (!active) return;
+      setProjectedAlbumIds((current) => [...new Set([...current, ...unresolvedAlbums.map((album) => album.album_id)])]);
+      const catalog: PackageOption[] = catalogResult?.status === 200 ? catalogResult.data.data : [];
+      const next: Record<string, PackageInfo> = {};
+      unresolvedAlbums.forEach((album, index) => {
+        const detailResult = detailResults[index];
+        if (detailResult?.status !== 200) return;
+        const selectedId = detailResult.data.data.selected_package_version_id;
+        if (selectedId === null) next[album.album_id] = { kind: 'free' };
+        else {
+          const pkg = catalog.find((entry) => entry.package_version_id === selectedId);
+          next[album.album_id] = { kind: 'paid', name: pkg?.name, capacity: album.quota_total ?? pkg?.quota_total };
+        }
+      });
+      setPackageInfo((current) => ({ ...current, ...next }));
+    })().catch(() => { /* The album list remains usable when optional detail projections are unavailable. */ });
+    return () => { active = false; };
+  // Only albums without a successful projection need detail requests; pagination fetches the new page only.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unresolvedAlbumIds]);
+
   if (state.kind === 'loading') return <LoadingState label={t('loading')} />;
   if (state.kind === 'unauthenticated') return <ReauthState title={t('reauthTitle')} description={t('reauthDescription')} action={<Link href="/masuk-ulang" className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]">{t('reauthTitle')}</Link>} />;
   if (state.kind === 'forbidden') return <ForbiddenState title={t('forbiddenTitle')} description={t('forbiddenDescription')} />;
   if (state.kind === 'error') return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={t('retry')} onRetry={() => { setState({ kind: 'loading' }); setAttempt((value) => value + 1); }} />;
 
-  if (!state.albums.length) return <EmptyState title={dashboard ? t('dashboard.newAlbum') : t('albums.empty')} description={dashboard ? t('dashboard.newAlbumDescription') : t('albums.emptyDescription')} icon={<Plus size={25} />} action={<Link href={hostRoutes.createAlbum} className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]"><Plus size={17} aria-hidden="true" />{t('create')}</Link>} />;
+  if (!state.albums.length) return <EmptyState title={dashboard ? t('dashboard.newAlbum') : t('albums.empty')} description={dashboard ? t('dashboard.newAlbumDescription') : t('albums.emptyDescription')} icon={<Plus size={25} />} action={<Link href={hostRoutes.createAlbum} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--color-primary)] px-4 text-sm font-bold text-[var(--color-primary-foreground)]"><Plus size={17} aria-hidden="true" />{t('create')}</Link>} />;
 
-  const albums = dashboard ? state.albums.slice(0, 5) : state.albums;
+  const albums = visibleAlbums;
   return <div className="space-y-6">
     <ul className="grid min-w-0 gap-3">
       {albums.map((album) => {
         const statusKey = albumStatusKey(album);
+        const albumPackage = packageInfo[album.album_id];
+        const packageLabel = albumPackage?.kind === 'free'
+          ? t('albums.freePackage', { quota: album.quota_total ?? 30 })
+          : albumPackage?.kind === 'paid'
+            ? albumPackage.name
+              ? t('albums.paidPackage', { name: albumPackage.name, quota: albumPackage.capacity ?? t('albums.capacityUnavailable') })
+              : t('albums.paidPackageUnknown', { quota: albumPackage.capacity ?? t('albums.capacityUnavailable') })
+            : null;
         return <li key={album.album_id}>
           <Link href={hostRoutes.album(album.album_id)} className="group flex min-h-24 min-w-0 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:bg-[var(--color-muted)] sm:px-6">
-            <div className="min-w-0"><p className="text-lg font-semibold">{album.event_name ?? t('albums.unnamed')}</p><p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t('albums.id')}</p><p className="mt-1 break-all font-mono text-sm">{album.album_id}</p><div className="mt-3"><AlbumStatus album={album} label={t(`albums.${statusKey}`)} /></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--color-muted-foreground)]">{album.capture_start && album.capture_end ? <span>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(album.capture_start))} – {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(album.capture_end))}</span> : <span>{t('albums.scheduleNotSet')}</span>}{album.quota_total !== null && album.committed_count !== null && <span>{t('albums.quota', { committed: album.committed_count, quota: album.quota_total })}</span>}{album.guest_count_final !== null && <span>{t('albums.guests', { count: album.guest_count_final })}</span>}</div></div>
+            <div className="min-w-0"><p className="text-lg font-semibold">{album.event_name ?? t('albums.unnamed')}</p><p className="mt-2 flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs text-[var(--color-muted-foreground)]"><span>{t('albums.id')}</span><span className="break-all font-mono text-sm text-[var(--color-foreground)]">{album.album_id}</span></p><div className="mt-3"><AlbumStatus album={album} label={t(`albums.${statusKey}`)} /></div>
+              {packageLabel && <p className="mt-3 text-sm font-semibold">{packageLabel}</p>}
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--color-muted-foreground)]">{album.capture_start && album.capture_end ? <span>{t('albums.eventOn', { start: new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeStyle: 'short', timeZone: album.timezone }).format(new Date(album.capture_start)), end: new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: album.timezone }).format(new Date(album.capture_end)) })}</span> : <span>{t('albums.scheduleNotSet')}</span>}{album.quota_total !== null && album.committed_count !== null && <span>{t('albums.quota', { committed: album.committed_count, quota: album.quota_total })}</span>}{album.guest_count_final !== null && <span>{t('albums.guests', { count: album.guest_count_final })}</span>}</div>{album.capture_start && album.capture_end && <p className="mt-2 text-xs text-[var(--color-muted-foreground)]">{t('albums.captureDuringEvent')}</p>}</div>
             <ArrowRight aria-hidden="true" className="shrink-0 transition-transform group-hover:translate-x-1" size={19} />
           </Link>
         </li>;
@@ -78,5 +130,5 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
 
 export function HostCreateButton() {
   const t = useTranslations('host');
-  return <Link href={hostRoutes.createAlbum} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]"><Plus aria-hidden="true" size={17} />{t('create')}</Link>;
+  return <Link href={hostRoutes.createAlbum} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-4 text-sm font-bold text-[var(--color-primary-foreground)]"><Plus aria-hidden="true" size={17} />{t('create')}</Link>;
 }

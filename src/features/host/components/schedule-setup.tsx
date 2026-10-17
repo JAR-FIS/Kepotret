@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Camera, CircleStop, Clock3 } from 'lucide-react';
+import { Temporal } from '@js-temporal/polyfill';
 
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
@@ -17,6 +18,8 @@ function wallTimePart(current: string, part: 'date' | 'time', value: string) {
   return part === 'date' ? `${value}T${time}` : `${date}T${value}`;
 }
 
+type RevealSelection = ScheduleWriteRequest['reveal_delay_days'] | 'live' | '';
+
 export function ScheduleSetup({ albumId }: { albumId: string }) {
   const t = useTranslations('host.schedule');
   const shared = useTranslations('host');
@@ -24,7 +27,7 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
   const [timeZone, setTimeZone] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [delay, setDelay] = useState<ScheduleWriteRequest['reveal_delay_days'] | ''>('');
+  const [delay, setDelay] = useState<RevealSelection>(1);
   const [state, setState] = useState<'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error'>('loading');
   const [error, setError] = useState<ScheduleValidationError | 'conflict' | 'error' | 'saved' | 'validation' | null>(null);
   const [pending, setPending] = useState(false);
@@ -61,6 +64,7 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending || revision === null || delay === '') return;
+    if (delay === 'live') return;
     const validation = validateSchedule(start, end, delay, timeZone);
     if (validation) { setError(validation); return; }
     setPending(true);
@@ -120,21 +124,29 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
 
   const [startDate = '', startTime = ''] = start.split('T');
   const [endDate = '', endTime = ''] = end.split('T');
-  const inputClass = 'mt-2 min-h-11 w-full min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-base';
+  let todayInAlbumZone = '';
+  let latestStartDate = '';
+  let latestEndDate = '';
+  try {
+    todayInAlbumZone = Temporal.Now.instant().toZonedDateTimeISO(timeZone).toPlainDate().toString();
+    latestStartDate = Temporal.PlainDate.from(todayInAlbumZone).add({ months: 3 }).toString();
+    latestEndDate = startDate ? Temporal.PlainDate.from(startDate).add({ days: 5 }).toString() : '';
+  } catch { /* Final schedule validation below remains authoritative. */ }
+  const inputClass = 'mt-2 min-h-11 w-full min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
 
   return <form onSubmit={submit} className="max-w-3xl space-y-6">
     <div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">{t('heading')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p></div>
     <section aria-label={t('windowLabel')} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm sm:p-7">
       <p className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-muted)] px-3 py-1.5 text-xs font-semibold"><Clock3 size={14} aria-hidden="true" />{t('timezoneLabel', { timeZone })}</p>
       <div className="relative mt-6 space-y-6 before:absolute before:bottom-10 before:left-[11px] before:top-7 before:w-px before:bg-[var(--color-border)]">
-        <fieldset className="relative pl-9"><legend className="flex items-center gap-3 font-semibold"><span className="absolute left-0 inline-flex size-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"><Camera size={13} aria-hidden="true" /></span>{t('start')}</legend><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('startHint')}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block text-sm font-medium">{t('startDate')}<input type="date" required value={startDate} onChange={event => setStart(wallTimePart(start, 'date', event.target.value))} className={inputClass} /></label><label className="block text-sm font-medium">{t('startTime')}<input type="time" required value={startTime} onChange={event => setStart(wallTimePart(start, 'time', event.target.value))} className={inputClass} /></label></div></fieldset>
-        <fieldset className="relative pl-9"><legend className="flex items-center gap-3 font-semibold"><span className="absolute left-0 inline-flex size-6 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]"><CircleStop size={14} aria-hidden="true" /></span>{t('end')}</legend><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('endHint')}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block text-sm font-medium">{t('endDate')}<input type="date" required value={endDate} onChange={event => setEnd(wallTimePart(end, 'date', event.target.value))} className={inputClass} /></label><label className="block text-sm font-medium">{t('endTime')}<input type="time" required value={endTime} onChange={event => setEnd(wallTimePart(end, 'time', event.target.value))} className={inputClass} /></label></div></fieldset>
+        <fieldset className="relative pl-9"><legend className="flex items-center gap-3 font-semibold"><span className="absolute left-0 inline-flex size-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"><Camera size={13} aria-hidden="true" /></span>{t('start')}</legend><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('startHint')}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block text-sm font-medium">{t('startDate')}<input type="date" required min={todayInAlbumZone} max={latestStartDate} value={startDate} onChange={event => setStart(wallTimePart(start, 'date', event.target.value))} className={inputClass} /></label><label className="block text-sm font-medium">{t('startTime')}<input type="time" required min={startDate === todayInAlbumZone ? new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()) : undefined} value={startTime} onChange={event => setStart(wallTimePart(start, 'time', event.target.value))} className={inputClass} /></label></div></fieldset>
+        <fieldset className="relative pl-9"><legend className="flex items-center gap-3 font-semibold"><span className="absolute left-0 inline-flex size-6 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]"><CircleStop size={14} aria-hidden="true" /></span>{t('end')}</legend><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('endHint')}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block text-sm font-medium">{t('endDate')}<input type="date" required min={startDate || todayInAlbumZone} max={latestEndDate || undefined} value={endDate} onChange={event => setEnd(wallTimePart(end, 'date', event.target.value))} className={inputClass} /></label><label className="block text-sm font-medium">{t('endTime')}<input type="time" required min={endDate === startDate ? startTime : undefined} value={endTime} onChange={event => setEnd(wallTimePart(end, 'time', event.target.value))} className={inputClass} /></label></div></fieldset>
       </div>
       <p className="mt-7 border-t border-[var(--color-border)] pt-4 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('windowConsequence')}</p>
     </section>
-    <section aria-labelledby="reveal-heading" className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><h3 id="reveal-heading" className="font-[family-name:var(--font-display)] text-xl font-bold">{t('revealHeading')}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('revealDescription')}</p><label htmlFor="reveal-delay" className="mt-4 block text-sm font-semibold">{t('reveal')}</label><select id="reveal-delay" required value={delay} onChange={(event) => setDelay(event.target.value === '' ? '' : Number(event.target.value) as ScheduleWriteRequest['reveal_delay_days'])} className={inputClass}><option value="">{t('choose')}</option>{Object.values(ScheduleWriteRequestRevealDelayDays).map((value) => <option key={value} value={value}>{t('delay', { days: value })}</option>)}</select></section>
+    <section aria-labelledby="reveal-heading" className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><h3 id="reveal-heading" className="font-[family-name:var(--font-display)] text-xl font-bold">{t('revealHeading')}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('revealDescription')}</p><label htmlFor="reveal-delay" className="mt-4 block text-sm font-semibold">{t('reveal')}</label><select id="reveal-delay" required value={delay} onChange={(event) => setDelay(event.target.value === 'live' ? 'live' : event.target.value === '' ? '' : Number(event.target.value) as ScheduleWriteRequest['reveal_delay_days'])} className={inputClass}><option value="">{t('choose')}</option><option value="live">LIVE · {t('livePreview')}</option>{Object.values(ScheduleWriteRequestRevealDelayDays).map((value) => <option key={value} value={value}>{t('delay', { days: value })}</option>)}</select>{delay === 'live' && <p role="status" className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-muted)] p-3 text-sm leading-6">{t('liveUnsupported')}</p>}</section>
     <p className="text-sm leading-6 text-[var(--color-muted-foreground)]">{t('serverRule')}</p>
     {message && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{message}{error === 'conflict' && <> <button type="button" onClick={() => { setError(null); setState('loading'); setAttempt((value) => value + 1); }} className="font-semibold underline">{t('reload')}</button></>}</p>}
-    <Button type="submit" loading={pending} disabled={revision === null || !startDate || !startTime || !endDate || !endTime || delay === ''}>{t('save')}</Button>
+    <Button type="submit" loading={pending} disabled={revision === null || !startDate || !startTime || !endDate || !endTime || delay === 'live' || delay === ''} className="rounded-full font-bold">{t('save')}</Button>
   </form>;
 }

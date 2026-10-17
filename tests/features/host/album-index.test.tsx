@@ -2,8 +2,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { listAlbums, getAlbum, getLiveOverview, getSettings, getCsrf, patchSettings, getInvitations, createInvitation, setPin } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getLiveOverview: vi.fn(), getSettings: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn(), setPin: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1AlbumsAlbumIdLiveOverview: getLiveOverview, getApiV1AlbumsAlbumIdSettings: getSettings, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin }));
+const { listAlbums, getAlbum, getPackages, getLiveOverview, getSettings, getCsrf, patchSettings, getInvitations, createInvitation, setPin } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getPackages: vi.fn(), getLiveOverview: vi.fn(), getSettings: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn(), setPin: vi.fn() }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1Packages: getPackages, getApiV1AlbumsAlbumIdLiveOverview: getLiveOverview, getApiV1AlbumsAlbumIdSettings: getSettings, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin }));
 
 import { AlbumIndex } from '@/features/host/components/album-index';
 import { AlbumOverview } from '@/features/host/components/album-overview';
@@ -30,7 +30,7 @@ function renderHost(node: React.ReactNode) {
 }
 
 describe('FE-3 Host album surfaces', () => {
-  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getLiveOverview.mockReset(); getSettings.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); sessionStorage.clear(); });
+  beforeEach(() => { listAlbums.mockReset(); getAlbum.mockReset(); getPackages.mockReset(); getLiveOverview.mockReset(); getSettings.mockReset(); getCsrf.mockReset(); patchSettings.mockReset(); getInvitations.mockReset(); createInvitation.mockReset(); setPin.mockReset(); sessionStorage.clear(); getAlbum.mockImplementation(async (albumId: string) => ({ status: 200, data: { data: { ...readyAlbum, album_id: albumId } } })); getPackages.mockResolvedValue({ status: 200, data: { data: [], meta: { has_more: false, next_cursor: null } } }); });
 
   it('shows an actionable empty dashboard state', async () => {
     listAlbums.mockResolvedValue({ status: 200, data: { data: [], meta: {} } });
@@ -45,6 +45,43 @@ describe('FE-3 Host album surfaces', () => {
     expect(await screen.findByText(draft.album_id)).toBeInTheDocument();
     expect(screen.getByText('Draft')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: new RegExp(draft.album_id) })).toHaveAttribute('href', `/album/${draft.album_id}`);
+  });
+
+  it('labels free and paid cards from authorized detail and the server package catalog', async () => {
+    const paidId = '22222222-2222-4222-8222-222222222222';
+    const freeAlbum = { ...draft, event_name: 'Free event', quota_total: 30, committed_count: 2, capture_start: '2026-10-16T09:00:00Z', capture_end: '2026-10-16T13:00:00Z' };
+    const paidAlbum = { ...draft, album_id: paidId, event_name: 'Paid event', quota_total: 250, committed_count: 5 };
+    listAlbums.mockResolvedValue({ status: 200, data: { data: [freeAlbum, paidAlbum], meta: {} } });
+    getAlbum.mockImplementation(async (id: string) => ({ status: 200, data: { data: { ...readyAlbum, album_id: id, selected_package_version_id: id === paidId ? '44444444-4444-4444-8444-444444444444' : null, quota_total: id === paidId ? 250 : 30 } } }));
+    getPackages.mockResolvedValue({ status: 200, data: { data: [{ package_id: '33333333-3333-4333-8333-333333333333', package_version_id: '44444444-4444-4444-8444-444444444444', code: 'PLUS', name: 'Paket Plus', price_amount: 230000, currency: 'IDR', quota_total: 250 }], meta: {} } });
+    renderHost(<AlbumIndex />);
+    expect(await screen.findByText('Paket GRATIS · 30 foto')).toBeInTheDocument();
+    expect(await screen.findByText('Paket Plus · 250 foto')).toBeInTheDocument();
+    expect(screen.getByText(/Acara pada/)).toBeInTheDocument();
+    expect(screen.getByText('Fitur memotret untuk tamu aktif selama acara berlangsung.')).toBeInTheDocument();
+    expect(screen.getAllByText('ID album')).toHaveLength(2);
+  });
+
+  it('limits album detail fan-out and keeps successful projections when optional requests fail', async () => {
+    const albums = Array.from({ length: 6 }, (_, index) => ({ ...draft, album_id: `11111111-1111-4111-8111-${String(index + 1).padStart(12, '0')}` }));
+    listAlbums.mockResolvedValue({ status: 200, data: { data: albums, meta: {} } });
+    let activeRequests = 0;
+    let maxConcurrentRequests = 0;
+    getAlbum.mockImplementation(async (id: string) => {
+      activeRequests += 1;
+      maxConcurrentRequests = Math.max(maxConcurrentRequests, activeRequests);
+      await Promise.resolve();
+      activeRequests -= 1;
+      if (id === albums[1].album_id) throw new TypeError('Network unavailable');
+      return { status: 200, data: { data: { ...readyAlbum, album_id: id } } };
+    });
+    getPackages.mockRejectedValueOnce(new TypeError('Catalog unavailable'));
+    renderHost(<AlbumIndex />);
+
+    expect(await screen.findAllByText(/Paket GRATIS/)).toHaveLength(5);
+    await waitFor(() => expect(getAlbum).toHaveBeenCalledTimes(6));
+    expect(maxConcurrentRequests).toBeLessThanOrEqual(5);
+    expect(screen.getByText(albums[1].album_id)).toBeInTheDocument();
   });
 
   it('provides retry on recoverable album list failures', async () => {
@@ -124,6 +161,30 @@ describe('FE-3 Host album surfaces', () => {
     expect(listAlbums).toHaveBeenCalledWith({ relationship: 'COLLABORATOR', limit: 25 });
     expect(screen.getAllByText('Owned album')).toHaveLength(1);
     expect(screen.getAllByText('Assigned album')).toHaveLength(1);
+  });
+
+  it('explains WO/EO collaboration and provides an email placeholder without changing permission defaults', async () => {
+    getInvitations.mockResolvedValue({ status: 200, data: { data: [], meta: { has_more: false, next_cursor: null } } });
+    renderHost(<CollaboratorSetup albumId={draft.album_id} />);
+    expect(await screen.findByRole('textbox', { name: 'Email kolaborator' })).toHaveAttribute('placeholder', 'nama@contoh.com');
+    expect(screen.getByText(/WO\/EO agar dapat membantu mengelola dan memantau album/)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Setup album' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Moderasi foto' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Ekspor ZIP' })).not.toBeChecked();
+  });
+
+  it('keeps one PIN field masked by default and reveals it with an accessible control', async () => {
+    getCsrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'csrf' } } });
+    setPin.mockResolvedValue({ status: 200, data: { data: {} } });
+    renderHost(<AccessPinForm albumId={draft.album_id} />);
+    const pin = screen.getByLabelText('PIN album');
+    expect(pin).toHaveAttribute('type', 'password');
+    fireEvent.change(pin, { target: { value: 'a-secure-pin' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tampilkan PIN' }));
+    expect(pin).toHaveAttribute('type', 'text');
+    expect(screen.getAllByLabelText('PIN album')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan PIN' }));
+    await waitFor(() => expect(setPin).toHaveBeenCalledWith(draft.album_id, { pin: 'a-secure-pin' }, { headers: { 'X-CSRF-Token': 'csrf' } }));
   });
 
   it('rehydrates the default and writes only the selected limit with the settings revision', async () => {

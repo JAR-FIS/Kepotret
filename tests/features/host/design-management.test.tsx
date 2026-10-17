@@ -121,6 +121,29 @@ describe('H58 design asset management', () => {
     expect(api.patch).not.toHaveBeenCalled();
   });
 
+  it('stops before private upload when the server denies cover authorization', async () => {
+    api.authorize.mockResolvedValueOnce({ status: 403, data: {} });
+    renderDesign();
+    await screen.findByText('Belum ada sampul yang dipilih.');
+    selectFile(new File(['cover'], 'cover.png', { type: 'image/png' }));
+    expect(await screen.findByRole('heading', { name: 'Akses tidak tersedia' })).toBeInTheDocument();
+    expect(api.authorize).toHaveBeenCalledOnce();
+    expect(api.upload).not.toHaveBeenCalled();
+    expect(api.commit).not.toHaveBeenCalled();
+    expect(api.patch).not.toHaveBeenCalled();
+  });
+
+  it('does not commit or select a cover after the signed upload transport fails', async () => {
+    api.upload.mockRejectedValueOnce(new Error('network unavailable'));
+    renderDesign();
+    await screen.findByText('Belum ada sampul yang dipilih.');
+    selectFile(new File(['cover'], 'cover.png', { type: 'image/png' }));
+    expect(await screen.findByText('Desain belum dapat diperbarui. Coba lagi.')).toBeInTheDocument();
+    expect(api.authorize).toHaveBeenCalledOnce();
+    expect(api.commit).not.toHaveBeenCalled();
+    expect(api.patch).not.toHaveBeenCalled();
+  });
+
   it('blocks upload while offline', async () => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
     renderDesign();

@@ -85,6 +85,6 @@ export function PackageOptions({ albumId }: { albumId: string }) {
     </fieldset>
     <p className="mt-4 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('selectionIsDraft')}</p>
     {message && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t(message)}{message === 'conflict' && <> <button type="button" onClick={() => { setMessage(null); setState('loading'); setAttempt((value) => value + 1); }} className="font-semibold underline">{t('reload')}</button></>}</p>}
-    <Button type="submit" loading={pending} disabled={revision === null} className="mt-6">{t('save')}</Button>
+    <Button type="submit" loading={pending} disabled={revision === null} className="mt-6 rounded-full font-bold">{t('save')}</Button>
   </form>;
 }
