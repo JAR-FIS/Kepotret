@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -13,50 +13,75 @@ import { useConnectivity } from '@/hooks/use-connectivity';
 import { formatEventDateTime } from '@/lib/time/event-time';
 
 const PAGE_SIZE = 25;
+type ActivityViewState = 'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error';
+type ActivityPage = { albumId: string; items: AlbumActivityItem[]; cursor: string | null; hasMore: boolean };
 
 export function AlbumActivity({ albumId }: { albumId: string }) {
   const t = useTranslations('host.activity');
   const shared = useTranslations('host');
   const locale = useLocale();
   const online = useConnectivity();
-  const [items, setItems] = useState<AlbumActivityItem[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [state, setState] = useState<'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error'>('loading');
+  const [page, setPage] = useState<ActivityPage>({ albumId, items: [], cursor: null, hasMore: false });
+  const [view, setView] = useState<{ albumId: string; state: ActivityViewState }>({ albumId, state: 'loading' });
   const [busy, setBusy] = useState(false);
-  const [timeZone, setTimeZone] = useState<string | null>(null);
+  const [zone, setZone] = useState<{ albumId: string; timeZone: string | null }>({ albumId, timeZone: null });
+  const blockedAlbumId = useRef<string | null>(null);
+  const items = page.albumId === albumId ? page.items : [];
+  const cursor = page.albumId === albumId ? page.cursor : null;
+  const hasMore = page.albumId === albumId && page.hasMore;
+  const state = view.albumId === albumId ? view.state : 'loading';
+  const timeZone = zone.albumId === albumId ? zone.timeZone : null;
 
   const load = useCallback(async (nextCursor?: string) => {
+    if (blockedAlbumId.current === albumId) return;
     setBusy(true);
     try {
       const result = await getApiV1AlbumsAlbumIdActivity(albumId, { limit: PAGE_SIZE, cursor: nextCursor });
-      if (result.status === 401) { setState('unauthenticated'); return; }
-      if (result.status === 403) { setState('forbidden'); return; }
-      if (result.status !== 200) { setState('error'); return; }
-      if (!nextCursor) {
-        try {
-          const album = await getApiV1AlbumsAlbumId(albumId);
-          if (album.status === 401) { setState('unauthenticated'); return; }
-          if (album.status === 403) { setState('forbidden'); return; }
-          if (album.status === 200) setTimeZone(album.data.data.timezone);
-        } catch { setTimeZone(null); }
+      if (blockedAlbumId.current === albumId) return;
+      if (result.status === 401 || result.status === 403) {
+        blockedAlbumId.current = albumId;
+        setPage({ albumId, items: [], cursor: null, hasMore: false });
+        setView({ albumId, state: result.status === 401 ? 'unauthenticated' : 'forbidden' });
+        return;
       }
-      setItems((current) => nextCursor ? [...current, ...result.data.data.filter((item) => !current.some((known) => known.activity_id === item.activity_id))] : result.data.data);
-      setCursor(result.data.meta.next_cursor ?? null);
-      setHasMore(result.data.meta.has_more);
-      setState('ready');
-    } catch { setState('error'); }
+      if (result.status !== 200) { setView({ albumId, state: 'error' }); return; }
+      setPage((current) => {
+        const currentItems = current.albumId === albumId ? current.items : [];
+        const nextItems = nextCursor
+          ? [...currentItems, ...result.data.data.filter((item) => !currentItems.some((known) => known.activity_id === item.activity_id))]
+          : result.data.data;
+        return { albumId, items: nextItems, cursor: result.data.meta.next_cursor ?? null, hasMore: result.data.meta.has_more };
+      });
+      setView({ albumId, state: 'ready' });
+    } catch { if (blockedAlbumId.current !== albumId) setView({ albumId, state: 'error' }); }
     finally { setBusy(false); }
   }, [albumId]);
   useEffect(() => {
+    blockedAlbumId.current = null;
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, [albumId, load]);
+  useEffect(() => {
+    let active = true;
+    void getApiV1AlbumsAlbumId(albumId).then((result) => {
+      if (!active) return;
+      if (result.status === 401 || result.status === 403) {
+        blockedAlbumId.current = albumId;
+        setPage({ albumId, items: [], cursor: null, hasMore: false });
+        setView({ albumId, state: result.status === 401 ? 'unauthenticated' : 'forbidden' });
+      } else if (result.status === 200) {
+        setZone({ albumId, timeZone: result.data.data.timezone });
+      }
+    }).catch(() => {
+      if (active) setZone({ albumId, timeZone: null });
+    });
+    return () => { active = false; };
+  }, [albumId]);
 
   if (state === 'loading') return <LoadingState label={shared('loading')} />;
   if (state === 'unauthenticated') return <ReauthState title={shared('reauthTitle')} description={shared('reauthDescription')} />;
   if (state === 'forbidden') return <ForbiddenState title={shared('forbiddenTitle')} description={shared('forbiddenDescription')} />;
-  if (state === 'error') return <ErrorState title={t('errorTitle')} description={!online ? t('offline') : t('errorDescription')} retryLabel={shared('retry')} onRetry={() => { setState('loading'); void load(); }} />;
+  if (state === 'error') return <ErrorState title={t('errorTitle')} description={!online ? t('offline') : t('errorDescription')} retryLabel={shared('retry')} onRetry={() => { setView({ albumId, state: 'loading' }); void load(); }} />;
 
   if (!items.length) return <EmptyState title={t('emptyTitle')} description={!online ? t('offline') : t('emptyDescription')} action={online ? <Button variant="secondary" loading={busy} onClick={() => void load()}>{t('refresh')}</Button> : undefined} />;
   return <section aria-label={t('title')} className="space-y-4">
