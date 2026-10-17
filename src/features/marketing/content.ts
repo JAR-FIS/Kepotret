@@ -36,6 +36,8 @@ export const content = {
     hero: {
       eyebrow: 'DOKUMENTASI PARTISIPATIF UNTUK BERBAGAI ACARA',
       title: 'Satu momen. Banyak sudut.',
+      titleFirstLine: 'Satu momen.',
+      titleSecondLine: 'Banyak sudut',
       description: 'Jangan sampai momen dari sudut lain terlewat. Bisa jadi, justru di sanalah bagian paling istimewa tersimpan. Bagikan satu QR dan biarkan orang-orang di acara ikut motret langsung dari HP.',
       proof: ['Foto terkumpul dalam satu album', 'Tanpa install aplikasi & tanpa akun peserta'],
       secondary: 'Lihat Cara Kerjanya',
@@ -46,6 +48,8 @@ export const content = {
     how: {
       eyebrow: 'CARA KERJA',
       title: 'Dari QR ke album dalam 3 langkah.',
+      titleLead: 'Dari QR ke album dalam',
+      titleAccent: '3 langkah.',
       description: 'Kamu siapkan albumnya. Peserta tinggal scan & motret, lalu momen dari berbagai sudut mulai terkumpul.',
       steps: [
         { title: 'Buat album', description: 'Siapkan album untuk acaramu dan atur kebutuhan dokumentasinya.' },
@@ -134,7 +138,7 @@ export const content = {
         { question: 'Apakah peserta harus membuat akun?', answer: 'Tidak. Peserta hanya perlu mengisi nama untuk mulai bergabung dan memotret. Nama tersebut akan digunakan sebagai label pada foto.' },
         { question: 'Berapa banyak peserta yang bisa ikut?', answer: 'Jumlah peserta tidak dibatasi paket. Yang kamu pilih adalah kapasitas foto untuk album.' },
         { question: 'Apakah peserta bisa mengambil foto dari galeri HP?', answer: 'Tidak. Foto album Kepotret diambil langsung melalui kamera selama waktu memotret masih aktif.' },
-        { question: 'Kapan foto bisa dilihat peserta?', answer: 'Host memilih kapan galeri dibuka: D+1, D+3, D+5, atau D+7 setelah acara selesai. Foto yang belum diizinkan tampil tetap tidak terlihat oleh peserta.' },
+        { question: 'Kapan foto bisa dilihat peserta?', answer: 'Default-nya D+1 setelah acara selesai. Host juga dapat memilih LIVE, D+3, D+5, atau D+7. Dalam mode LIVE, foto otomatis dapat dilihat setelah berhasil tersimpan di server selama acara berlangsung, sesuai akses album dan moderasi. Foto tersembunyi, dihapus, atau yang tidak berhak dilihat tetap tidak tampil.' },
         { question: 'Berapa lama album bisa diakses?', answer: 'Akses normal album berlangsung hingga 30 hari setelah acara selesai. Setelah itu tersedia masa pemulihan terbatas selama 7 hari khusus untuk pemilik album sebelum media utama dihapus.' },
         { question: 'Kalau kapasitas foto hampir habis, apakah bisa ditambah?', answer: 'Bisa, selama periode upgrade masih tersedia. Pembelian atau upgrade ditutup 120 menit sebelum waktu acara berakhir.' },
         { question: 'Apakah album bisa dibuat lebih privat?', answer: 'Bisa. Album menggunakan akses berbasis link dan Host dapat menambahkan PIN opsional, mengatur siapa yang dapat melihat galeri, serta mengelola foto yang ditampilkan.' },
@@ -144,7 +148,6 @@ export const content = {
     final: {
       title: 'Acara berikutnya, lihat dari lebih banyak sudut.',
       description: 'Buat album Kepotret, bagikan QR, dan biarkan momen dari berbagai perspektif mulai terkumpul.',
-      microcopy: 'Mulai Gratis',
     },
     footer: {
       brandLine: 'Satu momen. Banyak sudut.',
@@ -244,6 +247,8 @@ export const content = {
     hero: {
       eyebrow: 'PARTICIPATORY DOCUMENTATION FOR EVERY OCCASION',
       title: 'One moment. Many perspectives.',
+      titleFirstLine: 'One moment.',
+      titleSecondLine: 'Many perspectives',
       description: 'Do not miss the moments seen from another angle. The most special part may be waiting there. Share one QR code and let people at your event take photos directly from their phones.',
       proof: ['Photos gathered in one album', 'No app installation or participant account needed'],
       secondary: 'See How It Works',
@@ -254,6 +259,8 @@ export const content = {
     how: {
       eyebrow: 'HOW IT WORKS',
       title: 'From QR to album in 3 steps.',
+      titleLead: 'From QR to album in',
+      titleAccent: '3 steps.',
       description: 'You set up the album. Participants scan and take photos, then moments from different perspectives start coming together.',
       steps: [
         { title: 'Create an album', description: 'Set up an album for your event and choose your documentation needs.' },
@@ -342,7 +349,7 @@ export const content = {
         { question: 'Do participants need an account?', answer: 'No. Participants only enter a name to join and take photos. That name is used as the label on their photos.' },
         { question: 'How many participants can join?', answer: 'Participant count is not limited by the package. You choose the photo capacity for the album.' },
         { question: 'Can participants choose photos from their phone gallery?', answer: 'No. Kepotret album photos are taken directly with the camera while photo-taking is active.' },
-        { question: 'When can participants view photos?', answer: 'The Host chooses when the gallery opens: D+1, D+3, D+5, or D+7 after the event ends. Photos that are not approved to appear remain hidden from participants.' },
+        { question: 'When can participants view photos?', answer: 'The default is D+1 after the event ends. The Host can also choose LIVE, D+3, D+5, or D+7. In LIVE mode, a photo becomes viewable automatically after it is successfully saved on the server during the event, subject to album access and moderation. Hidden, deleted, or unauthorized photos remain unavailable to viewers.' },
         { question: 'How long can an album be accessed?', answer: 'Normal album access lasts until 30 days after the event ends. A limited 7-day recovery period then becomes available to the album owner before the main media is deleted.' },
         { question: 'Can photo capacity be increased when it is nearly full?', answer: 'Yes, while the upgrade period is still available. Purchases and upgrades close 120 minutes before the event ends.' },
         { question: 'Can an album be more private?', answer: 'Yes. Albums use link-based access, and Hosts can add an optional PIN, choose who can view the gallery, and manage which photos are shown.' },
@@ -352,7 +359,6 @@ export const content = {
     final: {
       title: 'See your next event from more perspectives.',
       description: 'Create a Kepotret album, share the QR, and let moments from different perspectives come together.',
-      microcopy: 'Start for free',
     },
     footer: {
       brandLine: 'One moment. Many perspectives.',

@@ -28,7 +28,8 @@ test('H01 renders and stays usable across FE-2 viewport and preference states', 
 
   for (const width of widths) await expectNoHorizontalOverflow(width);
 
-  await page.getByRole('radio', { name: '10K' }).click();
+  await page.getByRole('slider', { name: 'Berapa banyak momen yang ingin kamu tampung?' }).focus();
+  await page.keyboard.press('End');
   await expect(page.getByText('Rp1.100.000')).toBeVisible();
   await expect(page.getByText('10.000 foto')).toBeVisible();
 
@@ -39,7 +40,8 @@ test('H01 renders and stays usable across FE-2 viewport and preference states', 
   await page.setViewportSize({ width: 320, height: 900 });
   await page.getByRole('button', { name: 'Buka menu navigasi' }).click();
   await expect(page.getByRole('link', { name: 'Buat Album Gratis' }).last()).toBeVisible();
-  await page.getByRole('combobox', { name: 'Bahasa' }).selectOption('en');
+  await page.getByRole('button', { name: 'Bahasa: ID' }).click();
+  await page.getByRole('listbox', { name: 'Bahasa' }).getByRole('option', { name: 'Bahasa Inggris' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /One moment\. Many perspectives\./ })).toBeVisible();
   await page.getByRole('button', { name: 'Switch to dark theme' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
@@ -52,7 +54,8 @@ test('H01 renders and stays usable across FE-2 viewport and preference states', 
 
   await expectNoHorizontalOverflow(320);
   await page.getByRole('button', { name: 'Open navigation menu' }).click();
-  await page.getByRole('combobox', { name: 'Language' }).selectOption('id');
+  await page.getByRole('button', { name: 'Language: ENG' }).click();
+  await page.getByRole('listbox', { name: 'Language' }).getByRole('option', { name: 'Indonesian' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Satu momen\. Banyak sudut\./ })).toBeVisible();
   await page.getByRole('button', { name: 'Ganti ke tema gelap' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);

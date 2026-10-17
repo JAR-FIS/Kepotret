@@ -36,7 +36,7 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={`${displayFont.variable} ${bodyFont.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`${displayFont.variable} ${bodyFont.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
         <ThemeProvider>
           <LocaleProvider initialLocale={locale as 'id' | 'en'}>{children}<Assistant /></LocaleProvider>

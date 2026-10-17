@@ -22,7 +22,8 @@ test('Help and the 19-step Host guide work in Indonesian and English across view
   await page.getByRole('link', { name: 'Panduan kolaborator' }).click();
   await expect(page.getByRole('heading', { name: 'Bekerja bersama dengan akses yang jelas.' })).toBeVisible();
   await page.goto('/help/host');
-  await page.getByRole('combobox', { name: 'Bahasa' }).selectOption('en');
+  await page.getByRole('button', { name: 'Bahasa: ID' }).click();
+  await page.getByRole('listbox', { name: 'Bahasa' }).getByRole('option', { name: 'Bahasa Inggris' }).click();
   await expect(page.getByRole('heading', { name: 'From a new album to the final moment.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Edit album settings' })).toBeVisible();
   await page.getByRole('link', { name: 'Collaborator guide' }).click();
