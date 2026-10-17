@@ -236,6 +236,41 @@ describe('FE-3 setup flow contract surfaces', () => {
     expect(screen.getByRole('button', { name: 'Konfirmasi setup' })).toBeDisabled();
   });
 
+  it('keeps the authoritative paid package review when catalog metadata is unavailable', async () => {
+    api.getReview.mockResolvedValue({ status: 200, data: { data: { ...completeReview, snapshot: { ...completeReview.snapshot, selected_package_version_id: packageOption.package_version_id } } } });
+    api.getPackages.mockRejectedValueOnce(new TypeError('Network unavailable'));
+    api.confirmSetup.mockResolvedValue({ status: 200, data: { data: { ...album, readiness: 'PAYMENT_PENDING' } } });
+    renderHost(<SetupReview albumId={albumId} />);
+
+    expect(await screen.findByText('Server menyatakan setup telah lengkap.')).toBeInTheDocument();
+    expect(screen.getByText('Paket berbayar (detail paket tidak tersedia)')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Konfirmasi setup' }));
+    await waitFor(() => expect(api.confirmSetup).toHaveBeenCalledWith(albumId, { expected_setup_revision: 7 }, expect.objectContaining({ headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf', 'Idempotency-Key': expect.any(String) }) })));
+    expect(await screen.findByText('Setup dikonfirmasi; menunggu pembayaran')).toBeInTheDocument();
+    expect(api.routerPush).toHaveBeenCalledWith(`/album/${albumId}/checkout/${packageOption.package_version_id}`);
+  });
+
+  it('keeps a valid review when package catalog responds with an unavailable status', async () => {
+    api.getReview.mockResolvedValue({ status: 200, data: { data: { ...completeReview, snapshot: { ...completeReview.snapshot, selected_package_version_id: packageOption.package_version_id } } } });
+    api.getPackages.mockResolvedValueOnce({ status: 503, data: {} });
+    renderHost(<SetupReview albumId={albumId} />);
+
+    expect(await screen.findByText('Server menyatakan setup telah lengkap.')).toBeInTheDocument();
+    expect(screen.getByText('Paket berbayar (detail paket tidak tersedia)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Konfirmasi setup' })).toBeEnabled();
+  });
+
+  it.each([
+    [401, 'Sesi perlu diperbarui'],
+    [403, 'Akses tidak tersedia'],
+  ] as const)('preserves authoritative setup review authorization status %s', async (status, message) => {
+    api.getReview.mockResolvedValueOnce({ status, data: {} });
+    renderHost(<SetupReview albumId={albumId} />);
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Konfirmasi setup' })).not.toBeInTheDocument();
+  });
+
   it('allows a collaborator to view setup review but never to finalize it', async () => {
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: { ...album, actor_access: { relationship: 'COLLABORATOR', permission_version: 3, collaborator_permissions: { can_setup: true, can_moderate: false, can_export_zip: false } } } } });
     renderHost(<SetupReview albumId={albumId} />);

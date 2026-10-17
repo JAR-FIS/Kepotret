@@ -38,9 +38,12 @@ export function SetupReview({ albumId }: { albumId: string }) {
         if (album.status === 403) { setState('forbidden'); return; }
         if (album.status !== 200) { setState('error'); return; }
         setIsOwner(album.data.data.actor_access.relationship === 'OWNER');
-        const [result, catalog] = await Promise.all([getApiV1AlbumsAlbumIdReview(albumId), getApiV1Packages()]);
+        const [result, catalog] = await Promise.all([
+          getApiV1AlbumsAlbumIdReview(albumId),
+          getApiV1Packages().catch(() => null),
+        ]);
         if (!active) return;
-        if (result.status === 200) { setReview(result.data.data); setPackageCatalog(catalog.status === 200 ? catalog.data.data : []); setState('ready'); }
+        if (result.status === 200) { setReview(result.data.data); setPackageCatalog(catalog?.status === 200 ? catalog.data.data : []); setState('ready'); }
         else if (result.status === 401) setState('unauthenticated');
         else if (result.status === 403) setState('forbidden');
         else setState('error');

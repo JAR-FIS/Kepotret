@@ -62,6 +62,28 @@ describe('FE-3 Host album surfaces', () => {
     expect(screen.getAllByText('ID album')).toHaveLength(2);
   });
 
+  it('limits album detail fan-out and keeps successful projections when optional requests fail', async () => {
+    const albums = Array.from({ length: 6 }, (_, index) => ({ ...draft, album_id: `11111111-1111-4111-8111-${String(index + 1).padStart(12, '0')}` }));
+    listAlbums.mockResolvedValue({ status: 200, data: { data: albums, meta: {} } });
+    let activeRequests = 0;
+    let maxConcurrentRequests = 0;
+    getAlbum.mockImplementation(async (id: string) => {
+      activeRequests += 1;
+      maxConcurrentRequests = Math.max(maxConcurrentRequests, activeRequests);
+      await Promise.resolve();
+      activeRequests -= 1;
+      if (id === albums[1].album_id) throw new TypeError('Network unavailable');
+      return { status: 200, data: { data: { ...readyAlbum, album_id: id } } };
+    });
+    getPackages.mockRejectedValueOnce(new TypeError('Catalog unavailable'));
+    renderHost(<AlbumIndex />);
+
+    expect(await screen.findAllByText(/Paket GRATIS/)).toHaveLength(5);
+    await waitFor(() => expect(getAlbum).toHaveBeenCalledTimes(6));
+    expect(maxConcurrentRequests).toBeLessThanOrEqual(5);
+    expect(screen.getByText(albums[1].album_id)).toBeInTheDocument();
+  });
+
   it('provides retry on recoverable album list failures', async () => {
     listAlbums.mockResolvedValueOnce({ status: 503, data: {} }).mockResolvedValueOnce({ status: 200, data: { data: [draft], meta: {} } });
     renderHost(<AlbumIndex />);

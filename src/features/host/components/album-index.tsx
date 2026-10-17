@@ -26,6 +26,7 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [packageInfo, setPackageInfo] = useState<Record<string, PackageInfo>>({});
+  const [projectedAlbumIds, setProjectedAlbumIds] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -54,17 +55,30 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
   }
 
   const visibleAlbums = useMemo(() => state.kind === 'ready' ? (dashboard ? state.albums.slice(0, 5) : state.albums) : [], [state, dashboard]);
-  const visibleAlbumIds = visibleAlbums.map((album) => album.album_id).join('|');
+  const projectedAlbumIdSet = new Set(projectedAlbumIds);
+  const unresolvedAlbums = visibleAlbums.filter((album) => !packageInfo[album.album_id] && !projectedAlbumIdSet.has(album.album_id));
+  const unresolvedAlbumIds = unresolvedAlbums.map((album) => album.album_id).join('|');
   useEffect(() => {
-    if (!visibleAlbumIds) return;
+    if (!unresolvedAlbumIds) return;
     let active = true;
-    void Promise.all([getApiV1Packages(), ...visibleAlbums.map((album) => getApiV1AlbumsAlbumId(album.album_id))]).then(([catalogResult, ...detailResults]) => {
+    void (async () => {
+      const catalogPromise = getApiV1Packages().catch(() => null);
+      const detailResults: (Awaited<ReturnType<typeof getApiV1AlbumsAlbumId>> | null)[] = [];
+      // Limit fan-out while still allowing the album list to load independently of optional projections.
+      for (let start = 0; start < unresolvedAlbums.length; start += 5) {
+        const chunk = unresolvedAlbums.slice(start, start + 5);
+        const settled = await Promise.allSettled(chunk.map((album) => getApiV1AlbumsAlbumId(album.album_id)));
+        detailResults.push(...settled.map((result) => result.status === 'fulfilled' ? result.value : null));
+        if (!active) return;
+      }
+      const catalogResult = await catalogPromise;
       if (!active) return;
-      const catalog: PackageOption[] = catalogResult.status === 200 ? catalogResult.data.data : [];
+      setProjectedAlbumIds((current) => [...new Set([...current, ...unresolvedAlbums.map((album) => album.album_id)])]);
+      const catalog: PackageOption[] = catalogResult?.status === 200 ? catalogResult.data.data : [];
       const next: Record<string, PackageInfo> = {};
-      visibleAlbums.forEach((album, index) => {
+      unresolvedAlbums.forEach((album, index) => {
         const detailResult = detailResults[index];
-        if (detailResult.status !== 200) return;
+        if (detailResult?.status !== 200) return;
         const selectedId = detailResult.data.data.selected_package_version_id;
         if (selectedId === null) next[album.album_id] = { kind: 'free' };
         else {
@@ -73,11 +87,11 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
         }
       });
       setPackageInfo((current) => ({ ...current, ...next }));
-    }).catch(() => { /* The album list remains usable when optional detail projections are unavailable. */ });
+    })().catch(() => { /* The album list remains usable when optional detail projections are unavailable. */ });
     return () => { active = false; };
-  // IDs are the request key; do not refetch detail projections for pagination state changes.
+  // Only albums without a successful projection need detail requests; pagination fetches the new page only.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleAlbumIds]);
+  }, [unresolvedAlbumIds]);
 
   if (state.kind === 'loading') return <LoadingState label={t('loading')} />;
   if (state.kind === 'unauthenticated') return <ReauthState title={t('reauthTitle')} description={t('reauthDescription')} action={<Link href="/masuk-ulang" className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-[var(--color-primary-foreground)]">{t('reauthTitle')}</Link>} />;
