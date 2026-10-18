@@ -43,7 +43,8 @@ describe('H27 optional package catalog', () => {
     expect(getPackages).toHaveBeenCalledTimes(1);
 
     await act(async () => { pending.resolve(catalog(uatPackages)); });
-    expect(screen.getByText('LOCKED 100 (LOCKED100)')).toBeInTheDocument();
+    expect(screen.getByText('Paket 100 Foto')).toBeInTheDocument();
+    expect(screen.queryByText('LOCKED100')).not.toBeInTheDocument();
     expect(screen.getByText('Kapasitas paket pilihan: 100 foto')).toBeInTheDocument();
     expect(screen.getByText('Kapasitas album saat ini: 30 foto')).toBeInTheDocument();
   });
@@ -82,11 +83,11 @@ describe('H27 optional package catalog', () => {
     await waitFor(() => expect(getPackages).toHaveBeenCalledTimes(2));
 
     await act(async () => { pendingA.resolve(catalog([{ ...uatPackages[0], name: 'Stale package' }])); });
-    expect(screen.queryByText('Stale package (LOCKED100)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Stale package')).not.toBeInTheDocument();
     expect(screen.getByText('Detail paket belum tersedia dari katalog.')).toBeInTheDocument();
 
     await act(async () => { pendingB.resolve(catalog([{ ...uatPackages[0], name: 'Current package' }])); });
-    expect(screen.getByText('Current package (LOCKED100)')).toBeInTheDocument();
+    expect(screen.getByText('Current package')).toBeInTheDocument();
   });
 
   it.each(['success', 'network error'] as const)('ignores a late catalog %s after unmount', async outcome => {

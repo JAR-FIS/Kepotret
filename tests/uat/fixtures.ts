@@ -23,12 +23,12 @@ export const uatCategories: EventCategory[] = [
 ];
 
 export const uatPackages: PackageOption[] = [
-  { package_id: uatIds.package, package_version_id: uatIds.packageVersion, code: 'LOCKED100', name: 'LOCKED 100', price_amount: 100000, currency: 'IDR', quota_total: 100 },
+  { package_id: uatIds.package, package_version_id: uatIds.packageVersion, code: 'LOCKED100', name: 'Paket 100 Foto', price_amount: 100000, currency: 'IDR', quota_total: 100 },
   ...([250, 500, 700, 1000, 10000] as const).map((quota, index) => ({
     package_id: `dddddddd-dddd-4ddd-8ddd-${String(index + 2).padStart(12, '0')}`,
     package_version_id: `eeeeeeee-eeee-4eee-8eee-${String(index + 2).padStart(12, '0')}`,
     code: `LOCKED${quota}`,
-    name: `LOCKED ${quota}`,
+    name: `Paket ${quota.toLocaleString('id-ID')} Foto`,
     price_amount: [230000, 450000, 620000, 840000, 1100000][index]!,
     currency: 'IDR' as const,
     quota_total: quota,

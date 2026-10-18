@@ -9,7 +9,8 @@ const albumRoute = `**/api/v1/albums/${uatIds.album}`;
 test('H27 shows authorized package selection and capacity without claiming draft entitlement', async ({ page }) => {
   await installUatApi(page);
   await page.goto(`/album/${uatIds.album}?uat=draft`);
-  await expect(page.getByText('LOCKED 100 (LOCKED100)')).toBeVisible();
+  await expect(page.getByText('Paket 100 Foto')).toBeVisible();
+  await expect(page.getByText('LOCKED100')).toHaveCount(0);
   await expect(page.getByText('Kapasitas paket pilihan: 100 foto')).toBeVisible();
   await expect(page.getByText('Kapasitas album saat ini belum tersedia.')).toBeVisible();
   await expect(page.getByText(/belum memberikan kuota berbayar/)).toBeVisible();
@@ -64,7 +65,7 @@ test('H28 uses only active fixture categories and sends the chosen server ID', a
   await expect(categories.getByRole('radio')).toHaveCount(0);
 });
 
-test('H33 presents six distinct LOCKED tiers plus FREE30 and preserves save payloads', async ({ page }) => {
+test('H33 presents seven human-readable choices in a 3-left/4-right desktop layout and preserves save payloads', async ({ page }) => {
   await installUatApi(page);
   const saves: Array<string | null> = [];
   page.on('request', (request) => {
@@ -74,14 +75,24 @@ test('H33 presents six distinct LOCKED tiers plus FREE30 and preserves save payl
     }
   });
   await page.goto(`/album/${uatIds.album}/setup/paket`);
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect(page.getByRole('radio', { name: /Paket Gratis/ })).toBeVisible();
   await expect(page.getByRole('radio')).toHaveCount(7);
+  await expect(page.getByText(/LOCKED\d+/)).toHaveCount(0);
+  const columns = page.getByTestId('setup-package-column');
+  await expect(columns).toHaveCount(2);
+  await expect(columns.nth(0).getByRole('radio')).toHaveCount(3);
+  await expect(columns.nth(1).getByRole('radio')).toHaveCount(4);
+  const leftBox = await columns.nth(0).boundingBox();
+  const rightBox = await columns.nth(1).boundingBox();
+  expect(rightBox?.x ?? 0).toBeGreaterThan(leftBox?.x ?? 0);
   expect(uatPackages.map((option) => [option.quota_total, option.price_amount])).toEqual([
     [100, 100000], [250, 230000], [500, 450000], [700, 620000], [1000, 840000], [10000, 1100000],
   ]);
   expect(new Set(uatPackages.map((option) => option.package_version_id)).size).toBe(6);
   expect(uatPackages.every((option) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/.test(option.package_version_id))).toBe(true);
-  await page.getByRole('radio', { name: /LOCKED 250/ }).check();
+  await expect(page.getByText(/·\s*10\.000 foto$/)).toBeVisible();
+  await page.getByRole('radio', { name: /Paket 250 Foto/ }).check();
   await page.getByRole('button', { name: 'Simpan pilihan paket' }).click();
   await expect.poll(() => saves.length).toBe(1);
   expect(saves[0]).toBe(uatPackages[1].package_version_id);
@@ -89,6 +100,14 @@ test('H33 presents six distinct LOCKED tiers plus FREE30 and preserves save payl
   await page.getByRole('button', { name: 'Simpan pilihan paket' }).click();
   await expect.poll(() => saves.length).toBe(2);
   expect(saves[1]).toBeNull();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileLeftBox = await columns.nth(0).boundingBox();
+  const mobileRightBox = await columns.nth(1).boundingBox();
+  expect(Math.abs((mobileLeftBox?.x ?? 0) - (mobileRightBox?.x ?? 0))).toBeLessThan(2);
+  expect(mobileRightBox?.y ?? 0).toBeGreaterThan(mobileLeftBox?.y ?? 0);
+  const pageWidth = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  expect(pageWidth.scroll).toBeLessThanOrEqual(pageWidth.client + 1);
 
   await page.route('**/api/v1/packages', (route) => route.fulfill({ status: 200, json: { data: [], meta: { has_more: false, next_cursor: null } } }));
   await page.reload();

@@ -51,9 +51,41 @@ test('H38 ignores provider return query parameters and shows only the server pay
   } } }));
   await page.goto(`/album/${albumId}/pembayaran/${transactionId}/status?status=success&transaction_status=settlement`);
   await expect(page.getByText('Menunggu pembayaran')).toBeVisible();
+  const pendingStatus = page.getByRole('status');
+  await expect(pendingStatus.locator('span[aria-hidden="true"]')).toContainText('Menunggu konfirmasi pembayaran');
+  await expect(pendingStatus.locator('svg.lucide-hourglass')).toBeVisible();
+  const historyLink = page.getByRole('link', { name: 'Riwayat pembayaran' });
+  const pendingBox = await pendingStatus.boundingBox();
+  const historyBox = await historyLink.boundingBox();
+  expect(historyBox?.y ?? 0).toBeGreaterThan((pendingBox?.y ?? 0) + (pendingBox?.height ?? 0));
   await expect(page.getByText('Pembayaran berhasil')).toHaveCount(0);
   await expect(page.getByText('Kapasitas foto: 999')).toHaveCount(0);
   expect(entitlementRequests).toBe(0);
+});
+
+test('H38 keeps pending feedback visible between polls and distinguishes active server checks', async ({ page }) => {
+  await mockAlbumTimezone(page);
+  let requests = 0;
+  let markDelayedPollStarted!: () => void;
+  const delayedPollStarted = new Promise<void>(resolve => { markDelayedPollStarted = resolve; });
+  let releaseDelayedPoll!: () => void;
+  const delayedPollGate = new Promise<void>(resolve => { releaseDelayedPoll = resolve; });
+  await page.route(`**/api/v1/payments/${transactionId}`, async route => {
+    requests += 1;
+    if (requests === 3) { markDelayedPollStarted(); await delayedPollGate; }
+    return route.fulfill({ status: 200, json: { data: transaction } });
+  });
+
+  await page.goto(`/album/${albumId}/pembayaran/${transactionId}/status`);
+  const status = page.getByRole('status');
+  const visibleMessage = status.locator('span[aria-hidden="true"]');
+  await expect(visibleMessage).toContainText('Menunggu konfirmasi pembayaran');
+  await expect(status.locator('svg.lucide-hourglass')).toBeVisible();
+  await delayedPollStarted;
+  await expect(visibleMessage).toContainText('Memeriksa status terbaru dari server');
+  releaseDelayedPoll();
+  await expect(visibleMessage).toContainText('Menunggu konfirmasi pembayaran');
+  await expect(page.getByText('Pembayaran berhasil')).toHaveCount(0);
 });
 
 test('H38 shows Verifying before the first server response and displays the server entitlement on SUCCESS', async ({ page }) => {
@@ -120,6 +152,7 @@ test('H47/H48 show server transaction snapshots; H49 offers only higher-quota pa
   await expect(page.getByText('Batas pembayaran', { exact: false })).toBeVisible();
   await expect(page.getByText('Batas waktu penyedia', { exact: false })).toBeVisible();
 
+  await page.route(`**/api/v1/packages`, route => route.fulfill({ status: 200, json: { data: [{ package_id: '33333333-3333-4333-8333-333333333333', package_version_id: packageVersionId, code: 'PLUS', name: 'Plus', price_amount: 75000, currency: 'IDR', quota_total: 300 }] } }));
   await page.route(`**/api/v1/albums/${albumId}/package-options`, route => route.fulfill({ status: 200, json: { data: {
     album_id: albumId, current_quota_total: 100, reserved_count: 4, committed_count: 6,
     payment_cutoff_at: '2026-10-20T10:00:00Z', server_time: '2026-10-01T10:00:00Z',
@@ -129,6 +162,7 @@ test('H47/H48 show server transaction snapshots; H49 offers only higher-quota pa
   await page.goto(`/album/${albumId}/upgrade`);
   await expect(page.getByText('Kapasitas saat ini: 100')).toBeVisible();
   await expect(page.getByText('300', { exact: false })).toBeVisible();
+  await expect(page.getByText('PLUS', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Pilih paket')).toBeVisible();
 });
 
