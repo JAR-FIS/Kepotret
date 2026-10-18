@@ -7,22 +7,20 @@ import { Temporal } from '@js-temporal/polyfill';
 
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { DatePicker, TimePicker } from '@/components/ui/schedule-pickers';
 import { ErrorState } from '@/components/ui/error-state';
 import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { getApiV1AlbumsAlbumId, getApiV1AlbumsAlbumIdSchedule, getApiV1SecurityCsrf, putApiV1AlbumsAlbumIdSchedule } from '@/lib/api/browser';
 import { ScheduleWriteRequestRevealDelayDays, type AlbumSchedule, type ScheduleWriteRequest } from '@/lib/api/generated/index.schemas';
 import { toEventWallTime, toScheduleTimestamp, validateSchedule, type ScheduleValidationError } from '@/features/host/schedule-validation';
-
-function wallTimePart(current: string, part: 'date' | 'time', value: string) {
-  const [date = '', time = ''] = current.split('T');
-  return part === 'date' ? `${value}T${time}` : `${date}T${value}`;
-}
+import { initialStartBounds, isEndDraftInvalid, isSelectableHour, isSelectableTime, withWallPart } from '@/features/host/schedule-picker-rules';
 
 type RevealSelection = ScheduleWriteRequest['reveal_delay_days'] | 'live' | '';
 
 export function ScheduleSetup({ albumId }: { albumId: string }) {
   const t = useTranslations('host.schedule');
+  const picker = useTranslations('host.picker');
   const shared = useTranslations('host');
   const [revision, setRevision] = useState<number | null>(null);
   const [timeZone, setTimeZone] = useState('');
@@ -125,14 +123,15 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
 
   const [startDate = '', startTime = ''] = start.split('T');
   const [endDate = '', endTime = ''] = end.split('T');
-  let todayInAlbumZone = '';
-  let latestStartDate = '';
+  const startBounds = initialStartBounds(timeZone);
+  const todayInAlbumZone = startBounds?.min.slice(0, 10) ?? '';
+  const latestStartDate = startBounds?.max.slice(0, 10) ?? '';
   let latestEndDate = '';
   try {
-    todayInAlbumZone = Temporal.Now.instant().toZonedDateTimeISO(timeZone).toPlainDate().toString();
-    latestStartDate = Temporal.PlainDate.from(todayInAlbumZone).add({ months: 3 }).toString();
     latestEndDate = startDate ? Temporal.PlainDate.from(startDate).add({ days: 5 }).toString() : '';
   } catch { /* Final schedule validation below remains authoritative. */ }
+  const pickerRules = { timeZone, start, end, earliestStart: startBounds?.min, latestStart: startBounds?.max, earliestStartInstant: startBounds?.minInstant, latestStartInstant: startBounds?.maxInstant };
+  const endInvalid = isEndDraftInvalid(pickerRules);
   const inputClass = 'mt-2 min-h-11 w-full min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
 
   return <form onSubmit={submit} className="max-w-3xl space-y-6">
@@ -140,8 +139,8 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
     <section aria-label={t('windowLabel')} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm sm:p-7">
       <p className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-muted)] px-3 py-1.5 text-xs font-semibold"><Clock3 size={14} aria-hidden="true" />{t('timezoneLabel', { timeZone })}</p>
       <div className="relative mt-6 space-y-6 before:absolute before:bottom-10 before:left-[11px] before:top-7 before:w-px before:bg-[var(--color-border)]">
-        <fieldset className="relative pl-9"><legend className="flex items-center gap-3 font-semibold"><span className="absolute left-0 inline-flex size-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"><Camera size={13} aria-hidden="true" /></span>{t('start')}</legend><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('startHint')}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block text-sm font-medium">{t('startDate')}<input type="date" required min={todayInAlbumZone} max={latestStartDate} value={startDate} onChange={event => setStart(wallTimePart(start, 'date', event.target.value))} className={inputClass} /></label><label className="block text-sm font-medium">{t('startTime')}<input type="time" required min={startDate === todayInAlbumZone ? new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()) : undefined} value={startTime} onChange={event => setStart(wallTimePart(start, 'time', event.target.value))} className={inputClass} /></label></div></fieldset>
-        <fieldset className="relative pl-9"><legend className="flex items-center gap-3 font-semibold"><span className="absolute left-0 inline-flex size-6 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]"><CircleStop size={14} aria-hidden="true" /></span>{t('end')}</legend><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('endHint')}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block text-sm font-medium">{t('endDate')}<input type="date" required min={startDate || todayInAlbumZone} max={latestEndDate || undefined} value={endDate} onChange={event => setEnd(wallTimePart(end, 'date', event.target.value))} className={inputClass} /></label><label className="block text-sm font-medium">{t('endTime')}<input type="time" required min={endDate === startDate ? startTime : undefined} value={endTime} onChange={event => setEnd(wallTimePart(end, 'time', event.target.value))} className={inputClass} /></label></div></fieldset>
+        <fieldset className="relative pl-9"><legend className="flex items-center gap-3 font-semibold"><span className="absolute left-0 inline-flex size-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"><Camera size={13} aria-hidden="true" /></span>{t('start')}</legend><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('startHint')}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><DatePicker label={t('startDate')} required min={todayInAlbumZone} max={latestStartDate} today={todayInAlbumZone} value={startDate} onChange={(value) => setStart(withWallPart(start, 'date', value))} /><TimePicker label={t('startTime')} required value={startTime} onChange={(value) => setStart(withWallPart(start, 'time', value))} isTimeDisabled={(value) => !isSelectableTime(startDate, value, 'start', pickerRules)} isHourDisabled={(value) => !isSelectableHour(startDate, value, 'start', pickerRules)} /></div></fieldset>
+        <fieldset className="relative pl-9"><legend className="flex items-center gap-3 font-semibold"><span className="absolute left-0 inline-flex size-6 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]"><CircleStop size={14} aria-hidden="true" /></span>{t('end')}</legend><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('endHint')}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><DatePicker label={t('endDate')} required min={startDate || todayInAlbumZone} max={latestEndDate || undefined} today={todayInAlbumZone} value={endDate} onChange={(value) => setEnd(withWallPart(end, 'date', value))} /><TimePicker label={t('endTime')} required value={endTime} onChange={(value) => setEnd(withWallPart(end, 'time', value))} isTimeDisabled={(value) => !isSelectableTime(endDate, value, 'end', pickerRules)} isHourDisabled={(value) => !isSelectableHour(endDate, value, 'end', pickerRules)} /></div>{endInvalid && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{picker('endInvalid')}</p>}</fieldset>
       </div>
       <p className="mt-7 border-t border-[var(--color-border)] pt-4 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('windowConsequence')}</p>
     </section>

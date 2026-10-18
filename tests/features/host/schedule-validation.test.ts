@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ScheduleWriteRequestRevealDelayDays, type ScheduleWriteRequest } from '@/lib/api/generated/index.schemas';
 import { isRescheduleWithinServerBounds, toEventWallTime, toScheduleTimestamp, validateSchedule } from '@/features/host/schedule-validation';
+import { formatScheduleDraft, initialStartBounds, isSelectableTime } from '@/features/host/schedule-picker-rules';
 
 const zone = 'Asia/Jakarta';
 const now = new Date('2026-01-31T10:00:00Z');
@@ -75,5 +76,47 @@ describe('schedule validation in the saved album timezone', () => {
     expect(isRescheduleWithinServerBounds('2026-02-11T10:00', '2026-02-12T10:00', 'America/Los_Angeles', earliest, latest)).toBe(false);
     expect(isRescheduleWithinServerBounds('2026-02-02T10:00', '2026-02-07T10:01', 'America/Los_Angeles', earliest, latest)).toBe(false);
     expect(isRescheduleWithinServerBounds('2026-03-08T02:30', '2026-03-09T02:30', 'America/Los_Angeles', null, null)).toBe(false);
+  });
+});
+
+describe('schedule picker choices', () => {
+  it('blocks same-day earlier and equal end minutes, while keeping overnight minutes', () => {
+    const rules = { timeZone: zone, start: '2026-02-01T16:00', end: '' };
+    expect(isSelectableTime('2026-02-01', '03:00', 'end', rules)).toBe(false);
+    expect(isSelectableTime('2026-02-01', '16:00', 'end', rules)).toBe(false);
+    expect(isSelectableTime('2026-02-01', '16:01', 'end', rules)).toBe(true);
+    expect(isSelectableTime('2026-02-02', '03:00', 'end', rules)).toBe(true);
+    expect(isSelectableTime('2026-02-06', '16:00', 'end', rules)).toBe(true);
+    expect(isSelectableTime('2026-02-06', '16:01', 'end', rules)).toBe(false);
+  });
+
+  it('uses exact instant bounds in the event timezone for initial setup and reschedule', () => {
+    const bounds = initialStartBounds(zone, new Date('2026-01-31T10:00:30Z'))!;
+    expect(bounds.min).toBe('2026-01-31T17:00');
+    expect(bounds.max).toBe('2026-04-30T17:00');
+    const initial = { timeZone: zone, start: '', end: '', earliestStart: bounds.min, latestStart: bounds.max, earliestStartInstant: bounds.minInstant, latestStartInstant: bounds.maxInstant };
+    expect(isSelectableTime('2026-01-31', '17:00', 'start', initial)).toBe(false);
+    expect(isSelectableTime('2026-01-31', '17:01', 'start', initial)).toBe(true);
+    expect(isSelectableTime('2026-04-30', '17:01', 'start', initial)).toBe(false);
+    const reschedule = { timeZone: zone, start: '', end: '', earliestStart: '2026-05-02T10:00', latestStart: '2026-05-03T10:00', earliestStartInstant: '2026-05-02T03:00:00Z', latestStartInstant: '2026-05-03T03:00:00Z' };
+    expect(isSelectableTime('2026-05-02', '09:59', 'start', reschedule)).toBe(false);
+    expect(isSelectableTime('2026-05-02', '10:00', 'start', reschedule)).toBe(true);
+    expect(isSelectableTime('2026-05-03', '10:01', 'start', reschedule)).toBe(false);
+  });
+
+  it('rejects DST gap and fold minutes and applies actual 120-hour duration', () => {
+    const zone = 'America/Los_Angeles';
+    expect(isSelectableTime('2026-03-08', '02:30', 'start', { timeZone: zone, start: '', end: '' })).toBe(false);
+    expect(isSelectableTime('2026-11-01', '01:30', 'start', { timeZone: zone, start: '', end: '' })).toBe(false);
+    const spring = { timeZone: zone, start: '2026-03-07T12:00', end: '' };
+    expect(isSelectableTime('2026-03-12', '13:00', 'end', spring)).toBe(true);
+    expect(isSelectableTime('2026-03-12', '13:01', 'end', spring)).toBe(false);
+  });
+
+  it('formats valid, invalid, and incomplete drafts without raw ISO separators', () => {
+    expect(formatScheduleDraft('2026-10-01T16:00', 'id', zone, 'Belum lengkap')).toMatch(/1 Okt 2026/);
+    expect(formatScheduleDraft('2026-10-01T99:00', 'id', zone, 'Belum lengkap')).toBe('Belum lengkap');
+    expect(formatScheduleDraft('2026-10-01T', 'en', zone, 'Incomplete')).toBe('Incomplete');
+    expect(formatScheduleDraft('2026-03-08T02:30', 'en', 'America/Los_Angeles', 'Incomplete')).not.toContain('T02:30');
   });
 });

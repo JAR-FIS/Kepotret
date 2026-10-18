@@ -133,8 +133,10 @@ describe('FE-3 setup flow contract surfaces', () => {
     const endTime = screen.getByLabelText('Jam berhenti memotret');
     const reveal = screen.getByRole('combobox', { name: 'Jeda reveal' });
     expect(reveal).toHaveTextContent('D+1');
-    expect(startDate).toHaveAttribute('min', '2026-09-27');
-    expect(startDate).toHaveAttribute('max', '2026-12-27');
+    fireEvent.click(screen.getByRole('button', { name: 'Buka kalender untuk Tanggal mulai memotret' }));
+    expect(screen.getByRole('button', { name: 'Bulan sebelumnya' })).toBeDisabled();
+    expect(document.querySelector('[data-date="2026-09-26"]')).toBeDisabled();
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Kalender untuk Tanggal mulai memotret' }), { key: 'Escape' });
     fireEvent.change(startDate, { target: { value: '2026-10-01' } });
     fireEvent.change(startTime, { target: { value: '10:00' } });
     fireEvent.change(endDate, { target: { value: '2026-10-02' } });

@@ -113,10 +113,10 @@ test('Host completes the FE-3 setup flow using generated-contract-compatible API
     const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 1);
     return { start: format(startDate), end: format(endDate) };
   });
-  await page.getByLabel('Tanggal mulai memotret').fill(start.slice(0, 10));
-  await page.getByLabel('Jam mulai memotret').fill(start.slice(11));
-  await page.getByLabel('Tanggal berhenti memotret').fill(end.slice(0, 10));
-  await page.getByLabel('Jam berhenti memotret').fill(end.slice(11));
+  await page.getByRole('textbox', { name: 'Tanggal mulai memotret', exact: true }).fill(start.slice(0, 10));
+  await page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true }).fill(start.slice(11));
+  await page.getByRole('textbox', { name: 'Tanggal berhenti memotret', exact: true }).fill(end.slice(0, 10));
+  await page.getByRole('textbox', { name: 'Jam berhenti memotret', exact: true }).fill(end.slice(11));
   await page.getByRole('combobox', { name: 'Jeda reveal' }).click();
   await page.getByRole('option', { name: 'D+3' }).click();
   await page.getByRole('button', { name: 'Simpan jadwal' }).click();
