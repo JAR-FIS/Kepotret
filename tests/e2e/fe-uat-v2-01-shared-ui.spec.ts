@@ -3,10 +3,9 @@ import { expect, test } from '@playwright/test';
 import { installUatApi } from '../uat/mock-api';
 import { uatIds } from '../uat/constants';
 
-const evidenceDirectory = 'docs/reviews/FE-UAT-V2-01/evidence';
-
 async function capture(page: import('@playwright/test').Page, testInfo: import('@playwright/test').TestInfo, filename: string) {
   if (testInfo.project.name !== 'chromium') return;
+  const evidenceDirectory = testInfo.outputPath('FE-UAT-V2-01-evidence');
   mkdirSync(evidenceDirectory, { recursive: true });
   await page.screenshot({ path: `${evidenceDirectory}/${filename}`, animations: 'disabled' });
 }

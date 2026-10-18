@@ -4,13 +4,12 @@ import { expect, test } from '@playwright/test';
 import { uatIds } from '../uat/constants';
 import { installUatApi } from '../uat/mock-api';
 
-const evidenceDirectory = 'docs/reviews/FE-UAT-V2-03/evidence';
-
 test('FE-UAT-V2-03 synthetic visual evidence covers approved routes and responsive states', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium');
   test.setTimeout(300_000);
   await page.clock.setFixedTime(new Date('2026-09-27T00:00:00Z'));
   await installUatApi(page);
+  const evidenceDirectory = testInfo.outputPath('FE-UAT-V2-03-evidence');
   mkdirSync(evidenceDirectory, { recursive: true });
 
   const routes = {

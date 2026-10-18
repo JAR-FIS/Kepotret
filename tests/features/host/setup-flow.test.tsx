@@ -38,6 +38,15 @@ const category: EventCategory = { category_id: '22222222-2222-4222-8222-22222222
 // Synthetic UAT catalog records use deterministic fixture IDs; production options still come from the server catalog.
 const categories: EventCategory[] = [category, { category_id: '22222222-2222-4222-8222-222222222223', code: 'MEETING', label_id: 'Meeting', label_en: 'Meeting', display_order: 2, active: true }, { category_id: '22222222-2222-4222-8222-222222222224', code: 'PARTY', label_id: 'Pesta', label_en: 'Party', display_order: 3, active: true }];
 const packageOption: PackageOption = { package_id: '33333333-3333-4333-8333-333333333333', package_version_id: '44444444-4444-4444-8444-444444444444', code: 'PLUS', name: 'Plus', price_amount: 75000, currency: 'IDR', quota_total: 300 };
+function makePackageOptions(count: number): PackageOption[] {
+  return Array.from({ length: count }, (_, index) => ({
+    ...packageOption,
+    package_id: `33333333-3333-4333-8333-${String(index + 1).padStart(12, '0')}`,
+    package_version_id: `44444444-4444-4444-8444-${String(index + 1).padStart(12, '0')}`,
+    name: `Synthetic ${index + 1}`,
+    quota_total: 100 + index,
+  }));
+}
 const album: AlbumDetail = {
   album_id: albumId, event_name: null, event_location: null, event_category_id: null, timezone: 'Asia/Jakarta',
   capture_start: null, capture_end: null, selected_package_version_id: null,
@@ -223,6 +232,28 @@ describe('FE-3 setup flow contract surfaces', () => {
     fireEvent.click(await screen.findByRole('radio', { name: /Paket Gratis/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Simpan pilihan paket' }));
     await waitFor(() => expect(api.putPackage).toHaveBeenCalledWith(albumId, { expected_revision: 4, package_version_id: null }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+  });
+
+  it.each([
+    { paid: 0, columns: [1] },
+    { paid: 1, columns: [1, 1] },
+    { paid: 4, columns: [3, 2] },
+    { paid: 6, columns: [4, 3] },
+  ])('dynamically distributes $paid paid choices while preserving logical order', async ({ paid, columns: expectedColumns }) => {
+    const options = makePackageOptions(paid);
+    api.getPackages.mockResolvedValueOnce({ status: 200, data: { data: options } });
+    renderHost(<PackageOptions albumId={albumId} />);
+
+    const radios = await screen.findAllByRole('radio');
+    expect(radios).toHaveLength(paid + 1);
+    expect(screen.getByRole('group', { name: 'Pilihan paket' })).toContainElement(radios[0]);
+    expect(radios.map((radio) => radio.closest('label')?.querySelector('span span')?.textContent)).toEqual([
+      'Paket Gratis · 30 foto',
+      ...options.map((option) => option.name),
+    ]);
+
+    const renderedColumns = screen.getAllByTestId('setup-package-column');
+    expect(renderedColumns.map((column) => column.querySelectorAll('input[type="radio"]').length)).toEqual(expectedColumns);
   });
 
   it('renders server commercial values and persists a paid package selection', async () => {

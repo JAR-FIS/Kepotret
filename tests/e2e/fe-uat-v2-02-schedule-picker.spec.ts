@@ -5,8 +5,6 @@ import { uatIds } from '../uat/constants';
 import { installUatApi } from '../uat/mock-api';
 import { uatSchedule } from '../uat/fixtures';
 
-const evidenceDirectory = 'docs/reviews/FE-UAT-V2-02/evidence';
-
 async function openSchedule(page: Page, route: 'h29' | 'h53') {
   await page.goto(`/album/${uatIds.album}/${route === 'h29' ? 'setup/jadwal' : 'jadwal-ulang'}`);
   await expect(page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true })).toHaveValue('16:00');
@@ -155,6 +153,7 @@ test('synthetic H29 and H53 opened picker evidence covers desktop and narrow vie
   test.setTimeout(180_000);
   await page.clock.setFixedTime(new Date('2026-09-27T00:00:00Z'));
   await installUatApi(page);
+  const evidenceDirectory = testInfo.outputPath('FE-UAT-V2-02-evidence');
   mkdirSync(evidenceDirectory, { recursive: true });
   const views = [
     { name: 'desktop-light-id', width: 1440, height: 900, dark: false, locale: 'id' },

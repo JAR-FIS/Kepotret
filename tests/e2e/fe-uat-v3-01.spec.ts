@@ -5,13 +5,12 @@ import { uatIds } from '../uat/constants';
 import { makeTransaction, uatPackages } from '../uat/fixtures';
 import { installUatApi } from '../uat/mock-api';
 
-const evidenceDirectory = 'docs/reviews/FE-UAT-V3-01/evidence';
-
 test('FE-UAT-V3-01 corrections remain legible and capture synthetic desktop/mobile evidence', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium');
   test.setTimeout(180_000);
   await installUatApi(page);
   await page.route(`**/api/v1/payments/${uatIds.transaction}`, route => route.fulfill({ status: 200, json: { data: makeTransaction('pending') } }));
+  const evidenceDirectory = testInfo.outputPath('FE-UAT-V3-01-evidence');
   mkdirSync(evidenceDirectory, { recursive: true });
 
   const views = [
@@ -56,8 +55,8 @@ test('FE-UAT-V3-01 corrections remain legible and capture synthetic desktop/mobi
         ]);
         const columns = page.getByTestId('setup-package-column');
         await expect(columns).toHaveCount(2);
-        await expect(columns.nth(0).getByRole('radio')).toHaveCount(3);
-        await expect(columns.nth(1).getByRole('radio')).toHaveCount(4);
+        await expect(columns.nth(0).getByRole('radio')).toHaveCount(4);
+        await expect(columns.nth(1).getByRole('radio')).toHaveCount(3);
         const left = await columns.nth(0).boundingBox();
         const right = await columns.nth(1).boundingBox();
         if (view.width >= 1024) expect(right?.x ?? 0).toBeGreaterThan(left?.x ?? 0);

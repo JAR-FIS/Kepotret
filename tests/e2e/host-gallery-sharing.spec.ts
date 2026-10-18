@@ -99,7 +99,7 @@ test('Owner QR retrieval, explicit link rotation, and QR PDF download use local 
   await download;
 });
 
-test('H40 guest tutorial is distinct and preserves camera-only access rules', async ({ page }) => {
+test('H40 guest tutorial is distinct and preserves camera-only access rules', async ({ page }, testInfo) => {
   await page.goto(`/album/${albumId}/berbagi/panduan`);
   await expect(page.getByRole('heading', { name: 'Panduan untuk tamu' })).toBeVisible();
   await expect(page.getByText(/Tamu tidak memerlukan akun/)).toBeVisible();
@@ -111,17 +111,17 @@ test('H40 guest tutorial is distinct and preserves camera-only access rules', as
     await page.setViewportSize({ width, height: 850 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
-  await page.screenshot({ path: 'docs/reviews/fe-uat-04/h40-guest-tutorial-synthetic.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('h40-guest-tutorial-synthetic.png'), fullPage: true });
 });
 
-test('H39 keeps the Host guide link and QR PDF inside the authorized QR card', async ({ page }) => {
+test('H39 keeps the Host guide link and QR PDF inside the authorized QR card', async ({ page }, testInfo) => {
   await page.route(`**/api/v1/albums/${albumId}/sharing`, (route) => route.fulfill({ status: 200, json: { data: { url: 'https://kepotret.test/j/active', can_rotate: false } } }));
   await page.route(`**/api/v1/albums/${albumId}/qr.pdf`, (route) => route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.7 test' }));
   await page.goto(`/album/${albumId}/berbagi`);
   await expect(page.getByRole('link', { name: 'Panduan Host/WO/EO' })).toHaveAttribute('href', '/help/host');
   const qrCard = page.locator('section').filter({ has: page.locator('svg:has(title)') });
   await expect(qrCard.getByRole('button', { name: 'Unduh QR PDF' })).toBeVisible();
-  await page.screenshot({ path: 'docs/reviews/fe-uat-04/h39-host-sharing-synthetic.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('h39-host-sharing-synthetic.png'), fullPage: true });
   const download = page.waitForEvent('download');
   await qrCard.getByRole('button', { name: 'Unduh QR PDF' }).click();
   await download;
