@@ -47,7 +47,7 @@ describe('FE-3 Host album surfaces', () => {
     expect(screen.getByRole('link', { name: new RegExp(draft.album_id) })).toHaveAttribute('href', `/album/${draft.album_id}`);
   });
 
-  it('labels free and paid cards from authorized detail and the server package catalog', async () => {
+  it('labels free and selected cards from authorized detail and the server package catalog', async () => {
     const paidId = '22222222-2222-4222-8222-222222222222';
     const freeAlbum = { ...draft, event_name: 'Free event', quota_total: 30, committed_count: 2, capture_start: '2026-10-16T09:00:00Z', capture_end: '2026-10-16T13:00:00Z' };
     const paidAlbum = { ...draft, album_id: paidId, event_name: 'Paid event', quota_total: 250, committed_count: 5 };
@@ -56,10 +56,19 @@ describe('FE-3 Host album surfaces', () => {
     getPackages.mockResolvedValue({ status: 200, data: { data: [{ package_id: '33333333-3333-4333-8333-333333333333', package_version_id: '44444444-4444-4444-8444-444444444444', code: 'PLUS', name: 'Paket Plus', price_amount: 230000, currency: 'IDR', quota_total: 250 }], meta: {} } });
     renderHost(<AlbumIndex />);
     expect(await screen.findByText('Paket GRATIS · 30 foto')).toBeInTheDocument();
-    expect(await screen.findByText('Paket Plus · 250 foto')).toBeInTheDocument();
+    expect(await screen.findByText('Pilihan Paket Plus · 250 foto')).toBeInTheDocument();
     expect(screen.getByText(/Acara pada/)).toBeInTheDocument();
     expect(screen.getByText('Fitur memotret untuk tamu aktif selama acara berlangsung.')).toBeInTheDocument();
     expect(screen.getAllByText('ID album')).toHaveLength(2);
+  });
+
+  it('does not infer paid entitlement or capacity from a selected package ID when the catalog is unavailable', async () => {
+    listAlbums.mockResolvedValue({ status: 200, data: { data: [{ ...draft, quota_total: null }], meta: {} } });
+    getAlbum.mockResolvedValue({ status: 200, data: { data: { ...readyAlbum, selected_package_version_id: '44444444-4444-4444-8444-444444444444', quota_total: null } } });
+    getPackages.mockRejectedValueOnce(new TypeError('Catalog unavailable'));
+    renderHost(<AlbumIndex />);
+    expect(await screen.findByText('Detail paket pilihan belum tersedia')).toBeInTheDocument();
+    expect(screen.queryByText(/Paket berbayar/)).not.toBeInTheDocument();
   });
 
   it('limits album detail fan-out and keeps successful projections when optional requests fail', async () => {

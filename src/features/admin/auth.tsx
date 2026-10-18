@@ -93,6 +93,7 @@ export function AdminMfa() {
   const commonT = useTranslations('admin.common');
   const router = useRouter();
   const [code, setCode] = useState('');
+  const [invalidCharacters, setInvalidCharacters] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,7 +120,8 @@ export function AdminMfa() {
     <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{t('auth_verify_your_mfa_code')}</h2>
     <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('auth_enter_your_one_time_code_to_comple')}</p>
     <form className="mt-6 space-y-4" onSubmit={(event) => void submit(event)}>
-      <AdminField label={t('auth_authentication_code')}><input className={`${adminInputClass} text-center font-mono text-xl tracking-[.35em]`} type="text" inputMode="numeric" pattern="[0-9]{6,12}" autoComplete="one-time-code" name="totp_code" required minLength={6} maxLength={12} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 12))} disabled={busy} /></AdminField>
+      <AdminField label={t('auth_authentication_code')}><input className={`${adminInputClass} text-center font-mono text-xl tracking-[.35em]`} type="text" inputMode="numeric" pattern="[0-9]{6,12}" autoComplete="one-time-code" name="totp_code" required minLength={6} maxLength={12} value={code} onChange={(event) => { const digits = event.target.value.replace(/\D/g, '').slice(0, 12); setInvalidCharacters(digits.length !== event.target.value.length); setCode(digits); }} aria-describedby={invalidCharacters ? 'admin-mfa-digit-hint' : undefined} disabled={busy} /></AdminField>
+      {invalidCharacters && <p id="admin-mfa-digit-hint" role="status" className="text-sm text-[var(--color-muted-foreground)]">{t('auth_digits_only')}</p>}
       {error && <AdminFeedback>{error}</AdminFeedback>}
       <Button type="submit" className="w-full" loading={busy}>{t('auth_verify_and_sign_in')}</Button>
     </form>

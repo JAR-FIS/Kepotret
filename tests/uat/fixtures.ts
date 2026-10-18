@@ -9,8 +9,31 @@ import type {
   GuestGalleryPhoto,
   InvitationPreview,
   PaymentTransaction,
+  EventCategory,
+  PackageOption,
 } from '../../src/lib/api/generated/index.schemas';
 import { uatCaptureEnd, uatCaptureStart, uatEventName, uatIds, uatNow } from './constants';
+
+export const uatCategories: EventCategory[] = [
+  { category_id: 'cccccccc-cccc-4ccc-8ccc-000000000001', code: 'WEDDING', label_id: 'Pernikahan', label_en: 'Wedding', display_order: 1, active: true },
+  { category_id: 'cccccccc-cccc-4ccc-8ccc-000000000002', code: 'SPORTS', label_id: 'Olahraga', label_en: 'Sports', display_order: 2, active: true },
+  { category_id: 'cccccccc-cccc-4ccc-8ccc-000000000003', code: 'MEETING', label_id: 'Meeting', label_en: 'Meeting', display_order: 3, active: true },
+  { category_id: 'cccccccc-cccc-4ccc-8ccc-000000000004', code: 'PARTY', label_id: 'Pesta', label_en: 'Party', display_order: 4, active: true },
+  { category_id: 'cccccccc-cccc-4ccc-8ccc-000000000005', code: 'COMMUNITY', label_id: 'Komunitas', label_en: 'Community', display_order: 5, active: true },
+];
+
+export const uatPackages: PackageOption[] = [
+  { package_id: uatIds.package, package_version_id: uatIds.packageVersion, code: 'LOCKED100', name: 'LOCKED 100', price_amount: 100000, currency: 'IDR', quota_total: 100 },
+  ...([250, 500, 700, 1000, 10000] as const).map((quota, index) => ({
+    package_id: `dddddddd-dddd-4ddd-8ddd-${String(index + 2).padStart(12, '0')}`,
+    package_version_id: `eeeeeeee-eeee-4eee-8eee-${String(index + 2).padStart(12, '0')}`,
+    code: `LOCKED${quota}`,
+    name: `LOCKED ${quota}`,
+    price_amount: [230000, 450000, 620000, 840000, 1100000][index]!,
+    currency: 'IDR' as const,
+    quota_total: quota,
+  })),
+];
 
 export function makeAlbum(scenario: string, collaborator = false): AlbumDetail {
   const live = scenario === 'live';
@@ -19,7 +42,7 @@ export function makeAlbum(scenario: string, collaborator = false): AlbumDetail {
     actor_access: { relationship: collaborator ? 'COLLABORATOR' : 'OWNER', permission_version: 1, collaborator_permissions: collaborator ? { can_setup: false, can_moderate: true, can_export_zip: false } : null },
     event_name: uatEventName,
     event_location: 'Jakarta',
-    event_category_id: null,
+    event_category_id: uatCategories[0].category_id,
     timezone: 'Asia/Jakarta',
     capture_start: uatCaptureStart,
     capture_end: uatCaptureEnd,
@@ -164,9 +187,9 @@ export function makeTransaction(scenario: string): PaymentTransaction {
     type: 'INITIAL_PURCHASE',
     status,
     package_version_id: uatIds.packageVersion,
-    package_name_snapshot: 'Paket Pesta UAT',
-    target_quota_total_snapshot: 100,
-    amount: 75000,
+    package_name_snapshot: uatPackages[0].name,
+    target_quota_total_snapshot: uatPackages[0].quota_total,
+    amount: uatPackages[0].price_amount,
     currency: 'IDR',
     payment_cutoff_at: '2026-10-01T15:00:00Z',
     provider_expires_at: '2026-10-01T10:00:00Z',

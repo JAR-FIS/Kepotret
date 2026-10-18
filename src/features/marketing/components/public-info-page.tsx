@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Clock3, Eye, Mail, MessageCircle, ShieldCheck } from 'lucide-react';
 
@@ -6,18 +5,10 @@ import { ExclusiveFaqAccordion } from '@/features/marketing/components/exclusive
 import { PublicPageFrame } from '@/features/marketing/components/public-page-frame';
 import { PricingSelector } from '@/features/marketing/components/pricing-selector';
 import { getContent, type Locale } from '@/features/marketing/content';
+import { HowGuideVisual } from '@/features/marketing/components/how-guide-visual';
 
 type PublicPageKind = 'how' | 'pricing' | 'faq' | 'help' | 'privacy' | 'terms' | 'security';
 
-const guidePhotos = [
-  { src: '/media/marketing/events/wedding-01.jpg', alt: { id: 'Pasangan dan keluarga merayakan pernikahan bersama', en: 'A couple and family celebrating a wedding together' } },
-  { src: '/media/marketing/events/komunitas-02.jpg', alt: { id: 'Anggota komunitas berkumpul dalam sebuah acara', en: 'Community members gather at an event' } },
-  { src: '/media/marketing/events/sport-01.jpg', alt: { id: 'Peserta mengambil bagian dalam acara olahraga', en: 'Participants take part in a sports event' } },
-  { src: '/media/marketing/events/event-agama-01.jpg', alt: { id: 'Peserta mengikuti acara keagamaan', en: 'Attendees take part in a religious event' } },
-  { src: '/media/marketing/events/birthday-01.jpg', alt: { id: 'Tamu merayakan ulang tahun bersama', en: 'Guests celebrate a birthday together' } },
-  { src: '/media/marketing/events/travel-01.jpg', alt: { id: 'Teman-teman berbagi perjalanan bersama', en: 'Friends share a trip together' } },
-  { src: '/media/marketing/events/corporate-gathering-01.jpg', alt: { id: 'Rekan kerja berkumpul dalam acara perusahaan', en: 'Colleagues gather at a company event' } },
-];
 
 export function PublicInfoPage({ locale, kind }: { locale: Locale; kind: PublicPageKind }) {
   const copy = getContent(locale);
@@ -31,7 +22,7 @@ export function PublicInfoPage({ locale, kind }: { locale: Locale; kind: PublicP
         <div className="mx-auto mb-7 max-w-4xl text-center"><h2 id="host-guide-title" className="font-[family-name:var(--font-display)] text-2xl font-bold sm:text-3xl">{page.hostGuideTitle}</h2></div>
         <ol className="grid gap-5 md:grid-cols-3">
           {page.hostSteps.map((step, index) => <li key={step.title} className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-            <div className="relative aspect-[16/9]"><Image src={guidePhotos[index].src} alt={guidePhotos[index].alt[locale]} fill sizes="(max-width: 767px) 100vw, 33vw" className="object-cover" /></div>
+            <HowGuideVisual audience="host" index={index} description={step.description} />
             <div className="p-5"><span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-bold">0{index + 1}</span><h3 className="mt-4 font-[family-name:var(--font-display)] text-lg font-bold">{step.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{step.description}</p></div>
           </li>)}
         </ol>
@@ -41,7 +32,7 @@ export function PublicInfoPage({ locale, kind }: { locale: Locale; kind: PublicP
         <header className="mx-auto mb-7 max-w-4xl text-center"><h2 id="guest-guide-title" className="font-[family-name:var(--font-display)] text-2xl font-bold sm:text-3xl">{page.guestGuideTitle}</h2><p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{copy.guest.description}</p></header>
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {copy.guest.steps.map((step, index) => <li key={step.title} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-            <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-xl bg-[var(--color-surface-muted)]"><Image src={guidePhotos[index + 3].src} alt={guidePhotos[index + 3].alt[locale]} fill sizes="(max-width: 639px) 50vw, (max-width: 1023px) 25vw, 18vw" className="object-cover" /></div>
+            <div className="mb-4"><HowGuideVisual audience="guest" index={index} description={step.description} /></div>
             <span className="text-xs font-bold tracking-widest text-[var(--color-muted-foreground)]">0{index + 1}</span><h3 className="mt-2 font-[family-name:var(--font-display)] font-bold">{step.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{step.description}</p>
           </li>)}
         </ol>

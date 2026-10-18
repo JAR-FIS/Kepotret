@@ -36,7 +36,7 @@ test('public landing and ordinary sign-in remain usable with optimized, reserved
   // The wedding hero remains eager and the below-the-fold use cases are lazy.
   const marketingImages = page.locator('img[src*="_next/image"]');
   expect(await marketingImages.count()).toBeGreaterThanOrEqual(10);
-  await expect(heroImages.first()).toHaveAttribute('src', /wedding-02\.jpg/);
+  await expect(heroImages.first()).toHaveAttribute('src', /wedding-03\.jpg/);
   await expect(heroImages.first()).not.toHaveAttribute('loading', 'lazy');
   expect(await page.locator('img[src*="_next/image"][loading="lazy"]').count()).toBeGreaterThanOrEqual(6);
   await page.goto('/masuk');

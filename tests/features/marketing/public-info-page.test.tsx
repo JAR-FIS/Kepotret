@@ -9,7 +9,7 @@ vi.mock('@/features/marketing/components/public-page-frame', () => ({ PublicPage
 import { PublicInfoPage } from '@/features/marketing/components/public-info-page';
 
 describe('FE-UAT-03 public marketing pages', () => {
-  it('renders separate Host and no-account participant guides with local imagery and guide FAQs', () => {
+  it('renders separate Host and no-account participant guides with accessible product illustrations and guide FAQs', () => {
     render(<PublicInfoPage locale="id" kind="how" />);
 
     expect(screen.getByRole('heading', { name: /Untuk Host/ })).toBeInTheDocument();
@@ -17,8 +17,9 @@ describe('FE-UAT-03 public marketing pages', () => {
     expect(screen.getByText(/Peserta cukup membuka QR/)).toBeInTheDocument();
     expect(screen.getByText(/Tidak\. Peserta mengambil foto secara langsung menggunakan kamera browser/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Pertanyaan sebelum acara dimulai' })).toBeInTheDocument();
-    expect(screen.getAllByRole('img').length).toBeGreaterThanOrEqual(7);
-    expect(screen.getAllByRole('img').every((image) => image.getAttribute('alt'))).toBe(true);
+    const illustrations = screen.getAllByRole('img');
+    expect(illustrations).toHaveLength(7);
+    expect(illustrations.every((image) => image.getAttribute('aria-label'))).toBe(true);
   });
 
   it('keeps the exact Indonesian price guidance and all seven existing slider stops', () => {

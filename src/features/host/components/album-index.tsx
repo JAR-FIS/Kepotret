@@ -17,7 +17,7 @@ import { AlbumStatus, albumStatusKey } from '@/features/host/components/album-st
 import { formatEventDateTime } from '@/lib/time/event-time';
 
 type AlbumsState = { kind: 'loading' } | { kind: 'ready'; albums: AlbumSummary[] } | { kind: 'error' } | { kind: 'unauthenticated' } | { kind: 'forbidden' };
-type PackageInfo = { kind: 'free' } | { kind: 'paid'; name?: string; capacity?: number };
+type PackageInfo = { kind: 'free' } | { kind: 'selected'; name?: string; capacity?: number };
 
 export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
   const t = useTranslations('host');
@@ -84,7 +84,7 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
         if (selectedId === null) next[album.album_id] = { kind: 'free' };
         else {
           const pkg = catalog.find((entry) => entry.package_version_id === selectedId);
-          next[album.album_id] = { kind: 'paid', name: pkg?.name, capacity: album.quota_total ?? pkg?.quota_total };
+          next[album.album_id] = { kind: 'selected', name: pkg?.name, capacity: pkg?.quota_total };
         }
       });
       setPackageInfo((current) => ({ ...current, ...next }));
@@ -109,10 +109,10 @@ export function AlbumIndex({ dashboard = false }: { dashboard?: boolean }) {
         const albumPackage = packageInfo[album.album_id];
         const packageLabel = albumPackage?.kind === 'free'
           ? t('albums.freePackage', { quota: album.quota_total ?? 30 })
-          : albumPackage?.kind === 'paid'
+          : albumPackage?.kind === 'selected'
             ? albumPackage.name
-              ? t('albums.paidPackage', { name: albumPackage.name, quota: albumPackage.capacity ?? t('albums.capacityUnavailable') })
-              : t('albums.paidPackageUnknown', { quota: albumPackage.capacity ?? t('albums.capacityUnavailable') })
+              ? t('albums.selectedPackage', { name: albumPackage.name, quota: albumPackage.capacity ?? t('albums.capacityUnavailable') })
+              : t('albums.selectedPackageUnknown')
             : null;
         return <li key={album.album_id}>
           <Link href={hostRoutes.album(album.album_id)} className="group flex min-h-24 min-w-0 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:bg-[var(--color-muted)] sm:px-6">

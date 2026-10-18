@@ -123,7 +123,7 @@ test('FE-UAT-02 H01 composition remains correct across desktop/mobile, locales, 
       await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
       await expect(page.locator('[data-hero-lime-dot]')).toHaveCount(1);
       await expect(page.locator('.hero-visual img[alt]:not([alt=""])')).toHaveCount(4);
-      await expect(page.locator('.hero-visual img[alt]').first()).toHaveAttribute('src', /wedding-02/);
+      await expect(page.locator('.hero-visual img[alt]').first()).toHaveAttribute('src', /wedding-03/);
       await expect(page.locator('#h01-photo-capacity')).toHaveAttribute('max', '6');
 
       for (const dark of [false, true]) {

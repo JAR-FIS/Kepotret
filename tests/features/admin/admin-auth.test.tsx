@@ -2,21 +2,22 @@ import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { replace, csrf, login } = vi.hoisted(() => ({ replace: vi.fn(), csrf: vi.fn(), login: vi.fn() }));
+const { replace, csrf, login, verify } = vi.hoisted(() => ({ replace: vi.fn(), csrf: vi.fn(), login: vi.fn(), verify: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace, push: vi.fn() }) }));
 vi.mock('@/components/ui/locale-control', () => ({ LocaleControl: () => null }));
 vi.mock('@/components/ui/theme-toggle', () => ({ ThemeToggle: () => null }));
 vi.mock('@/lib/api/admin-browser', () => ({
   getApiV1AdminSecurityCsrf: csrf,
   postApiV1AdminAuthLogin: login,
+  postApiV1AdminAuthMfaVerify: verify,
 }));
 
-import { AdminLogin } from '@/features/admin/auth';
+import { AdminLogin, AdminMfa } from '@/features/admin/auth';
 import enMessages from '@/messages/en.json';
 
 describe('FE-8 Admin authentication boundary', () => {
   beforeEach(() => {
-    replace.mockReset(); csrf.mockReset(); login.mockReset();
+    replace.mockReset(); csrf.mockReset(); login.mockReset(); verify.mockReset();
     localStorage.clear(); sessionStorage.clear();
     csrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'admin-csrf-test' } } });
   });
@@ -69,5 +70,32 @@ describe('FE-8 Admin authentication boundary', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue to MFA verification' }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/admin/mfa'));
     expect(login).toHaveBeenCalledWith({ email: 'admin@example.test', password: 'private-password' }, { headers: { 'X-CSRF-Token': 'admin-csrf-test' } });
+  });
+
+  it('accepts numeric MFA input, explains rejected characters, and submits through Admin CSRF', async () => {
+    verify.mockResolvedValue({ status: 200, data: {} });
+    render(<NextIntlClientProvider locale="en" messages={enMessages}><AdminMfa /></NextIntlClientProvider>);
+    const code = screen.getByLabelText('Authentication code');
+    fireEvent.change(code, { target: { value: 'abc' } });
+    expect(code).toHaveValue('');
+    expect(screen.getByRole('status')).toHaveTextContent('Use digits 0–9');
+    fireEvent.change(code, { target: { value: '123456' } });
+    expect(code).toHaveValue('123456');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/admin'));
+    expect(csrf).toHaveBeenCalledOnce();
+    expect(verify).toHaveBeenCalledWith({ totp_code: '123456' }, { headers: { 'X-CSRF-Token': 'admin-csrf-test' } });
+  });
+
+  it('does not advance MFA when verification is rejected', async () => {
+    verify.mockResolvedValue({ status: 401, data: {} });
+    render(<NextIntlClientProvider locale="en" messages={enMessages}><AdminMfa /></NextIntlClientProvider>);
+    fireEvent.change(screen.getByLabelText('Authentication code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+    await waitFor(() => expect(verify).toHaveBeenCalledOnce());
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Authentication code')).toHaveValue('');
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 });

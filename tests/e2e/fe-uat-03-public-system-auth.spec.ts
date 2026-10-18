@@ -42,7 +42,7 @@ test('H02-H05 and H08 public pages keep the Host/Guest guide, pricing, FAQ, cont
   await expect(page.getByText(/Peserta tidak perlu install aplikasi atau membuat akun/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Pertanyaan sebelum acara dimulai' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Buat Album Gratis' }).first()).toHaveAttribute('href', '/masuk');
-  expect(await page.locator('main img[alt]').count()).toBeGreaterThanOrEqual(7);
+  await expect(page.locator('main [data-guide-visual][role="img"][aria-label]')).toHaveCount(7);
   for (const width of [360, 390, 768, 1024, 1100, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await expectNoHorizontalOverflow(page);

@@ -1,7 +1,7 @@
 import type { Page, Route } from '@playwright/test';
 import type { OperationalIssue } from '../../src/lib/api/generated/index.schemas';
 import { uatCaptureEnd, uatCaptureStart, uatEventName, uatIds, uatNow } from './constants';
-import { makeAlbum, makeGuestContext, makeGuestPreview, makeInvitationPreview, makeLiveOverview, makeTransaction, uatActivityItem, uatPhoto, uatSchedule, uatSettings } from './fixtures';
+import { makeAlbum, makeGuestContext, makeGuestPreview, makeInvitationPreview, makeLiveOverview, makeTransaction, uatActivityItem, uatCategories, uatPackages, uatPhoto, uatSchedule, uatSettings } from './fixtures';
 
 const envelope = (data: unknown) => ({ data });
 const list = (data: unknown[]) => ({ data, meta: { has_more: false, next_cursor: null } });
@@ -68,8 +68,8 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
   if (pathname === `/api/v1/admin/albums/${uatIds.album}/sensitive-media`) return { status: 200, body: list([]) };
   if (pathname === '/api/v1/admin/payments') return { status: 200, body: list([makeTransaction('pending')]) };
   if (pathname === `/api/v1/admin/payments/${uatIds.transaction}`) return { status: 200, body: envelope({ transaction: makeTransaction(scenario), receipt_diagnostics: [], entitlement: null, can_reconcile: true, last_reconciled_at: null }) };
-  if (pathname === '/api/v1/admin/packages') return { status: 200, body: list([{ package_id: uatIds.package, code: 'PAKET-UAT', name: 'Paket Pesta UAT', versions: [{ package_version_id: uatIds.packageVersion, price_amount: 75000, currency: 'IDR', quota_total: 100, sale_enabled: true, effective_at: uatNow, retired_at: null }] }]) };
-  if (pathname === '/api/v1/admin/event-categories') return { status: 200, body: list([{ category_id: uatIds.package, code: 'WEDDING', label_id: 'Pernikahan', label_en: 'Wedding', display_order: 1, active: true }]) };
+  if (pathname === '/api/v1/admin/packages') return { status: 200, body: list(uatPackages.map((option) => ({ package_id: option.package_id, code: option.code, name: option.name, versions: [{ package_version_id: option.package_version_id, price_amount: option.price_amount, currency: option.currency, quota_total: option.quota_total, sale_enabled: true, effective_at: uatNow, retired_at: null }] }))) };
+  if (pathname === '/api/v1/admin/event-categories') return { status: 200, body: list(uatCategories) };
   if (pathname === '/api/v1/admin/operational-configs') return { status: 200, body: list([{ config_key: 'maintenance_mode', typed_value: false, revision: 1, updated_at: uatNow }]) };
   if (pathname === '/api/v1/admin/issues') return { status: 200, body: list(scenario === 'empty' ? [] : [operationalIssue]) };
   if (pathname === `/api/v1/admin/issues/${uatIds.issue}`) return { status: 200, body: envelope(operationalIssue) };
@@ -78,8 +78,8 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
   if (pathname === '/api/v1/admin/admins') return { status: 200, body: list([{ admin_user_id: uatIds.user, email: 'superadmin@kepotret.test', display_name: 'Superadmin UAT', grant_status: 'ACTIVE', granted_at: uatNow, revoked_at: null, last_session_at: uatNow }]) };
 
   if (pathname === '/api/v1/albums') return { status: 200, body: list(scenario === 'empty' ? [] : [albumSummary(scenario, scenario === 'collaborator')]) };
-  if (pathname === '/api/v1/event-categories') return { status: 200, body: list([{ category_id: uatIds.package, code: 'WEDDING', label_id: 'Pernikahan', label_en: 'Wedding', display_order: 1, active: true }]) };
-  if (pathname === '/api/v1/packages') return { status: 200, body: list([{ package_id: uatIds.package, package_version_id: uatIds.packageVersion, code: 'PAKET-UAT', name: 'Paket Pesta UAT', price_amount: 75000, currency: 'IDR', quota_total: 100 }]) };
+  if (pathname === '/api/v1/event-categories') return { status: 200, body: list(uatCategories) };
+  if (pathname === '/api/v1/packages') return { status: 200, body: list(uatPackages) };
 
   const albumMatch = pathname.match(new RegExp(`^/api/v1/albums/${uatIds.album}(?:/(.*))?$`));
   if (albumMatch) {
@@ -101,9 +101,9 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
     if (endpoint === 'schedule') return { status: 200, body: envelope(uatSchedule) };
     if (endpoint === 'settings') return { status: 200, body: envelope(uatSettings) };
     if (endpoint === 'design') return { status: 200, body: envelope({ cover_asset_id: null, cover_preview: null, setup_revision: 3 }) };
-    if (endpoint === 'review') return { status: 200, body: envelope({ album_id: uatIds.album, setup_revision: 3, complete: false, issues: [], snapshot: { event_basics: { event_name: uatEventName, event_location: 'Jakarta', event_category_id: uatIds.package, timezone: 'Asia/Jakarta' }, schedule: uatSchedule, access: { pin_enabled: false }, settings: { per_guest_limit: 30 }, design: { cover_asset_id: null, cover_preview: null, setup_revision: 3 }, selected_package_version_id: uatIds.packageVersion, collaborator_count: 1 } }) };
+    if (endpoint === 'review') return { status: 200, body: envelope({ album_id: uatIds.album, setup_revision: 3, complete: false, issues: [], snapshot: { event_basics: { event_name: uatEventName, event_location: 'Jakarta', event_category_id: uatCategories[0].category_id, timezone: 'Asia/Jakarta' }, schedule: uatSchedule, access: { pin_enabled: false }, settings: { per_guest_limit: 30 }, design: { cover_asset_id: null, cover_preview: null, setup_revision: 3 }, selected_package_version_id: uatIds.packageVersion, collaborator_count: 1 } }) };
     if (endpoint === 'capture-readiness') return { status: 200, body: envelope({ album_id: uatIds.album, state: scenario === 'waiting' ? 'WAITING' : scenario === 'closed' ? 'CLOSED' : 'READY', can_capture: scenario !== 'waiting' && scenario !== 'closed', server_time: uatNow, capture_start: uatCaptureStart, capture_end: uatCaptureEnd, reveal_at: dateLater, reveal_state: scenario === 'closed' ? 'REVEALED' : 'HIDDEN', album_remaining_count: 76, guest_remaining_count: 10 }) };
-    if (endpoint === 'package-options') return { status: 200, body: envelope({ album_id: uatIds.album, current_quota_total: live ? 100 : 30, reserved_count: 2, committed_count: 24, payment_cutoff_at: uatSchedule.payment_cutoff_at, server_time: uatNow, can_create_checkout: true, checkout_block_reason: null, active_checkout: null, options: [{ package_id: uatIds.package, package_version_id: uatIds.packageVersion, code: 'PAKET-UAT', name: 'Paket Pesta UAT', price_amount: 75000, currency: 'IDR', quota_total: 100 }] }) };
+    if (endpoint === 'package-options') return { status: 200, body: envelope({ album_id: uatIds.album, current_quota_total: live ? 100 : 30, reserved_count: 2, committed_count: 24, payment_cutoff_at: uatSchedule.payment_cutoff_at, server_time: uatNow, can_create_checkout: true, checkout_block_reason: null, active_checkout: null, options: uatPackages.filter((option) => option.quota_total > (live ? 100 : 30)) }) };
     if (endpoint === 'entitlement') return { status: 200, body: envelope({ album_id: uatIds.album, quota_total: 100, reserved_count: 2, committed_count: 24, payment_cutoff_at: uatSchedule.payment_cutoff_at }) };
     if (endpoint === 'lifecycle') {
       const recovery = scenario === 'recovery-active' || scenario === 'recovery-media';
@@ -142,6 +142,7 @@ function makeExportJob(scenario: string) {
 
 export async function installUatApi(page: Page) {
   let requestCount = 0;
+  let pendingAdminMfa = false;
   let syntheticCover: { cover_asset_id: string; cover_preview: { url: string; expires_at: string }; setup_revision: number } | null = null;
   let coverRevision = 3;
   await page.route('**/api/v1/**', async (route: Route) => {
@@ -150,6 +151,22 @@ export async function installUatApi(page: Page) {
     const url = new URL(request.url());
     let scenario = 'normal';
     try { scenario = new URL(page.url()).searchParams.get('uat') ?? 'normal'; } catch { /* about:blank before app navigation */ }
+    if (url.pathname === '/api/v1/admin/auth/login' && request.method() === 'POST') {
+      const credentials = request.postDataJSON() as { email?: string; password?: string };
+      const csrfValid = request.headers()['x-csrf-token'] === 'owner-uat-csrf';
+      const authorized = credentials.email === adminMe.email && credentials.password === 'synthetic-uat-password';
+      pendingAdminMfa = csrfValid && authorized;
+      const status = !csrfValid ? 403 : authorized ? 202 : 401;
+      await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(status === 202 ? envelope({}) : { error: { code: status === 403 ? 'CSRF_INVALID' : 'INVALID_CREDENTIALS' } }) });
+      return;
+    }
+    if (url.pathname === '/api/v1/admin/auth/mfa/verify' && request.method() === 'POST') {
+      const code = (request.postDataJSON() as { totp_code?: string }).totp_code;
+      const status = request.headers()['x-csrf-token'] !== 'owner-uat-csrf' ? 403 : !pendingAdminMfa ? 404 : code === '123456' ? 200 : 401;
+      if (status === 200) pendingAdminMfa = false;
+      await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(status === 200 ? envelope(adminMe) : { error: { code: status === 403 ? 'CSRF_INVALID' : status === 404 ? 'MFA_CHALLENGE_MISSING' : 'MFA_CODE_INVALID' } }) });
+      return;
+    }
     if (url.pathname === `/api/v1/albums/${uatIds.album}/design`) {
       if (request.method() === 'PATCH') {
         const body = request.postDataJSON() as { cover_asset_id?: string | null };
