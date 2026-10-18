@@ -16,47 +16,50 @@ import { AlbumStatus, albumStatusKey } from '@/features/host/components/album-st
 import { formatEventDateTime } from '@/lib/time/event-time';
 import { LiveEventDashboard } from '@/features/host/components/live-event-dashboard';
 
+type OverviewState =
+  | { albumId: string; kind: 'loading' | 'error' | 'unauthenticated' | 'forbidden' }
+  | { albumId: string; kind: 'ready'; album: AlbumDetail };
+
 export function AlbumOverview({ albumId }: { albumId: string }) {
   const t = useTranslations('host');
   const locale = useLocale();
-  const [album, setAlbum] = useState<AlbumDetail | null>(null);
-  const [packages, setPackages] = useState<PackageOption[] | null>(null);
-  const [state, setState] = useState<'loading' | 'ready' | 'error' | 'unauthenticated' | 'forbidden'>('loading');
+  const [packages, setPackages] = useState<{ albumId: string; options: PackageOption[] } | null>(null);
+  const [state, setState] = useState<OverviewState>({ albumId, kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
-    void getApiV1AlbumsAlbumId(albumId).then(async (result) => {
+    void getApiV1AlbumsAlbumId(albumId).then((result) => {
       if (!active) return;
       if (result.status === 200) {
         const detail = result.data.data;
-        if (detail.actor_access.relationship === 'OWNER') {
-          try {
-            const catalog = await getApiV1Packages();
-            if (!active) return;
-            setPackages(catalog.status === 200 ? catalog.data.data : null);
-          } catch { if (!active) return; setPackages(null); }
-        } else setPackages(null);
-        setAlbum(detail); setState('ready');
+        setPackages(null);
+        setState({ albumId, kind: 'ready', album: detail });
+        if (detail.actor_access.relationship === 'OWNER' && detail.selected_package_version_id !== null) {
+          void getApiV1Packages().then((catalog) => {
+            if (active && catalog.status === 200) setPackages({ albumId, options: catalog.data.data });
+          }).catch(() => { /* Package metadata is optional; album detail remains authoritative. */ });
+        }
       }
-      else if (result.status === 401) setState('unauthenticated');
-      else if (result.status === 403) setState('forbidden');
-      else setState('error');
-    }).catch(() => { if (active) setState('error'); });
+      else if (result.status === 401) setState({ albumId, kind: 'unauthenticated' });
+      else if (result.status === 403) setState({ albumId, kind: 'forbidden' });
+      else setState({ albumId, kind: 'error' });
+    }).catch(() => { if (active) setState({ albumId, kind: 'error' }); });
     return () => { active = false; };
   }, [albumId, attempt]);
 
-  if (state === 'loading') return <LoadingState label={t('loading')} />;
-  if (state === 'unauthenticated') return <ReauthState title={t('reauthTitle')} description={t('reauthDescription')} action={<Link href="/masuk-ulang" className="underline">{t('reauthTitle')}</Link>} />;
-  if (state === 'forbidden') return <ForbiddenState title={t('forbiddenTitle')} description={t('forbiddenDescription')} />;
-  if (state === 'error' || !album) return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={t('retry')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1); }} />;
+  if (state.albumId !== albumId || state.kind === 'loading') return <LoadingState label={t('loading')} />;
+  if (state.kind === 'unauthenticated') return <ReauthState title={t('reauthTitle')} description={t('reauthDescription')} action={<Link href="/masuk-ulang" className="underline">{t('reauthTitle')}</Link>} />;
+  if (state.kind === 'forbidden') return <ForbiddenState title={t('forbiddenTitle')} description={t('forbiddenDescription')} />;
+  if (state.kind !== 'ready') return <ErrorState title={t('errorTitle')} description={t('errorDescription')} retryLabel={t('retry')} onRetry={() => { setState({ albumId, kind: 'loading' }); setAttempt((value) => value + 1); }} />;
+  const album = state.album;
   if (album.readiness === 'READY') return <LiveEventDashboard albumId={albumId} />;
 
   const summary = album;
   const isOwner = album.actor_access.relationship === 'OWNER';
   const canModerate = album.actor_access.relationship === 'COLLABORATOR'
     && album.actor_access.collaborator_permissions?.can_moderate === true;
-  const selectedPackage = packages?.find((option) => option.package_version_id === album.selected_package_version_id);
+  const selectedPackage = packages?.albumId === albumId ? packages.options.find((option) => option.package_version_id === album.selected_package_version_id) : undefined;
   const formatTime = (value: string) => formatEventDateTime(value, locale, album.timezone);
   return <div className="space-y-5">
     <nav aria-label={t('nav.albumLabel')} className="grid gap-3 sm:grid-cols-2">{(isOwner || canModerate) && <Link href={hostRoutes.gallery(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('gallery.title')}<ArrowRight aria-hidden="true" size={17} /></Link>}<Link href={hostRoutes.sharing(albumId)} className="flex min-h-14 items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{t('sharing.title')}<ArrowRight aria-hidden="true" size={17} /></Link></nav>
