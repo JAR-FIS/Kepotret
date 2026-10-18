@@ -50,6 +50,6 @@ Expected evidence files:
 | `pnpm uat:smoke` | Passed: 2 tests |
 | `pnpm e2e` | Passed: 162 passed, 0 failed, 0 flaky retries across Chromium, Firefox, WebKit, and mobile projects |
 | `git diff --check` | Pending |
-| Hosted GitHub Actions | Pending push |
+| Hosted GitHub Actions | Not available yet: the branch is pushed, but PR creation returned GitHub API HTTP 403 (`Resource not accessible by integration`), so no PR-triggered runs exist. |
 
 The full E2E run emitted non-failing development-server diagnostics for the synthetic UAT badge hydration mismatch, existing unmocked proxy requests to `localhost:8080` in unrelated scenarios, and Node color-variable warnings. No FE-UAT-V3-01 test failed or retried. The generated historical screenshots were restored; only this packet's evidence is retained.
