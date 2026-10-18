@@ -32,6 +32,6 @@ No package identifiers, names, prices, capacities, or catalog records were added
 | `pnpm uat:smoke` | Passed: 2/2. |
 | `pnpm e2e` | Passed: 164/164 across Chromium, Firefox, WebKit, and mobile projects; 0 failed, 0 flaky. |
 | `git diff --check` | Passed. |
-| Hosted GitHub Actions | Pending PR creation |
+| Hosted GitHub Actions | Passed: PR #28 `quality` and `e2e` jobs ([run 39146076119](https://github.com/JAR-FIS/Kepotret/actions/runs/39146076119)). |
 
-The full E2E run initially exposed Windows write errors when legacy visual tests overwrote tracked historical PNGs. Those visual tests now write to Playwright's per-test output directory. The final full run passed without changing historical screenshots. E2E output also included existing non-failing `localhost:8080` proxy refusals from unmocked requests and synthetic Owner Visual UAT badge hydration warnings; these are outside this batch's two UI corrections.
+The full E2E run initially exposed Windows write errors when legacy visual tests overwrote tracked historical PNGs. Those visual tests now write to Playwright's per-test output directory. The final full run passed without changing historical screenshots. E2E output also included existing non-failing `localhost:8080` proxy refusals from unmocked requests and synthetic Owner Visual UAT badge hydration warnings; these are outside this batch's two UI corrections. GitHub Actions also reported Node.js 20 runtime deprecation and the planned `ubuntu-latest` migration to Ubuntu 26.
