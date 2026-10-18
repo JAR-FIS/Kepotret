@@ -115,6 +115,41 @@ test('H29 preserves a stored date while focusing the first selectable day', asyn
   await expect(startDate).toHaveValue('2026-10-01');
 });
 
+for (const timezoneId of ['America/Los_Angeles', 'Asia/Jakarta']) {
+  test.describe(`calendar display in ${timezoneId}`, () => {
+    test.use({ timezoneId });
+
+    for (const locale of ['en', 'id'] as const) {
+      test(`${locale} H29 and H53 show October 1 in the Thursday column`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name !== 'chromium');
+        await page.clock.setFixedTime(new Date('2026-09-27T00:00:00Z'));
+        await installUatApi(page);
+        await page.context().addCookies([{ name: 'kepotret-locale', value: locale, domain: 'localhost', path: '/' }]);
+        const labels = locale === 'en'
+          ? { date: 'Capture start date', open: 'Open calendar for Capture start date', heading: 'October 2026', weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], day: 'Thursday, October 1, 2026' }
+          : { date: 'Tanggal mulai memotret', open: 'Buka kalender untuk Tanggal mulai memotret', heading: 'Oktober 2026', weekdays: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'], day: 'Kamis, 01 Oktober 2026' };
+
+        for (const route of ['h29', 'h53'] as const) {
+          await page.goto(`/album/${uatIds.album}/${route === 'h29' ? 'setup/jadwal' : 'jadwal-ulang'}`);
+          expect(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone)).toBe(timezoneId);
+          const startDate = page.getByRole('textbox', { name: labels.date, exact: true });
+          await expect(startDate).toHaveValue('2026-10-01');
+          await page.getByRole('button', { name: labels.open }).click();
+          const calendar = page.getByRole('dialog');
+          await expect(calendar.getByText(labels.heading, { exact: true })).toBeVisible();
+          await expect(calendar.locator('span[aria-hidden="true"]:not([role])')).toHaveText(labels.weekdays);
+          const octoberFirst = calendar.locator('[data-date="2026-10-01"]');
+          await expect(calendar.locator('[role="row"]').first().locator('[role="gridcell"]').nth(3)).toHaveAttribute('data-date', '2026-10-01');
+          await expect(octoberFirst).toHaveAttribute('aria-label', labels.day);
+          await expect(octoberFirst).toHaveText('1');
+          await calendar.locator('[data-date="2026-10-02"]').click();
+          await expect(startDate).toHaveValue('2026-10-02');
+        }
+      });
+    }
+  });
+}
+
 test('synthetic H29 and H53 opened picker evidence covers desktop and narrow viewports', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium');
   test.setTimeout(180_000);
