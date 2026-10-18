@@ -19,7 +19,7 @@ test('FE-8 H20 uses the dedicated Admin CSRF and sends a valid password challeng
   await expect(page.getByRole('link', { name: /google|sign up|forgot/i })).toHaveCount(0);
   await expect(page.locator('form[data-admin-auth-ready="true"]')).toBeVisible();
   const email = page.getByLabel(/email/i);
-  const password = page.getByLabel(/password|kata sandi/i);
+  const password = page.locator('input[name="password"]');
   await email.fill('admin@example.test');
   await password.fill('example-password');
   await expect(email).toHaveValue('admin@example.test');

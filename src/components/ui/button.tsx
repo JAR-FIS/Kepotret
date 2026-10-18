@@ -24,7 +24,7 @@ export function Button({
   return (
     <button
       aria-busy={loading || undefined}
-      className={`relative inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-[transform,opacity,filter,background-color] enabled:hover:brightness-95 active:enabled:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0 ${variants[variant]} ${className}`}
+      className={`relative inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-[transform,opacity,filter,background-color] enabled:hover:brightness-95 active:enabled:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0 ${variants[variant]} ${className}`}
       disabled={loading || disabled}
       {...props}
     >

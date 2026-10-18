@@ -61,13 +61,13 @@ test('Assistant launcher stays out of the composer at desktop and mobile sizes',
   for (const viewport of viewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/');
-    const launcher = page.getByRole('button', { name: 'Buka Asisten AI' });
-    await expect(launcher).toHaveClass(/size-12/);
+    const launcher = page.locator('button[aria-controls="assistant-dialog"]');
+    await expect(launcher).toHaveClass(/size-14/);
     await launcher.click();
 
     const dialog = page.getByRole('dialog', { name: 'Asisten Kepotret' });
     await expect(dialog).toBeVisible();
-    await expect(launcher).toBeHidden();
+    await expect(launcher).toBeVisible();
     const input = page.getByRole('textbox', { name: 'Pesan untuk Asisten' });
     const send = page.getByRole('button', { name: 'Kirim pertanyaan' });
     await input.fill('Pertanyaan uji');

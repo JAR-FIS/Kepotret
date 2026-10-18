@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useConnectivity } from '@/hooks/use-connectivity';
@@ -76,7 +77,7 @@ export function GallerySettings({ albumId }: { albumId: string }) {
 }
 
 function Choice({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: [string, string][] }) {
-  return <label className="grid gap-2 text-sm font-medium">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-[var(--color-foreground)] shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
+  return <div className="grid gap-2 text-sm font-medium"><span>{label}</span><Select label={label} value={value} onValueChange={onChange} className="rounded-full px-4" options={options.map(([optionValue, optionLabel]) => ({ value: optionValue, label: optionLabel }))} /></div>;
 }
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {

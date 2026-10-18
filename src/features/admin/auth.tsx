@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { LocaleControl } from '@/components/ui/locale-control';
@@ -51,6 +51,7 @@ export function AdminLogin() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hydrated = useSyncExternalStore(() => () => undefined, () => true, () => false);
@@ -78,7 +79,7 @@ export function AdminLogin() {
     <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('auth_use_admin_credentials_provisioned')}</p>
     <form data-admin-auth-ready={hydrated ? 'true' : undefined} className="mt-6 space-y-4" onSubmit={(event) => void submit(event)}>
       <AdminField label={commonT('email')}><input className={adminInputClass} type="email" name="email" autoComplete="username" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} /></AdminField>
-      <AdminField label={t('auth_password')}><input className={adminInputClass} type="password" name="password" autoComplete="current-password" required maxLength={256} value={password} onChange={(event) => setPassword(event.target.value)} disabled={busy} /></AdminField>
+      <div className="block min-w-0 text-sm font-semibold"><label htmlFor="admin-password">{t('auth_password')}</label><div className="relative mt-1.5"><input id="admin-password" className={`${adminInputClass} pr-12`} type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" required maxLength={256} value={password} onChange={(event) => setPassword(event.target.value)} disabled={busy} /><button type="button" aria-label={t(showPassword ? 'auth_hide_password' : 'auth_show_password')} aria-pressed={showPassword} disabled={busy} onClick={() => setShowPassword((value) => !value)} className="absolute inset-y-0 right-1 inline-flex w-10 items-center justify-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-focus)] disabled:cursor-not-allowed"><Eye size={18} aria-hidden="true" className={showPassword ? 'hidden' : ''} /><EyeOff size={18} aria-hidden="true" className={showPassword ? '' : 'hidden'} /></button></div></div>
       {error && <AdminFeedback>{error}</AdminFeedback>}
       <Button type="submit" className="w-full" loading={busy}>{t('auth_continue_to_mfa_verification')}</Button>
     </form>

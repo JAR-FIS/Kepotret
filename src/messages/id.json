@@ -84,6 +84,8 @@
       "auth_superadmin_sign_in": "Masuk sebagai Superadmin",
       "auth_use_admin_credentials_provisioned": "Gunakan kredensial Admin yang dikelola melalui proses internal yang disetujui.",
       "auth_password": "Kata sandi",
+      "auth_show_password": "Tampilkan kata sandi",
+      "auth_hide_password": "Sembunyikan kata sandi",
       "auth_continue_to_mfa_verification": "Lanjutkan ke verifikasi MFA",
       "auth_there_is_no_public_signup_google_s": "Tidak ada pendaftaran publik, login Google, atau pemulihan kata sandi di sini.",
       "auth_back_to_kepotret": "Kembali ke Kepotret",

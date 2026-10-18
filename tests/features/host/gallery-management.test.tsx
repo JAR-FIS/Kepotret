@@ -61,6 +61,25 @@ describe('host gallery management', () => {
     await waitFor(() => expect(api.approve).toHaveBeenCalledWith('album-1', 'photo-1', { headers: { 'X-CSRF-Token': 'host-csrf' } }));
   });
 
+  it('styles open sort and moderation menus while preserving API filter values', async () => {
+    renderManager({ albumId: 'album-1' });
+    await screen.findByText('Ari');
+    const sort = screen.getByRole('combobox', { name: 'Sort' });
+    fireEvent.click(sort);
+    const sortOptions = screen.getByRole('listbox', { name: 'Sort' });
+    expect(within(sortOptions).getByRole('option', { name: 'Newest' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(sortOptions, { key: 'End' });
+    fireEvent.keyDown(sortOptions, { key: 'Enter' });
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith('album-1', expect.objectContaining({ sort: 'OLDEST' })));
+
+    const status = screen.getByRole('combobox', { name: 'Moderation status' });
+    fireEvent.click(status);
+    const statusOptions = screen.getByRole('listbox', { name: 'Moderation status' });
+    expect(within(statusOptions).getByRole('option', { name: 'All statuses' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(within(statusOptions).getByRole('option', { name: 'Hidden' }));
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith('album-1', expect.objectContaining({ sort: 'OLDEST', moderation_status: 'HIDDEN' })));
+  });
+
   it('explains that soft delete does not release quota', async () => {
     api.trash.mockResolvedValue({ status: 200, data: { data: [deletedPhoto], meta: { has_more: false, next_cursor: null } } });
     renderManager({ albumId: 'album-1', trash: true });

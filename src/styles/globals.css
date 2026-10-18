@@ -92,6 +92,11 @@ body {
   min-height: 100%;
 }
 
+@keyframes assistant-enter {
+  from { opacity: 0; transform: translateY(0.75rem) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 body {
   margin: 0;
   background: var(--color-background);
@@ -107,6 +112,17 @@ textarea,
 a {
   font: inherit;
   -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled),
+a[href],
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role='button'][aria-disabled='true'] {
+  cursor: not-allowed;
 }
 
 :focus-visible {
