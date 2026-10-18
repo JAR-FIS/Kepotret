@@ -26,14 +26,15 @@ test('@cross-browser H58 cover flow is explicitly synthetic and exercises author
 test('@cross-browser H53 LIVE is a preview and cannot be submitted by the current API flow', async ({ page }) => {
   await installUatApi(page);
   await page.goto(`/album/${uatIds.album}/jadwal-ulang`);
-  const preview = page.getByRole('checkbox', { name: /during the event|mulai saat acara/i });
-  await expect(preview).toBeVisible();
-  await preview.check();
+  const reveal = page.getByRole('combobox', { name: /reveal delay|jeda publikasi/i });
+  await reveal.click();
+  await page.getByRole('option', { name: /LIVE/i }).click();
   await expect(page.getByText(/LIVE preview only|pratinjau LIVE saja/i)).toBeVisible();
   await expect(page.getByRole('button', { name: /review change|review schedule|tinjau perubahan|tinjau jadwal/i })).toBeDisabled();
 });
 
 test('@cross-browser H41 status badges follow only the server capture state', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(uatNow));
   await installUatApi(page);
   const phases = [
     { scenario: 'scheduled', status: 'Terjadwal', timer: 'Menuju acara dimulai: 60 m 00 dtk', start: /Acara dimulai:/ },

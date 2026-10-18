@@ -193,15 +193,18 @@ test('H53 uses server schedule version and preserves the proposal after a stale 
   await page.goto(`/album/${albumId}/jadwal-ulang`);
   await expect(page.getByText('Pembayaran aktif sedang diproses.')).toBeVisible();
   await expect(page.getByText(/Batas pembayaran: 2 Okt 2026, 19\.00/)).toBeVisible();
-  await page.getByLabel('Mulai pengambilan').fill('2026-10-01T22:00');
-  await page.getByLabel('Akhir pengambilan').fill('2026-10-02T22:00');
-  await page.getByLabel('Jeda publikasi (hari)').selectOption('5');
+  await page.getByRole('textbox', { name: 'Tanggal mulai memotret', exact: true }).fill('2026-10-01');
+  await page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true }).fill('22:00');
+  await page.getByRole('textbox', { name: 'Tanggal berhenti memotret', exact: true }).fill('2026-10-02');
+  await page.getByRole('textbox', { name: 'Jam berhenti memotret', exact: true }).fill('22:00');
+  await page.getByRole('combobox', { name: 'Jeda publikasi (hari)' }).click();
+  await page.getByRole('option', { name: 'D+5' }).click();
   await page.getByRole('button', { name: 'Tinjau jadwal' }).click();
   await expect(page.getByText(/Pembayaran masih tertunda/)).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Simpan jadwal' }).click();
   await expect(page.getByText('Jadwal berubah di server.', { exact: false })).toBeVisible();
-  await expect(page.getByLabel('Mulai pengambilan')).toHaveValue('2026-10-01T22:00');
-  await expect(page.getByLabel('Jeda publikasi (hari)')).toHaveValue('5');
+  await expect(page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true })).toHaveValue('22:00');
+  await expect(page.getByRole('combobox', { name: 'Jeda publikasi (hari)' })).toHaveText('D+5');
 });
 
 test('H53 refetches schedule, package options, lifecycle, and entitlement after successful reschedule', async ({ page }) => {
@@ -222,15 +225,18 @@ test('H53 refetches schedule, package options, lifecycle, and entitlement after 
   });
 
   await page.goto(`/album/${albumId}/jadwal-ulang`);
-  await expect(page.getByLabel('Mulai pengambilan')).toHaveValue('2026-10-01T21:00');
+  await expect(page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true })).toHaveValue('21:00');
   const before = { ...reads };
   expect(Object.values(before).every(count => count > 0)).toBe(true);
-  await page.getByLabel('Mulai pengambilan').fill('2026-10-01T22:00');
-  await page.getByLabel('Akhir pengambilan').fill('2026-10-02T22:00');
-  await page.getByLabel('Jeda publikasi (hari)').selectOption('5');
+  await page.getByRole('textbox', { name: 'Tanggal mulai memotret', exact: true }).fill('2026-10-01');
+  await page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true }).fill('22:00');
+  await page.getByRole('textbox', { name: 'Tanggal berhenti memotret', exact: true }).fill('2026-10-02');
+  await page.getByRole('textbox', { name: 'Jam berhenti memotret', exact: true }).fill('22:00');
+  await page.getByRole('combobox', { name: 'Jeda publikasi (hari)' }).click();
+  await page.getByRole('option', { name: 'D+5' }).click();
   await page.getByRole('button', { name: 'Tinjau jadwal' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Simpan jadwal' }).click();
   await expect.poll(() => (Object.keys(before) as Array<keyof typeof before>).every(key => reads[key] > before[key])).toBe(true);
-  await expect(page.getByLabel('Mulai pengambilan')).toHaveValue('2026-10-01T22:00');
+  await expect(page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true })).toHaveValue('22:00');
   expect(posts).toBe(1);
 });
