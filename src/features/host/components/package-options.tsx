@@ -24,7 +24,7 @@ export function PackageOptions({ albumId }: { albumId: string }) {
   const [pending, setPending] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const choices: PackageChoice[] = [{ kind: 'free' }, ...packages.map((option) => ({ kind: 'paid' as const, option }))];
-  const splitIndex = choices.length > 1 ? Math.floor(choices.length / 2) : choices.length;
+  const splitIndex = Math.ceil(choices.length / 2);
   const columns = [choices.slice(0, splitIndex), choices.slice(splitIndex)].filter((column) => column.length > 0);
 
   function renderChoice(choice: PackageChoice) {

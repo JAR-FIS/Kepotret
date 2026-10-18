@@ -65,7 +65,7 @@ test('H28 uses only active fixture categories and sends the chosen server ID', a
   await expect(categories.getByRole('radio')).toHaveCount(0);
 });
 
-test('H33 presents seven human-readable choices in a 3-left/4-right desktop layout and preserves save payloads', async ({ page }) => {
+test('H33 presents seven human-readable choices in a 4-left/3-right desktop layout and preserves save payloads', async ({ page }) => {
   await installUatApi(page);
   const saves: Array<string | null> = [];
   page.on('request', (request) => {
@@ -81,8 +81,8 @@ test('H33 presents seven human-readable choices in a 3-left/4-right desktop layo
   await expect(page.getByText(/LOCKED\d+/)).toHaveCount(0);
   const columns = page.getByTestId('setup-package-column');
   await expect(columns).toHaveCount(2);
-  await expect(columns.nth(0).getByRole('radio')).toHaveCount(3);
-  await expect(columns.nth(1).getByRole('radio')).toHaveCount(4);
+  await expect(columns.nth(0).getByRole('radio')).toHaveCount(4);
+  await expect(columns.nth(1).getByRole('radio')).toHaveCount(3);
   const leftBox = await columns.nth(0).boundingBox();
   const rightBox = await columns.nth(1).boundingBox();
   expect(rightBox?.x ?? 0).toBeGreaterThan(leftBox?.x ?? 0);

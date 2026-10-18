@@ -8,7 +8,7 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 
 async function captureEvidence(page: import('@playwright/test').Page, filename: string) {
   if (test.info().project.name !== 'chromium') return;
-  const directory = 'docs/reviews/FE-UAT-03/evidence';
+  const directory = test.info().outputPath('FE-UAT-03-evidence');
   mkdirSync(directory, { recursive: true });
   await page.screenshot({ path: `${directory}/${filename}`, fullPage: true });
 }

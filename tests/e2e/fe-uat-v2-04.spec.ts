@@ -4,13 +4,12 @@ import { installUatApi } from '../uat/mock-api';
 import { uatIds } from '../uat/constants';
 import { makeTransaction } from '../uat/fixtures';
 
-const evidenceDirectory = 'docs/reviews/FE-UAT-V2-04/evidence';
-
 test('FE-UAT-V2-04 album operations evidence and server-driven controls', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium');
   test.setTimeout(300_000);
   await page.clock.setFixedTime(new Date('2026-09-27T00:00:00Z'));
   await installUatApi(page);
+  const evidenceDirectory = testInfo.outputPath('FE-UAT-V2-04-evidence');
   let statusGate: { promise: Promise<void>; release: () => void } | null = null;
   await page.route(`**/api/v1/payments/${uatIds.transaction}`, async route => {
     if (statusGate) await statusGate.promise;
