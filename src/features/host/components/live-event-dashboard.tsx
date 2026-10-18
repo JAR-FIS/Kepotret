@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { CircleCheck, CircleX, Clock3 } from 'lucide-react';
+import { CircleCheck, CircleX, Clock3, Images, Share2, FileArchive } from 'lucide-react';
 import { ErrorState } from '@/components/ui/error-state';
 import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -81,10 +81,15 @@ export function LiveEventDashboard({ albumId }: { albumId: string }) {
       <Metric title={t('reveal')} value={overview.reveal_at ? formatTime(overview.reveal_at) : t(`revealState.${overview.reveal_state}`)} />
       <Metric title={t('status')} value={t(`readiness.${overview.readiness}`)} />
     </div>
+    {!isOwner && <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+      <h3 className="text-sm font-semibold">{t('packageSummary')}</h3>
+      <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('packageUnavailable')}</p>
+      <p className="mt-2 text-sm">{overview.quota_total === null ? t('capacityUnavailable') : t('actualCapacity', { count: new Intl.NumberFormat(locale).format(overview.quota_total) })}</p>
+    </div>}
     <nav aria-label={t('actions')} className="flex flex-wrap gap-3">
-      {(isOwner || canModerate) && <Link className="rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.gallery(albumId)}>{t('gallery')}</Link>}
-      <Link className="rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.sharing(albumId)}>{t('sharing')}</Link>
-      {canExport && <Link className="rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.exports(albumId)}>{t('exports')}</Link>}
+      {(isOwner || canModerate) && <Link className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.gallery(albumId)}><Images size={17} aria-hidden="true" />{t('gallery')}</Link>}
+      <Link className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.sharing(albumId)}><Share2 size={17} aria-hidden="true" />{t('sharing')}</Link>
+      {canExport && <Link className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.exports(albumId)}><FileArchive size={17} aria-hidden="true" />{t('exports')}</Link>}
     </nav>
   </section>;
 }

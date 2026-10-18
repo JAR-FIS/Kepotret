@@ -202,8 +202,8 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
 
   if (photoId && !trash) return <section className="space-y-4">
     <Link href={hostRoutes.gallery(albumId)} className="inline-flex min-h-11 items-center gap-2 text-sm underline"><ArrowLeft size={16} aria-hidden="true" />{t('title')}</Link>
-    {detail?.photo_id === photoId ? <article className="mx-auto w-full max-w-5xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-6">
-      <DeliveryImage src={detail.media.url} alt={locale === 'id' ? 'Foto acara' : 'Event photo'} unavailableLabel={t('unavailable')} loading="eager" className="mx-auto max-h-[60vh] w-auto max-w-full rounded" />
+    {detail?.photo_id === photoId ? <article className="mx-auto w-full max-w-3xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
+      <DeliveryImage src={detail.media.url} alt={locale === 'id' ? 'Foto acara' : 'Event photo'} unavailableLabel={t('unavailable')} loading="eager" className="mx-auto max-h-[50vh] w-auto max-w-full rounded" />
       <p className="mt-4 font-medium">{detail.photographer_display_name}</p>
       <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{time(detail.created_at)} · {detail.moderation_status}</p>
       {!isOnline && <p role="status" className="mt-3 text-sm">{t('offline')}</p>}

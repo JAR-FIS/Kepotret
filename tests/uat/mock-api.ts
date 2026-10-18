@@ -86,7 +86,7 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
     const endpoint = albumMatch[1] ?? '';
     const live = scenario === 'live';
     if (!endpoint) {
-      const ready = ['live', 'scheduled', 'ended'].includes(scenario);
+      const ready = ['live', 'scheduled', 'ended', 'collaborator'].includes(scenario);
       const album = makeAlbum(ready ? 'live' : 'draft', scenario === 'collaborator');
       if (scenario === 'scheduled') album.capture_state = 'NOT_STARTED';
       if (scenario === 'ended') album.capture_state = 'CLOSED';
