@@ -74,6 +74,9 @@ test('Owner QR retrieval, explicit link rotation, and QR PDF download use local 
   await expect(page.getByRole('textbox', { name: 'Tautan tamu' })).toHaveValue('https://kepotret.test/j/current-old');
   await expect(page.locator('svg title')).toContainText('Kode QR untuk membuka tautan acara');
   const previousQr = await page.locator('svg:has(title)').innerHTML();
+  await page.getByRole('button', { name: 'Muat ulang tautan' }).click();
+  await expect(page.getByRole('textbox', { name: 'Tautan tamu' })).toHaveValue('https://kepotret.test/j/current-old');
+  expect(requestOrder).toEqual([]);
   await page.getByRole('button', { name: 'Perbarui tautan akses' }).click();
   const rotationDialog = page.getByRole('dialog', { name: 'Perbarui tautan akses' });
   await expect(rotationDialog).toContainText(/tamu yang masuk melalui tautan sebelumnya akan kehilangan akses pada permintaan berikutnya/i);

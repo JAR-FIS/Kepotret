@@ -1,9 +1,40 @@
 import { expect, test } from '@playwright/test';
+import type { AlbumDetail } from '@/lib/api/generated/index.schemas';
 
 const albumId = '11111111-1111-4111-8111-111111111111';
 const jobId = '77777777-7777-4777-8777-777777777777';
 const photoId = '88888888-8888-4888-8888-888888888888';
 const readyJob = { export_job_id: jobId, album_id: albumId, status: 'READY', mode: 'ALL', selected_count: 1, source_export_revision: 1, processed_count: 1, total_count: 1, created_at: '2026-10-01T10:00:00Z', updated_at: '2026-10-01T10:01:00Z', output_expires_at: '2026-10-02T10:01:00Z' };
+const ownerAlbumDetail: AlbumDetail = {
+  album_id: albumId,
+  actor_access: { relationship: 'OWNER', collaborator_permissions: null, permission_version: null },
+  event_name: 'Recovery test',
+  event_location: null,
+  event_category_id: null,
+  timezone: 'Asia/Jakarta',
+  capture_start: '2026-10-01T10:00:00+07:00',
+  capture_end: '2026-10-01T11:00:00+07:00',
+  selected_package_version_id: null,
+  readiness: 'READY',
+  capture_state: 'CLOSED',
+  reveal_state: 'HIDDEN',
+  setup_revision: 1,
+  schedule_version: 1,
+  access_version: 1,
+  export_revision: 1,
+  confirmed_setup_revision: 1,
+  confirmed_schedule_version: 1,
+  confirmed_package_version_id: null,
+  setup_confirmed_at: '2026-09-30T10:00:00Z',
+  guest_count_final: null,
+  quota_total: 30,
+  committed_count: 0,
+};
+
+test.beforeEach(async ({ page }) => {
+  // Export and lifecycle pages read the authorized album timezone through this endpoint.
+  await page.route(`**/api/v1/albums/${albumId}`, route => route.fulfill({ status: 200, json: { data: ownerAlbumDetail } }));
+});
 
 test('H50 and H51 create an ALL export with CSRF, show server progress and request a short-lived download descriptor @release-critical', async ({ page }) => {
   await page.route(`**/api/v1/albums/${albumId}/export-capabilities`, route => route.fulfill({ status: 200, json: { data: { max_photos_per_job: 500, eligible_photo_count: 3, allow_all: true, allow_selected: false } } }));
@@ -33,7 +64,18 @@ test('H50 and H51 create an ALL export with CSRF, show server progress and reque
 test('H55 activation and H56 recovery media remain Owner-projected and support recovery ZIP', async ({ page }) => {
   let active = false;
   let ownerDownloadCalled = false;
+  let albumDetailRequests = 0;
+  const unmockedApiRequests: string[] = [];
   const lifecycle = () => ({ data: { album_id: albumId, retention_state: active ? 'RECOVERY' : 'ACTIVE', server_time: '2026-10-01T10:00:00Z', recovery_access_granted_at: active ? '2026-10-01T10:00:00Z' : null, normal_access_end_at: '2026-10-01T10:00:00Z', recovery_end_at: '2026-10-08T10:00:00Z', backup_cleanup_deadline_at: '2026-10-22T10:00:00Z', can_activate_recovery: !active, can_open_recovery_media: active, can_create_recovery_export: active } });
+  await page.route('**/api/v1/**', async route => {
+    const request = route.request();
+    unmockedApiRequests.push(`${request.method()} ${new URL(request.url()).pathname}`);
+    return route.fulfill({ status: 501, json: { error: { code: 'UNMOCKED_TEST_API' } } });
+  });
+  await page.route(`**/api/v1/albums/${albumId}`, route => {
+    albumDetailRequests += 1;
+    return route.fulfill({ status: 200, json: { data: ownerAlbumDetail } });
+  });
   await page.route(`**/api/v1/albums/${albumId}/lifecycle`, route => route.fulfill({ status: 200, json: lifecycle() }));
   await page.route(`**/api/v1/albums/${albumId}/recovery-access`, async route => {
     expect(route.request().headers()['x-csrf-token']).toBe('test-csrf');
@@ -51,6 +93,7 @@ test('H55 activation and H56 recovery media remain Owner-projected and support r
   await page.route('https://media.test/authorized-download', route => route.fulfill({ status: 200, body: 'authorized photo download' }));
   await page.route('https://media.test/photo', route => route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/V7sAAAAASUVORK5CYII=', 'base64') }));
   await page.route(`**/api/v1/albums/${albumId}/exports`, route => route.fulfill({ status: 201, json: { data: { export_job_id: jobId, album_id: albumId, status: 'QUEUED', mode: 'ALL', selected_count: 1, source_export_revision: 1, processed_count: 0, total_count: 1, created_at: '2026-10-01T10:00:00Z', updated_at: '2026-10-01T10:00:00Z', output_expires_at: null } } }));
+  await page.route(`**/api/v1/exports/${jobId}`, route => route.fulfill({ status: 200, json: { data: { ...readyJob, status: 'QUEUED', processed_count: 0, output_expires_at: null } } }));
 
   await page.goto(`/album/${albumId}/pemulihan`);
   await page.getByRole('button', { name: 'Aktifkan pemulihan' }).click();
@@ -58,7 +101,10 @@ test('H55 activation and H56 recovery media remain Owner-projected and support r
   await expect(page.getByRole('dialog')).toContainText('D+30');
   await page.getByRole('dialog').getByRole('button', { name: 'Aktifkan pemulihan' }).click();
   await expect(page.getByRole('link', { name: 'Buka media pemulihan' })).toBeVisible();
+  const recoveryPhotosResponse = page.waitForResponse(response => response.url().includes(`/api/v1/albums/${albumId}/recovery/photos`));
   await page.getByRole('link', { name: 'Buka media pemulihan' }).click();
+  await expect(page).toHaveURL(`/album/${albumId}/pemulihan/media`);
+  expect((await recoveryPhotosResponse).status()).toBe(200);
   await expect(page.getByText('Rani')).toBeVisible();
   await expect(page.locator('img[alt="Foto pemulihan oleh Rani"]')).toHaveAttribute('src', 'https://media.test/photo');
   await page.getByRole('button', { name: 'Buat ZIP pemulihan' }).click();
@@ -67,6 +113,8 @@ test('H55 activation and H56 recovery media remain Owner-projected and support r
   await page.getByRole('button', { name: 'Unduh media' }).click();
   await expect(page).toHaveURL('https://media.test/authorized-download');
   expect(ownerDownloadCalled).toBe(true);
+  expect(albumDetailRequests).toBeGreaterThan(0);
+  expect(unmockedApiRequests).toEqual([]);
 });
 
 test('SELECTED export retry reuses a UUIDv7 only for the identical canonical photo set', async ({ page }) => {
@@ -84,6 +132,7 @@ test('SELECTED export retry reuses a UUIDv7 only for the identical canonical pho
     attempts.push({ key: route.request().headers()['idempotency-key'] ?? '', ids: route.request().postDataJSON().photo_ids });
     return attempts.length < 3 ? route.fulfill({ status: 503, json: { error: { code: 'TEMPORARY_UNAVAILABLE' } } }) : route.fulfill({ status: 201, json: { data: { export_job_id: jobId, album_id: albumId, status: 'QUEUED', mode: 'SELECTED', selected_count: 2, source_export_revision: 1, processed_count: 0, total_count: 2, created_at: '2026-10-01T10:00:00Z', updated_at: '2026-10-01T10:00:00Z', output_expires_at: null } } });
   });
+  await page.route(`**/api/v1/exports/${jobId}`, route => route.fulfill({ status: 200, json: { data: { ...readyJob, status: 'QUEUED', mode: 'SELECTED', selected_count: 2, processed_count: 0, total_count: 2, output_expires_at: null } } }));
 
   await page.goto(`/album/${albumId}/ekspor`);
   await page.getByRole('radio', { name: 'Pilih foto' }).check();
