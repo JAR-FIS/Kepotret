@@ -43,7 +43,7 @@ const eventImage = (filename: string, idAlt: string, enAlt: string, objectPositi
 
 const heroPhotos = [
   {
-    ...eventImage('wedding-02.jpg', 'Pasangan pengantin berfoto bersama keluarga dan tamu', 'A newlywed couple poses with family and guests', '50% 70%'),
+    ...eventImage('wedding-03.jpg', 'Pengantin wanita mengenakan busana putih bersama pasangannya', 'A bride in white stands with her partner', '65% 57%'),
     frameClass: 'left-[0%] top-[9%] z-0 w-[54%] aspect-[4/3] -rotate-2',
     sizes: '(max-width: 639px) 52vw, (max-width: 1023px) min(54vw, 335px), 330px',
     preload: true,
@@ -79,7 +79,7 @@ const useCasePhotos: MarketingImage[] = [
 
 function Hero({ locale, copy }: { locale: Locale; copy: Copy }) {
   const proofIcons = [ImageIcon, UsersRound];
-  return <section className="mx-auto grid max-w-[1240px] items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.94fr_1.06fr] lg:gap-8 lg:py-24">
+  return <section className="mx-auto grid max-w-[1240px] items-center gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[0.94fr_1.06fr] lg:gap-8 lg:py-24">
     <div className="h01-reveal relative z-10">
       <p className="mb-5 inline-flex rounded-full border border-[var(--color-border)] px-3 py-2 text-[11px] font-bold tracking-[0.08em]">{copy.hero.eyebrow}</p>
       <H01HeroHeadline title={copy.hero.title} firstLine={copy.hero.titleFirstLine} secondLine={copy.hero.titleSecondLine} />
@@ -119,7 +119,7 @@ function HeroVisual({ locale, copy }: { locale: Locale; copy: Copy }) {
 
 function HowSection({ copy }: { copy: Copy }) {
   return <section id="cara-kerja" className="scroll-mt-20 bg-[#0a0a0a] text-white dark:bg-[#181818]">
-    <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-20 sm:px-6 sm:py-24 lg:py-28">
+    <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-24 sm:px-6 sm:py-28 lg:py-32">
       <SectionIntro eyebrow={copy.how.eyebrow} title={<>{copy.how.titleLead} <span className="text-[var(--color-primary)]">{copy.how.titleAccent}</span></>} description={copy.how.description} dark />
       <ol className="mt-12 grid gap-7 md:grid-cols-3 md:gap-9">
         {copy.how.steps.map((step, index) => <li key={step.title} className="relative border-t border-white/25 pt-6 md:pt-7">
@@ -142,7 +142,7 @@ function BenefitsSection({ locale, copy }: { locale: Locale; copy: Copy }) {
     eventImage('komunitas-01.jpg', 'Anggota komunitas mengabadikan kebersamaan', 'Community members capture a moment together'),
   ];
   return <section className="dark:bg-[#0a0a0a]">
-    <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-20 sm:px-6 sm:py-24 lg:py-28">
+    <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-24 sm:px-6 sm:py-28 lg:py-32">
       <SectionIntro eyebrow={copy.benefits.eyebrow} title={copy.benefits.title} description={copy.benefits.description} />
       <div className="mt-12 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-12">
         <div className="relative flex min-h-[340px] items-end overflow-hidden rounded-[24px] bg-[#222] p-5 sm:min-h-[400px] sm:p-8">
@@ -186,7 +186,7 @@ function DifferentiationSection({ copy }: { copy: Copy }) {
 
 function UseCasesSection({ locale, copy }: { locale: Locale; copy: Copy }) {
   return <section className="dark:bg-[#0a0a0a]">
-    <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-20 sm:px-6 sm:py-24 lg:py-28">
+    <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-24 sm:px-6 sm:py-28 lg:py-32">
       <div className="grid gap-7 md:grid-cols-[0.9fr_1.1fr] md:items-end md:gap-12"><SectionIntro eyebrow={copy.useCases.eyebrow} title={copy.useCases.title} /><p className="max-w-2xl text-sm leading-7 text-[var(--color-muted-foreground)] md:justify-self-end">{copy.useCases.description}</p></div>
       <ul tabIndex={0} aria-label={copy.useCases.title} className="mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-4 focus-visible:rounded-xl lg:grid lg:grid-cols-6 lg:gap-4 lg:overflow-visible lg:pb-0">
         {copy.useCases.items.map((item, index) => { const photo = useCasePhotos[index]!; return <li key={item.title} className="w-[76vw] max-w-[310px] shrink-0 snap-start sm:w-[44vw] md:w-[30vw] lg:w-auto lg:max-w-none">
@@ -203,7 +203,7 @@ function UseCasesSection({ locale, copy }: { locale: Locale; copy: Copy }) {
 function GuestSection({ copy }: { copy: Copy }) {
   const icons = [QrCode, UserRound, Camera, Aperture];
   return <section className="bg-[#0a0a0a] text-white dark:bg-[#181818]">
-    <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-20 sm:px-6 sm:py-24 lg:py-28">
+    <div className="h01-reveal mx-auto max-w-[1240px] px-4 py-24 sm:px-6 sm:py-28 lg:py-32">
       <SectionIntro eyebrow={copy.guest.eyebrow} title={copy.guest.title} description={copy.guest.description} dark />
       <ol className="mt-12 grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-8 lg:grid-cols-4 lg:gap-7">
         {copy.guest.steps.map((item, index) => { const Icon = icons[index]!; return <li key={item.title} className="min-w-0 text-center">
@@ -211,11 +211,11 @@ function GuestSection({ copy }: { copy: Copy }) {
           <div aria-hidden="true" className="mx-auto flex h-[210px] w-[min(100%,150px)] items-center justify-center rounded-[28px] border-[5px] border-[#171717] bg-white p-2 shadow-[0_18px_38px_rgb(0_0_0_/_25%)] sm:h-[250px] sm:w-[168px]">
             <div className="relative flex h-full w-full flex-col items-center overflow-hidden rounded-[20px] bg-[#f7f7f5] p-3 text-[#0a0a0a]">
               <span className="mt-1 block h-1.5 w-10 rounded-full bg-[#0a0a0a]" />
-              <div className="relative mt-5 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+              <div className="relative mt-5 flex w-full flex-1 flex-col items-center justify-center gap-3 text-center">
                 {index === 0 && <><QrCode size={66} strokeWidth={1.5} /><span className="h-2 w-20 rounded-full bg-[#d9d9d9]" /></>}
                 {index === 1 && <><span className="text-[10px] font-semibold">{copy.guest.steps[1].title}</span><span className="h-8 w-full rounded-lg border border-[#d9d9d9] bg-white" /><span className="h-7 w-full rounded-full bg-[#d8ff3d]" /></>}
                 {index === 2 && <><div className="flex h-24 w-20 items-center justify-center rounded-2xl bg-[#0a0a0a]"><Camera size={34} className="text-white" /></div><span className="h-8 w-8 rounded-full border-4 border-[#d8ff3d]" /></>}
-                {index === 3 && <><Image src="/media/marketing/events/komunitas-02.jpg" alt="" fill sizes="140px" className="object-cover" /><span className="absolute inset-x-2 bottom-2 rounded-full bg-[#d8ff3d] px-2 py-1 text-[9px] font-bold">{copy.guest.steps[3].title}</span></>}
+                {index === 3 && <><div className="absolute inset-x-2 bottom-11 top-8 overflow-hidden rounded-lg"><Image src="/media/marketing/events/komunitas-02.jpg" alt="" fill sizes="140px" className="object-cover" /></div><span data-testid="h01-fourth-phone-label" className="absolute inset-x-1 bottom-2 block min-h-7 rounded-lg bg-[#d8ff3d] px-1 py-1 text-center text-[9px] font-bold leading-tight whitespace-normal break-words">{copy.guest.steps[3].title}</span></>}
               </div>
               <Icon size={17} className="mb-1 mt-2 text-[#6b6b6b]" />
             </div>
@@ -232,7 +232,7 @@ function GuestSection({ copy }: { copy: Copy }) {
 
 function PricingSection({ locale, copy }: { locale: Locale; copy: Copy }) {
   return <section id="harga" className="scroll-mt-20 dark:bg-[#0a0a0a]">
-    <div className="h01-reveal mx-auto grid max-w-[1240px] gap-9 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-14 lg:py-28">
+    <div className="h01-reveal mx-auto grid max-w-[1240px] gap-9 px-4 py-24 sm:px-6 sm:py-28 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-14 lg:py-32">
       <SectionIntro eyebrow={copy.pricing.eyebrow} title={copy.pricing.title} description={copy.pricing.description} />
       <PricingSelector locale={locale} />
     </div>
@@ -242,7 +242,7 @@ function PricingSection({ locale, copy }: { locale: Locale; copy: Copy }) {
 function TrustSection({ copy }: { copy: Copy }) {
   const icons = [LockKeyhole, ShieldCheck, Clock3];
   return <section className="bg-[var(--color-surface-muted)] dark:bg-[#181818]">
-    <div className="h01-reveal mx-auto grid max-w-[1240px] gap-9 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:gap-14 lg:py-28">
+    <div className="h01-reveal mx-auto grid max-w-[1240px] gap-9 px-4 py-24 sm:px-6 sm:py-28 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:gap-14 lg:py-32">
       <div><SectionIntro eyebrow={copy.trust.eyebrow} title={copy.trust.title} description={copy.trust.description} /><Link href="/keamanan" className="mt-7 inline-flex min-h-11 items-center gap-2 font-semibold underline underline-offset-4">{copy.trust.cta}<ArrowRight size={16} aria-hidden="true" /></Link></div>
       <ul className="grid gap-5 sm:grid-cols-3">
         {copy.trust.items.map((item, index) => { const Icon = icons[index]!; return <li key={item.title} className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5"><Icon size={20} aria-hidden="true" /><h3 className="mt-4 font-[family-name:var(--font-display)] font-bold">{item.title}</h3><p className="mt-2 text-sm leading-7 text-[var(--color-muted-foreground)]">{item.description}</p></li>; })}
@@ -253,7 +253,7 @@ function TrustSection({ copy }: { copy: Copy }) {
 
 function FaqSection({ copy }: { copy: Copy }) {
   return <section id="faq" className="scroll-mt-20 dark:bg-[#0a0a0a]">
-    <div className="h01-reveal mx-auto grid max-w-[1240px] gap-9 px-4 py-20 sm:px-6 sm:py-24 md:grid-cols-[0.7fr_1.3fr] md:gap-14 lg:py-28">
+    <div className="h01-reveal mx-auto grid max-w-[1240px] gap-9 px-4 py-24 sm:px-6 sm:py-28 md:grid-cols-[0.7fr_1.3fr] md:gap-14 lg:py-32">
       <SectionIntro eyebrow={copy.faq.eyebrow} title={copy.faq.title} description={copy.faq.description} />
       <H01FaqAccordion items={copy.faq.items} />
     </div>
@@ -262,7 +262,7 @@ function FaqSection({ copy }: { copy: Copy }) {
 
 function FinalCta({ copy }: { copy: Copy }) {
   return <section className="bg-[#0a0a0a] text-white dark:bg-[#181818]">
-    <div className="h01-reveal mx-auto grid max-w-[1240px] items-center gap-8 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.8fr_1.2fr_auto] lg:gap-10 lg:py-24">
+    <div className="h01-reveal mx-auto grid max-w-[1240px] items-center gap-8 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[0.8fr_1.2fr_auto] lg:gap-10 lg:py-24">
       <div className="relative mx-auto h-[180px] w-full max-w-[420px] sm:h-[220px]" aria-hidden="true">
         <div className="absolute left-[6%] top-[18%] h-[68%] w-[37%] -rotate-6 overflow-hidden rounded-[20px] border-4 border-white shadow-xl"><Image src="/media/marketing/events/wedding-02.jpg" alt="" fill sizes="(max-width: 767px) 37vw, 155px" className="object-cover" /></div>
         <div className="absolute left-[32%] top-[5%] z-10 h-[86%] w-[34%] rotate-2 overflow-hidden rounded-[22px] border-4 border-white shadow-xl"><Image src="/media/marketing/events/komunitas-02.jpg" alt="" fill sizes="(max-width: 767px) 34vw, 145px" className="object-cover" /></div>

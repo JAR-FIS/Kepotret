@@ -41,7 +41,7 @@ export function EventBasics({ albumId }: { albumId: string }) {
       setCategoryId(album.event_category_id ?? '');
       setTimezone(album.timezone);
       setTimezoneLocked(album.confirmed_setup_revision !== null);
-      setCategories(categoryResult.data.data);
+      setCategories(categoryResult.data.data.filter((category) => category.active));
       setState('ready');
     }).catch(() => { if (active) setState('error'); });
     return () => { active = false; };
@@ -49,7 +49,7 @@ export function EventBasics({ albumId }: { albumId: string }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending || revision === null || !eventName.trim() || !eventLocation.trim() || !categoryId || !timezone.trim()) return;
+    if (pending || revision === null || !eventName.trim() || !eventLocation.trim() || !categories.some((category) => category.category_id === categoryId) || !timezone.trim()) return;
     try { new Intl.DateTimeFormat(locale, { timeZone: timezone }).format(); }
     catch { setMessage('invalid'); return; }
     setPending(true);
@@ -102,6 +102,6 @@ export function EventBasics({ albumId }: { albumId: string }) {
     </fieldset>
     <div className="mt-5"><TimezonePicker id="event-timezone" label={t('timezone')} value={timezone} onChange={setTimezone} disabled={timezoneLocked} placeholder="Asia/Jakarta" help={timezoneLocked ? t('timezoneLocked') : t('timezoneHelp')} /></div>
     {message && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t(message)}{message === 'conflict' && <> <button type="button" onClick={() => { setMessage(null); setState('loading'); setAttempt((value) => value + 1); }} className="font-semibold underline">{t('reload')}</button></>}</p>}
-    <Button type="submit" loading={pending} disabled={!eventName.trim() || !eventLocation.trim() || !categoryId || !timezone.trim() || revision === null || categories.length === 0} className="mt-6 rounded-full font-bold">{t('save')}</Button>
+    <Button type="submit" loading={pending} disabled={!eventName.trim() || !eventLocation.trim() || !categories.some((category) => category.category_id === categoryId) || !timezone.trim() || revision === null} className="mt-6 rounded-full font-bold">{t('save')}</Button>
   </form>;
 }

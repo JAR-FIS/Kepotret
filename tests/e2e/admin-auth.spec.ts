@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { installUatApi } from '../uat/mock-api';
 
 test('FE-8 H20 uses the dedicated Admin CSRF and sends a valid password challenge to H21 @cross-browser', async ({ page }) => {
   const csrfCalls: string[] = [];
@@ -40,4 +41,45 @@ test('FE-8 Admin workspace authorizes from AdminSession, not ordinary User auth 
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: /operations overview|ringkasan operasional/i })).toBeVisible();
   expect(ordinarySessionCalls).toBe(0);
+});
+
+test('H21 synthetic UAT MFA field accepts typed digits and exposes rejected characters', async ({ page }) => {
+  await installUatApi(page);
+  let verifyCalls = 0;
+  page.on('request', (request) => { if (request.url().endsWith('/admin/auth/mfa/verify')) verifyCalls += 1; });
+  await page.goto('/admin/mfa');
+  const code = page.getByRole('textbox', { name: /authentication code|kode autentikasi/i });
+  await expect(code).toHaveAttribute('inputmode', 'numeric');
+  await code.focus();
+  await expect(code).toBeFocused();
+  await code.pressSequentially('123456');
+  await expect(code).toHaveValue('123456');
+  expect(verifyCalls).toBe(0);
+  await code.fill('letters');
+  await expect(code).toHaveValue('');
+  await expect(page.getByRole('status')).toContainText(/digits|angka/i);
+  await code.fill('123456');
+  await page.getByRole('button', { name: /verify and sign in|verifikasi dan masuk/i }).click();
+  await expect(page).toHaveURL(/\/admin\/masuk$/);
+  expect(verifyCalls).toBe(1);
+
+  await page.getByLabel(/email/i).fill('superadmin@kepotret.test');
+  await page.locator('input[name="password"]').fill('wrong-synthetic-password');
+  await page.getByRole('button', { name: /continue to mfa|lanjutkan ke verifikasi mfa/i }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/masuk$/);
+  await page.locator('input[name="password"]').fill('synthetic-uat-password');
+  await page.getByRole('button', { name: /continue to mfa|lanjutkan ke verifikasi mfa/i }).click();
+  await expect(page).toHaveURL(/\/admin\/mfa$/);
+  const challengedCode = page.getByRole('textbox', { name: /authentication code|kode autentikasi/i });
+  await challengedCode.fill('000000');
+  await page.getByRole('button', { name: /verify and sign in|verifikasi dan masuk/i }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(challengedCode).toHaveValue('');
+  await challengedCode.focus();
+  await page.keyboard.insertText('123 456');
+  await expect(challengedCode).toHaveValue('123456');
+  await page.getByRole('button', { name: /verify and sign in|verifikasi dan masuk/i }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  expect(verifyCalls).toBe(3);
 });
