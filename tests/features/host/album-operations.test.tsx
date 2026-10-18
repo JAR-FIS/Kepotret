@@ -21,7 +21,7 @@ vi.mock('@/lib/api/browser', () => ({
 }));
 vi.mock('@/hooks/use-connectivity', () => ({ useConnectivity: () => true }));
 
-import { LifecyclePage, PaymentHistoryPage, RecoveryMediaPage, UpgradePage } from '@/features/host/components/fe6-pages';
+import { LifecyclePage, PaymentHistoryPage, PaymentStatusPage, RecoveryMediaPage, UpgradePage } from '@/features/host/components/fe6-pages';
 import { LiveEventDashboard } from '@/features/host/components/live-event-dashboard';
 import idMessages from '@/messages/id.json';
 import enMessages from '@/messages/en.json';
@@ -101,6 +101,30 @@ describe('FE-UAT-V2-04 album operations', () => {
     expect(await screen.findByRole('heading', { name: expected })).toBeInTheDocument();
   });
 
+  it.each([
+    ['id', 'Menunggu konfirmasi pembayaran', 'Memeriksa status terbaru dari server'],
+    ['en', 'Waiting for payment confirmation', 'Checking the latest server status'],
+  ] as const)('keeps a truthful, localized H38 hourglass visible while pending (%s)', async (locale, waiting, verifying) => {
+    api.getPayment.mockResolvedValue({ status: 200, data: { data: transaction } });
+    renderHost(<PaymentStatusPage albumId={uatIds.album} transactionId={uatIds.transaction} />, locale);
+
+    await screen.findByText(waiting);
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent(waiting);
+    expect(status.querySelector('svg.lucide-hourglass')).toBeInTheDocument();
+    expect(status).not.toHaveTextContent(verifying);
+    expect(status).toHaveTextContent(locale === 'id' ? 'Pembayaran masih menunggu konfirmasi.' : 'Payment is pending and awaiting confirmation.');
+  });
+
+  it.each(['SUCCESS', 'FAILURE', 'EXPIRED'] as const)('hides H38 pending feedback for terminal %s status', async status => {
+    api.getPayment.mockResolvedValue({ status: 200, data: { data: { ...transaction, status } } });
+    renderHost(<PaymentStatusPage albumId={uatIds.album} transactionId={uatIds.transaction} />);
+
+    expect(await screen.findByText({ PENDING: 'Menunggu pembayaran', SUCCESS: 'Pembayaran berhasil', FAILURE: 'Pembayaran gagal', EXPIRED: 'Pembayaran kedaluwarsa' }[status])).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+    expect(document.querySelector('svg.lucide-hourglass')).not.toBeInTheDocument();
+  });
+
   it('renders eligible upgrades immediately while the full catalog is pending, then shows all published tiers', async () => {
     const pending = deferred<{ status: number; data: { data: typeof uatPackages } }>();
     api.getPackages.mockReturnValue(pending.promise);
@@ -111,7 +135,8 @@ describe('FE-UAT-V2-04 album operations', () => {
     expect(screen.getByText(/Katalog paket belum tersedia/)).toBeInTheDocument();
     await act(async () => { pending.resolve({ status: 200, data: { data: uatPackages } }); });
 
-    expect(screen.getAllByRole('heading', { name: /^LOCKED \d/ })).toHaveLength(6);
+    expect(screen.getAllByRole('heading', { name: /^Paket .* Foto$/ })).toHaveLength(6);
+    expect(screen.queryByText('LOCKED250')).not.toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Pilih paket' })).toHaveLength(1);
     expect(screen.getByText('Kapasitas album saat ini')).toBeInTheDocument();
     expect(screen.getByText('Kapasitas lebih rendah tidak dapat dipilih.')).toBeInTheDocument();
@@ -160,7 +185,7 @@ describe('FE-UAT-V2-04 album operations', () => {
     view.rerender(<NextIntlClientProvider locale="id" messages={idMessages}><UpgradePage albumId={otherId} /></NextIntlClientProvider>);
     await waitFor(() => expect(api.getOptions).toHaveBeenCalledWith(otherId));
     await act(async () => { pending.resolve({ status: 200, data: { data: uatPackages } }); });
-    expect(screen.queryByRole('heading', { name: 'LOCKED 100' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Paket 100 Foto' })).not.toBeInTheDocument();
   });
 
   it('shows the lifecycle projection as a semantic, scrollable, zone-aware table', async () => {

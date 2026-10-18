@@ -57,7 +57,7 @@ test('FE-UAT-V2-04 album operations evidence and server-driven controls', async 
       if (key === 'h38') {
         const verifying = page.getByRole('status');
         await expect(verifying).toBeVisible();
-        await expect(verifying).toContainText(id ? 'Memeriksa status terbaru dari server' : 'Checking the latest server status');
+        await expect(verifying.locator('span[aria-hidden="true"]')).toContainText(id ? 'Memeriksa status terbaru dari server' : 'Checking the latest server status');
         await expect(verifying.locator('svg.lucide-hourglass')).toBeVisible();
         await expect(page.getByText(id ? 'Pembayaran berhasil' : 'Payment successful')).toHaveCount(0);
       }
@@ -86,7 +86,8 @@ test('FE-UAT-V2-04 album operations evidence and server-driven controls', async 
         await expect(badge).toHaveClass(/bg-amber-100/);
       }
       if (key === 'h49') {
-        await expect(page.getByRole('heading', { name: /^LOCKED \d/ })).toHaveCount(6);
+        await expect(page.getByRole('heading', { name: /^Paket .* Foto$/ })).toHaveCount(6);
+        await expect(page.getByText(/LOCKED\d+/)).toHaveCount(0);
         await expect(page.getByText(id ? 'Kapasitas album saat ini' : 'Current album capacity')).toBeVisible();
         await expect(page.getByRole('link', { name: id ? 'Pilih paket' : 'Choose package' })).toHaveCount(5);
       }
@@ -97,7 +98,13 @@ test('FE-UAT-V2-04 album operations evidence and server-driven controls', async 
         await expect(page.getByRole('region', { name: id ? 'Linimasa retensi dan pemulihan' : 'Retention and recovery timeline' })).toHaveAttribute('tabindex', '0');
       }
       if (key === 'h56') {
-        await expect(page.getByRole('button', { name: id ? 'Buat ZIP pemulihan' : 'Create recovery ZIP' })).toBeVisible();
+        const zip = page.getByRole('button', { name: id ? 'Buat ZIP pemulihan' : 'Create recovery ZIP' });
+        const badge = page.getByRole('status').first();
+        await expect(zip).toBeVisible();
+        const zipBox = await zip.boundingBox();
+        const badgeBox = await badge.boundingBox();
+        if (view.width > 640) expect(zipBox?.x ?? 0).toBeGreaterThan((badgeBox?.x ?? 0) + (badgeBox?.width ?? 0));
+        else expect(zipBox?.y ?? 0).toBeGreaterThan((badgeBox?.y ?? 0) + (badgeBox?.height ?? 0));
         await expect(page.getByRole('button', { name: id ? 'Unduh media' : 'Download media' }).locator('svg.lucide-download')).toBeVisible();
       }
       if (key === 'h62') {

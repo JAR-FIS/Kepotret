@@ -10,6 +10,8 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { getApiV1AlbumsAlbumId, getApiV1Packages, getApiV1SecurityCsrf, putApiV1AlbumsAlbumIdSetupPackage } from '@/lib/api/browser';
 import type { PackageOption } from '@/lib/api/generated/index.schemas';
 
+type PackageChoice = { kind: 'free' } | { kind: 'paid'; option: PackageOption };
+
 export function PackageOptions({ albumId }: { albumId: string }) {
   const t = useTranslations('host.packages');
   const shared = useTranslations('host');
@@ -21,6 +23,22 @@ export function PackageOptions({ albumId }: { albumId: string }) {
   const [message, setMessage] = useState<'saved' | 'conflict' | 'validation' | 'error' | null>(null);
   const [pending, setPending] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const choices: PackageChoice[] = [{ kind: 'free' }, ...packages.map((option) => ({ kind: 'paid' as const, option }))];
+  const splitIndex = choices.length > 1 ? Math.floor(choices.length / 2) : choices.length;
+  const columns = [choices.slice(0, splitIndex), choices.slice(splitIndex)].filter((column) => column.length > 0);
+
+  function renderChoice(choice: PackageChoice) {
+    if (choice.kind === 'free') return <label key="free" className={`flex cursor-pointer gap-3 rounded-[var(--radius-md)] border p-4 ${selectedPackage === null ? 'border-[var(--color-primary)] bg-[var(--color-muted)]' : 'border-[var(--color-border)]'}`}>
+      <input type="radio" name="setup-package" value="FREE30" checked={selectedPackage === null} onChange={() => setSelectedPackage(null)} />
+      <span><span className="block font-semibold">{t('freeTitle')}</span><span className="mt-1 block text-sm text-[var(--color-muted-foreground)]">{t('freeDescription')}</span></span>
+    </label>;
+
+    const { option } = choice;
+    return <label key={option.package_version_id} className={`flex cursor-pointer gap-3 rounded-[var(--radius-md)] border p-4 ${selectedPackage === option.package_version_id ? 'border-[var(--color-primary)] bg-[var(--color-muted)]' : 'border-[var(--color-border)]'}`}>
+      <input type="radio" name="setup-package" value={option.package_version_id} checked={selectedPackage === option.package_version_id} onChange={() => setSelectedPackage(option.package_version_id)} />
+      <span className="min-w-0"><span className="block font-semibold">{option.name}</span><span className="mt-1 block text-sm">{new Intl.NumberFormat(locale, { style: 'currency', currency: option.currency }).format(option.price_amount)} · {t('quota', { count: new Intl.NumberFormat(locale).format(option.quota_total) })}</span></span>
+    </label>;
+  }
 
   useEffect(() => {
     let active = true;
@@ -72,16 +90,9 @@ export function PackageOptions({ albumId }: { albumId: string }) {
   return <form onSubmit={submit} className="max-w-3xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
     <h2 className="font-semibold">{t('title')}</h2>
     <p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p>
-    <fieldset className="mt-5 space-y-3">
+    <fieldset className="mt-5 grid gap-3 lg:grid-cols-2 lg:gap-x-5">
       <legend className="sr-only">{t('choose')}</legend>
-      <label className={`flex cursor-pointer gap-3 rounded-[var(--radius-md)] border p-4 ${selectedPackage === null ? 'border-[var(--color-primary)] bg-[var(--color-muted)]' : 'border-[var(--color-border)]'}`}>
-        <input type="radio" name="setup-package" value="FREE30" checked={selectedPackage === null} onChange={() => setSelectedPackage(null)} />
-        <span><span className="block font-semibold">{t('freeTitle')}</span><span className="mt-1 block text-sm text-[var(--color-muted-foreground)]">{t('freeDescription')}</span></span>
-      </label>
-      {packages.map((option) => <label key={option.package_version_id} className={`flex cursor-pointer gap-3 rounded-[var(--radius-md)] border p-4 ${selectedPackage === option.package_version_id ? 'border-[var(--color-primary)] bg-[var(--color-muted)]' : 'border-[var(--color-border)]'}`}>
-        <input type="radio" name="setup-package" value={option.package_version_id} checked={selectedPackage === option.package_version_id} onChange={() => setSelectedPackage(option.package_version_id)} />
-        <span className="min-w-0"><span className="block font-semibold">{option.name} <span className="font-normal text-[var(--color-muted-foreground)]">({option.code})</span></span><span className="mt-1 block text-sm">{new Intl.NumberFormat(locale, { style: 'currency', currency: option.currency }).format(option.price_amount)} · {t('quota', { count: option.quota_total })}</span></span>
-      </label>)}
+      {columns.map((column, index) => <div key={index} data-testid="setup-package-column" className="space-y-3">{column.map(renderChoice)}</div>)}
     </fieldset>
     <p className="mt-4 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('selectionIsDraft')}</p>
     {message && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t(message)}{message === 'conflict' && <> <button type="button" onClick={() => { setMessage(null); setState('loading'); setAttempt((value) => value + 1); }} className="font-semibold underline">{t('reload')}</button></>}</p>}

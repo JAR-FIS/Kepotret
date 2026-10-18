@@ -44,6 +44,7 @@ test('FE-UAT-V2-03 synthetic visual evidence covers approved routes and responsi
         await expect(page.locator('img[src*="wedding-03.jpg"]')).toHaveCount(1);
         const phoneLabel = page.getByTestId('h01-fourth-phone-label');
         await expect(phoneLabel).toBeVisible();
+        await expect(phoneLabel).toHaveText(view.locale === 'id' ? 'Siap & Motret' : 'Ready to shoot');
         const labelWidth = await phoneLabel.evaluate((element) => ({ scroll: element.scrollWidth, client: element.clientWidth }));
         expect(labelWidth.scroll, view.name).toBeLessThanOrEqual(labelWidth.client + 1);
         for (const visual of await page.locator('img[src*="/media/marketing/"]').all()) {
@@ -61,7 +62,10 @@ test('FE-UAT-V2-03 synthetic visual evidence covers approved routes and responsi
         expect(Math.abs((buttonBox?.width ?? 0) - (parentBox?.width ?? 0))).toBeLessThan(2);
       }
       if (route === 'h21') await expect(page.getByRole('textbox', { name: /kode autentikasi|authentication code/i })).toBeEnabled();
-      if (route === 'h27') await expect(page.getByText(/LOCKED 100/)).toBeVisible();
+      if (route === 'h27') {
+        await expect(page.getByText('Paket 100 Foto')).toBeVisible();
+        await expect(page.getByText('LOCKED100')).toHaveCount(0);
+      }
       if (route === 'h28') await expect(page.getByRole('radio')).toHaveCount(5);
       if (route === 'h33') await expect(page.getByRole('radio')).toHaveCount(7);
       const width = await page.evaluate(() => ({ document: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth }));

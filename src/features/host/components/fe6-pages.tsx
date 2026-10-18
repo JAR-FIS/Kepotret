@@ -147,7 +147,7 @@ export function UpgradePage({ albumId }: { albumId: string }) {
     <div className="grid gap-4 md:grid-cols-2">{choices.map((option) => {
       const eligible = data.can_create_checkout && !data.active_checkout && eligibleIds.has(option.package_version_id);
       const reason = option.quota_total === data.current_quota_total ? t('currentTier') : option.quota_total < data.current_quota_total ? t('lowerTier') : data.checkout_block_reason ? t(`blockReason.${data.checkout_block_reason}`) : t('notEligible');
-      return <Card key={option.package_version_id}><h3 className="font-semibold">{option.name}</h3><p className="text-xs text-[var(--color-muted-foreground)]">{option.code}</p><p className="mt-2">{t('quota')}: {option.quota_total.toLocaleString(locale)}</p><p className="mt-2 text-xl font-bold">{money(option.price_amount, locale, option.currency)}</p>{eligible ? <Link className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[var(--color-primary)] px-4 font-bold text-[var(--color-primary-foreground)]" href={hostRoutes.checkout(albumId, option.package_version_id)}>{t('selectUpgrade')}</Link> : <p className="mt-4 text-sm text-[var(--color-muted-foreground)]">{reason}</p>}</Card>;
+      return <Card key={option.package_version_id}><h3 className="font-semibold">{option.name}</h3><p className="mt-2">{t('quota')}: {option.quota_total.toLocaleString(locale)}</p><p className="mt-2 text-xl font-bold">{money(option.price_amount, locale, option.currency)}</p>{eligible ? <Link className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[var(--color-primary)] px-4 font-bold text-[var(--color-primary-foreground)]" href={hostRoutes.checkout(albumId, option.package_version_id)}>{t('selectUpgrade')}</Link> : <p className="mt-4 text-sm text-[var(--color-muted-foreground)]">{reason}</p>}</Card>;
     })}</div>
     {!data.options.length && <p>{t('noUpgrade')}</p>}
     {!choices.length && published && <p>{t('noPackages')}</p>}
@@ -157,8 +157,9 @@ export function UpgradePage({ albumId }: { albumId: string }) {
 export function PaymentStatusPage({ albumId, transactionId }: { albumId: string; transactionId: string }) {
   const t = useTranslations('host.commerce'); const locale=useLocale(); const [payment, setPayment] = useState<PaymentTransaction | null>(null); const [state, setState] = useState<LoadState>('ready'); const [quota, setQuota] = useState<number | null>(null); const [attempt, setAttempt] = useState(0); const [checking, setChecking] = useState(true);
   const timeZone = useAlbumTimezone(albumId);
-  const refresh = useCallback(async (): Promise<'pending' | 'stop' | 'retry' | 'slow-retry'> => {
+  const refresh = useCallback(async (isCurrent: () => boolean): Promise<'pending' | 'stop' | 'retry' | 'slow-retry'> => {
     const r = await getApiV1PaymentsTransactionId(transactionId);
+    if (!isCurrent()) return 'stop';
     setState(statusState(r.status));
     if (r.status === 200) {
       if (r.data.data.album_id !== albumId) { setState('error'); return 'stop'; }
@@ -166,7 +167,7 @@ export function PaymentStatusPage({ albumId, transactionId }: { albumId: string;
       if (r.data.data.status === 'SUCCESS') {
         try {
           const e = await getApiV1AlbumsAlbumIdEntitlement(albumId);
-          if (e.status === 200) setQuota(e.data.data.quota_total);
+          if (isCurrent() && e.status === 200) setQuota(e.data.data.quota_total);
         } catch { /* Payment remains terminal even if the quota projection is unavailable. */ }
       }
       return r.data.data.status === 'PENDING' ? 'pending' : 'stop';
@@ -182,9 +183,8 @@ export function PaymentStatusPage({ albumId, transactionId }: { albumId: string;
       busy = true;
       let outcome: 'pending' | 'stop' | 'retry' | 'slow-retry';
       setChecking(true);
-      try { outcome = await refresh(); } catch { setState('error'); outcome = 'retry'; }
-      finally { setChecking(false); }
-      busy = false;
+      try { outcome = await refresh(() => live); } catch { if (live) setState('error'); outcome = 'retry'; }
+      finally { busy = false; if (live) setChecking(false); }
       if (!live) return;
       if (outcome === 'stop') { terminal = true; return; }
       const delays = [2000, 4000, 8000, 15000, 30000];
@@ -197,14 +197,14 @@ export function PaymentStatusPage({ albumId, transactionId }: { albumId: string;
     window.addEventListener('focus', focus); window.addEventListener('online', online);
     return () => { live = false; clearTimeout(timer); window.removeEventListener('focus', focus); window.removeEventListener('online', online); };
   }, [refresh, attempt]);
-  const checkingMessage = <p role="status" className="mt-3 inline-flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"><Hourglass size={16} aria-hidden="true" />{t('verifying')}</p>;
+  const checkingMessage = <p role="status" aria-live="polite" className="mt-3 flex w-fit max-w-full items-center gap-2 text-sm text-[var(--color-muted-foreground)]"><Hourglass size={16} aria-hidden="true" /><span aria-hidden="true">{checking ? t('verifying') : t('waitingConfirmation')}</span><span className="sr-only">{t('pendingAccessible')}</span></p>;
   return state === 'ready' && !payment ? <Card><p className="text-xl font-semibold">{t('verifyingTitle')}</p>{checking && checkingMessage}</Card> : <State state={state} retry={() => { setState('ready'); setAttempt(x => x + 1); }}>{payment && <Card>
     <p className="text-xl font-semibold">{t(`paymentStatus.${payment.status}`)}</p>
     <p className="mt-3">{payment.package_name_snapshot} · {payment.target_quota_total_snapshot.toLocaleString(locale)}</p>
     <p>{money(payment.amount, locale, payment.currency)}</p>
     <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('createdAt')}: {eventStamp(payment.created_at, locale, timeZone)}</p>
     {payment.status === 'SUCCESS' && quota !== null && <p className="mt-4 font-semibold">{t('quota')}: {quota.toLocaleString(locale)}</p>}
-    {payment.status === 'PENDING' && checking && checkingMessage}
+    {payment.status === 'PENDING' && checkingMessage}
     <Link className="mt-5 inline-block underline" href={hostRoutes.payments(albumId)}>{t('history')}</Link>
   </Card>}</State>;
 }
@@ -316,10 +316,12 @@ export function RecoveryMediaPage({ albumId }: { albumId: string }) {
   const usable=life?.retention_state==='RECOVERY'&&life.can_open_recovery_media;
   return <State state={state} retry={() => { setState('loading'); setAttempt((value) => value + 1); }}>
     {life && <Card>
-      <LifecycleBadge state={life.retention_state} label={t(`state.${life.retention_state}`)} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <LifecycleBadge state={life.retention_state} label={t(`state.${life.retention_state}`)} />
+        {usable && life.can_create_recovery_export && caps?.allow_all && <Button className="w-full rounded-full font-bold sm:ml-auto sm:w-auto" disabled={!online || busy} loading={busy} onClick={() => void makeZip()}>{x('recoveryZip')}</Button>}
+      </div>
       <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('recoveryEnd')}: {stamp(life.recovery_end_at, locale, timeZone ?? 'UTC')}</p>
       {!usable && <p role="status" className="mt-3">{['PURGE_DUE', 'PURGING', 'PURGED', 'PURGE_ERROR'].includes(life.retention_state) ? t('cleanupOnly') : t('recoveryUnavailable')}</p>}
-      {usable && life.can_create_recovery_export && caps?.allow_all && <div className="mt-5 flex flex-wrap items-center gap-4"><Button className="rounded-full font-bold" disabled={!online || busy} loading={busy} onClick={() => void makeZip()}>{x('recoveryZip')}</Button></div>}
       {usable && !online && <p role="status" className="mt-2">{t('offline')}</p>}
     </Card>}
     {usable && rows.map((photo) => <Card key={photo.photo_id}>

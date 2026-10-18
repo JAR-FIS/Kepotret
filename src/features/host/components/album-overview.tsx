@@ -72,7 +72,7 @@ export function AlbumOverview({ albumId }: { albumId: string }) {
       {album.capture_start && album.capture_end && <><p className="mt-3 text-sm text-[var(--color-muted-foreground)]">{t('detail.scheduleRange', { start: formatTime(album.capture_start), end: formatTime(album.capture_end) })} ({album.timezone})</p><p className="mt-2 text-xs text-[var(--color-muted-foreground)]">{t('detail.captureDuringEvent')}</p></>}
       {isOwner && <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4 text-sm">
         <h3 className="font-semibold">{t('detail.packageTitle')}</h3>
-        <p className="mt-2">{album.selected_package_version_id === null ? t('packages.freeTitle') : selectedPackage ? `${selectedPackage.name} (${selectedPackage.code})` : t('detail.packageUnavailable')}</p>
+        <p className="mt-2">{album.selected_package_version_id === null ? t('packages.freeTitle') : selectedPackage ? selectedPackage.name : t('detail.packageUnavailable')}</p>
         {selectedPackage && <p className="mt-1 text-[var(--color-muted-foreground)]">{t('detail.selectedCapacity', { count: new Intl.NumberFormat(locale).format(selectedPackage.quota_total) })}</p>}
         <p className="mt-1 text-[var(--color-muted-foreground)]">{album.quota_total === null ? t('detail.capacityUnavailable') : t('detail.currentCapacity', { count: new Intl.NumberFormat(locale).format(album.quota_total) })}</p>
         {selectedPackage && <p className="mt-2 text-xs text-[var(--color-muted-foreground)]">{t('detail.selectionNotEntitlement')}</p>}
