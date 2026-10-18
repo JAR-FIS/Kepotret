@@ -66,7 +66,7 @@ test('H21 synthetic UAT MFA field accepts typed digits and exposes rejected char
   await page.getByLabel(/email/i).fill('superadmin@kepotret.test');
   await page.locator('input[name="password"]').fill('wrong-synthetic-password');
   await page.getByRole('button', { name: /continue to mfa|lanjutkan ke verifikasi mfa/i }).click();
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.locator('form').getByRole('alert')).toBeVisible();
   await expect(page).toHaveURL(/\/admin\/masuk$/);
   await page.locator('input[name="password"]').fill('synthetic-uat-password');
   await page.getByRole('button', { name: /continue to mfa|lanjutkan ke verifikasi mfa/i }).click();
@@ -74,7 +74,7 @@ test('H21 synthetic UAT MFA field accepts typed digits and exposes rejected char
   const challengedCode = page.getByRole('textbox', { name: /authentication code|kode autentikasi/i });
   await challengedCode.fill('000000');
   await page.getByRole('button', { name: /verify and sign in|verifikasi dan masuk/i }).click();
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.locator('form').getByRole('alert')).toBeVisible();
   await expect(challengedCode).toHaveValue('');
   await challengedCode.focus();
   await page.keyboard.insertText('123 456');
