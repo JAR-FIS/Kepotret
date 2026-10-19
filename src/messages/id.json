@@ -40,6 +40,41 @@
   },
   "aiAssistant": { "title": "Asisten Kepotret", "open": "Buka Asisten AI", "close": "Tutup Asisten AI", "contextNotice": "Jawaban informatif sesuai akses sesi ini.", "intro": "Ada yang ingin kamu ketahui tentang Kepotret?", "promptOne": "Bagaimana cara kerja album acara?", "promptTwo": "Apa yang dapat saya lakukan di halaman ini?", "promptThree": "Bagaimana cara tamu mengambil foto?", "loading": "Menyiapkan jawaban…", "unavailable": "Asisten sedang tidak tersedia. Halaman utama tetap dapat digunakan.", "rateLimited": "Terlalu banyak permintaan. Coba lagi sebentar.", "unauthenticated": "Sesi perlu diperbarui untuk permintaan ini.", "forbidden": "Informasi ini tidak tersedia untuk sesi ini.", "error": "Pertanyaan ini belum dapat dijawab. Coba dengan cara lain.", "messageLabel": "Pesan untuk Asisten", "placeholder": "Tulis pertanyaan…", "send": "Kirim pertanyaan" },
   "admin": {
+    "information": {
+      "userGuideTitle": "Arti informasi akun ini",
+      "userGuide": {
+        "ownedAlbums": { "label": "Album milik", "description": "Album milik akun ini. Penangguhan tidak menghapus atau memindahkan kepemilikannya." },
+        "ordinarySessions": { "label": "Sesi biasa aktif", "description": "Sesi login akun pengguna biasa yang masih aktif, terpisah dari sesi Superadmin." },
+        "collaboratorAlbums": { "label": "Album kolaborasi", "description": "Album milik orang lain yang memberikan akses kolaborasi kepada akun ini." }
+      },
+      "userGuideActions": "Tangguhkan akun menghentikan akses akun biasa tanpa menghapus album atau pembayaran. Cabut sesi biasa mengakhiri sesi pengguna tersebut, bukan sesi Superadmin. Aktifkan kembali memulihkan akses biasa sesuai kebijakan akun yang berlaku.",
+      "albumSearchTitle": "Cari album",
+      "albumSearchLabel": "Kata kunci album",
+      "albumSearchHint": "Pencarian diproses server Admin di seluruh halaman. API menentukan bidang album yang dicocokkan.",
+      "search": "Cari",
+      "clear": "Hapus",
+      "albumGuideTitle": "Tentang diagnostik ini",
+      "albumGuide": {
+        "actions": { "label": "Aksi operasional kontekstual", "description": "Tautan ini membuka alur terpisah. Akses sensitif dan Hold memiliki pemeriksaan otorisasi dan MFA masing-masing." },
+        "lifecycle": { "label": "Siklus hidup", "description": "Tanggal akses, pemulihan, dan pembersihan album yang diberikan server." },
+        "transactions": { "label": "Transaksi terkait", "description": "Tautan menuju diagnosis pembayaran, bukan kendali untuk menandai pembayaran berhasil." },
+        "issues": { "label": "Isu terkait", "description": "Ringkasan isu operasional yang terkait dengan album ini." }
+      },
+      "paymentListHint": "Daftar ini menampilkan catatan pembayaran dari server. Tanggal pembayaran bukan jadwal acara.",
+      "paymentAlbumId": "ID album",
+      "paymentCreated": "Pembayaran dibuat",
+      "paymentPaid": "Pembayaran selesai",
+      "paymentGuideTitle": "Tentang transaksi ini",
+      "paymentGuide": "Status, jumlah, kuota pada saat transaksi, proyeksi entitlement, dan bukti provider adalah diagnostik server. Snapshot mencatat ketentuan transaksi; tampilannya tidak mengubah album.",
+      "recheckEffect": "Periksa ulang ke provider meminta server mengevaluasi status provider dan mengembalikan proyeksi terbaru. Tindakan ini tidak menandai berhasil secara manual, memberikan entitlement, mengubah kuota, atau menerbitkan refund.",
+      "packageId": "ID paket",
+      "versionId": "ID versi",
+      "version": "Versi paket",
+      "photoQuota": "{count} foto",
+      "saleEnabled": "Tersedia untuk dijual",
+      "saleDisabled": "Tidak dijual",
+      "noVersions": "Belum ada versi untuk paket ini."
+    },
     "common": { "operationsLabel": "KEPOTRET · OPERASIONAL", "signInAgain": "Masuk kembali", "reload": "Muat ulang", "loadNextPage": "Muat halaman berikutnya", "offline": "Kamu sedang offline. Aksi Admin dinonaktifkan dan tidak akan dimasukkan ke antrean.", "error401": "Sesi Admin berakhir. Masuk kembali untuk melanjutkan.", "error403": "Akses Admin tidak tersedia untuk tindakan ini.", "error404": "Data tidak ditemukan.", "error409": "Data berubah di tempat lain. Muat ulang sebelum mencoba lagi.", "error422": "Server menolak nilai ini. Periksa isian dan coba lagi.", "error429": "Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.", "error503": "Layanan pendukung sedang tidak tersedia. Coba lagi nanti.", "errorGeneric": "Data Admin belum dapat dimuat. Coba lagi.", "loading": "Memuat…", "notFound": "Tidak ditemukan.", "status": "Status", "email": "Email", "album": "Album", "hold": "Hold", "code": "Kode", "requestId": "ID permintaan", "yes": "Ya", "no": "Tidak" },
     "auth": { "language": "Bahasa", "light": "Ganti ke tema terang", "dark": "Ganti ke tema gelap", "operationsEyebrow": "KEPOTRET · OPERASIONAL", "operationsHeading": "Ruang kerja operasional.", "operationsDescription": "Akses khusus Admin menggunakan sesi dan verifikasi yang terpisah dari akun Kepotret biasa." },
     "shell": { "overview": "Ringkasan", "users": "Pengguna", "albums": "Album", "payments": "Pembayaran", "catalog": "Katalog", "operations": "Operasional", "audit": "Audit", "issues": "Isu operasional", "config": "Konfigurasi", "roster": "Admin · baca saja", "help": "Panduan Admin", "signedIn": "Sesi Admin", "expires": "Berakhir", "mfa": "MFA terverifikasi", "logout": "Keluar", "menu": "Buka navigasi", "close": "Tutup navigasi", "language": "Bahasa", "light": "Ganti ke tema terang", "dark": "Ganti ke tema gelap", "navLabel": "Navigasi Admin" },

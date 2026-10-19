@@ -83,6 +83,7 @@ export function AdminUsers() {
 type UserAction = 'suspend' | 'reactivate' | 'revoke';
 export function AdminUserDetailPage({ userId }: { userId: string }) {
   const { locale, t, commonT } = useAdminCopy();
+  const info = useTranslations('admin.information');
   const online = useAdminOnline();
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [busy, setBusy] = useState(true);
@@ -129,7 +130,7 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
     reactivate: t('users_the_account_can_use_ordinary_servi'),
     revoke: t('users_active_ordinary_user_sessions_will'),
   };
-  return <AdminPage title={t('users_user_detail')} description={t('users_account_diagnostics_and_limited_se')}>
+  return <AdminPage title={t('users_user_detail')} description={t('users_account_diagnostics_and_limited_se')} wideDescription>
     <AdminOfflineNote online={online} locale={locale} />
     {error !== undefined ? <AdminError locale={locale} status={error} retry={() => void load()} /> : busy ? <p role="status">{t('users_loading_user')}</p> : !user ? <AdminEmpty>{t('users_this_user_is_unavailable')}</AdminEmpty> : <>
       <AdminCard title={user.display_name ?? (t('users_user'))}>
@@ -139,6 +140,12 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
         <p className="mb-4 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('users_password_controls_and_album_owner')}</p>
         <div className="flex flex-wrap gap-2">{user.suspended ? <Button variant="secondary" disabled={!online || mutating} onClick={() => setPending('reactivate')}>{actionLabels.reactivate}</Button> : <Button variant="danger" disabled={!online || mutating} onClick={() => setPending('suspend')}>{actionLabels.suspend}</Button>}<Button variant="secondary" disabled={!online || mutating || user.active_session_count === 0} onClick={() => setPending('revoke')}>{actionLabels.revoke}</Button></div>
         {message && <div className="mt-4"><AdminFeedback kind="status">{message}</AdminFeedback></div>}
+      </AdminCard>
+      <AdminCard title={info('userGuideTitle')} className="text-sm">
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {(['ownedAlbums', 'ordinarySessions', 'collaboratorAlbums'] as const).map((key) => <div key={key}><dt className="font-semibold">{info(`userGuide.${key}.label`)}</dt><dd className="mt-1 text-[var(--color-muted-foreground)]">{info(`userGuide.${key}.description`)}</dd></div>)}
+        </dl>
+        <p className="mt-4 border-t border-[var(--color-border)] pt-3 leading-6 text-[var(--color-muted-foreground)]">{info('userGuideActions')}</p>
       </AdminCard>
     </>}
     <ConfirmDialog open={!!pending} title={pending ? actionLabels[pending] : ''} description={pending ? confirmText[pending] : ''} confirmLabel={t('users_confirm')} cancelLabel={t('users_cancel')} destructive={pending === 'suspend' || pending === 'revoke'} disabled={mutating || !online} onCancel={() => setPending(null)} onConfirm={() => void mutate()} />

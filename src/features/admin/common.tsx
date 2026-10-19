@@ -62,13 +62,13 @@ export function useAdminOnline() {
   return online;
 }
 
-export function AdminPage({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+export function AdminPage({ title, description, wideDescription = false, children }: { title: string; description?: string; wideDescription?: boolean; children: React.ReactNode }) {
   const t = useTranslations('admin.common');
   return <main className="mx-auto w-full max-w-7xl px-4 py-7 pb-24 sm:px-6 lg:px-8 lg:py-10">
     <header className="mb-7 border-b border-[var(--color-border)] pb-6">
       <p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('operationsLabel')}</p>
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
-      {description && <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--color-muted-foreground)]">{description}</p>}
+      {description && <p className={`mt-2 text-sm leading-6 text-[var(--color-muted-foreground)] ${wideDescription ? 'max-w-none' : 'max-w-3xl'}`}>{description}</p>}
     </header>
     <div className="space-y-6">{children}</div>
   </main>;

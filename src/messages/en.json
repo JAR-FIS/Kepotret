@@ -40,6 +40,41 @@
   },
   "aiAssistant": { "title": "Kepotret Assistant", "open": "Open AI Assistant", "close": "Close AI Assistant", "contextNotice": "Informational answers based on this session's access.", "intro": "What would you like to know about Kepotret?", "promptOne": "How do event albums work?", "promptTwo": "What can I do on this page?", "promptThree": "How do guests capture photos?", "loading": "Preparing an answer…", "unavailable": "The assistant is unavailable. The main page remains usable.", "rateLimited": "Too many requests. Try again shortly.", "unauthenticated": "Refresh your session to make this request.", "forbidden": "This information is not available to this session.", "error": "The assistant could not answer this. Try a different question.", "messageLabel": "Message to the Assistant", "placeholder": "Ask a question…", "send": "Send question" },
   "admin": {
+    "information": {
+      "userGuideTitle": "What these account details mean",
+      "userGuide": {
+        "ownedAlbums": { "label": "Owned albums", "description": "Albums owned by this account. Suspending the account does not delete or transfer them." },
+        "ordinarySessions": { "label": "Active ordinary sessions", "description": "Current sessions for the regular user account, separate from Superadmin sessions." },
+        "collaboratorAlbums": { "label": "Collaborator albums", "description": "Other Owners' albums to which this account has been granted collaborator access." }
+      },
+      "userGuideActions": "Suspend blocks ordinary account access while preserving albums and payments. Revoke ordinary sessions ends those user sessions; it does not revoke Superadmin sessions. Reactivate restores ordinary access under the existing account policy.",
+      "albumSearchTitle": "Find albums",
+      "albumSearchLabel": "Album search query",
+      "albumSearchHint": "Search runs on the Admin server across pages. The API controls which album fields match.",
+      "search": "Search",
+      "clear": "Clear",
+      "albumGuideTitle": "About these diagnostics",
+      "albumGuide": {
+        "actions": { "label": "Contextual operational actions", "description": "These links open separate workflows. Sensitive access and operational Hold require their own authorization and MFA checks." },
+        "lifecycle": { "label": "Lifecycle", "description": "Server-provided access, recovery, and cleanup dates for this album." },
+        "transactions": { "label": "Related transactions", "description": "Links to payment diagnosis, not controls to mark a payment successful." },
+        "issues": { "label": "Related issues", "description": "Operational issue summaries linked to this album." }
+      },
+      "paymentListHint": "This list shows server payment records. Payment dates are not event dates.",
+      "paymentAlbumId": "Album ID",
+      "paymentCreated": "Payment created",
+      "paymentPaid": "Payment completed",
+      "paymentGuideTitle": "About this transaction",
+      "paymentGuide": "The status, amount, quota snapshot, entitlement projection, and provider receipts are server diagnostics. A snapshot records the transaction terms; it does not change the album.",
+      "recheckEffect": "Re-check with Provider asks the server to re-evaluate provider state and return its latest projection. It does not manually mark success, grant entitlement, change quota, or issue a refund.",
+      "packageId": "Package ID",
+      "versionId": "Version ID",
+      "version": "Package version",
+      "photoQuota": "{count} photos",
+      "saleEnabled": "Available for sale",
+      "saleDisabled": "Not for sale",
+      "noVersions": "No versions are available for this package."
+    },
     "common": { "operationsLabel": "KEPOTRET · OPERATIONS", "signInAgain": "Sign in again", "reload": "Reload", "loadNextPage": "Load next page", "offline": "You are offline. Admin actions are disabled and will not be queued.", "error401": "Your Admin session ended. Sign in again to continue.", "error403": "Admin access is not available for this action.", "error404": "The requested record was not found.", "error409": "This record changed elsewhere. Reload before trying again.", "error422": "The server rejected this value. Review the fields and try again.", "error429": "Too many requests. Wait briefly, then try again.", "error503": "A supporting service is unavailable. Try again later.", "errorGeneric": "Admin data could not be loaded. Try again.", "loading": "Loading…", "notFound": "Not found.", "status": "Status", "email": "Email", "album": "Album", "hold": "Hold", "code": "Code", "requestId": "Request ID", "yes": "Yes", "no": "No" },
     "auth": { "language": "Language", "light": "Switch to light theme", "dark": "Switch to dark theme", "operationsEyebrow": "KEPOTRET · OPERATIONS", "operationsHeading": "Operations, with clear authority.", "operationsDescription": "Privileged Admin access uses its own session and verification, separate from ordinary Kepotret accounts." },
     "shell": { "overview": "Overview", "users": "Users", "albums": "Albums", "payments": "Payments", "catalog": "Catalog", "operations": "Operations", "audit": "Audit", "issues": "Operational issues", "config": "Configuration", "roster": "Admin roster · read only", "help": "Admin guide", "signedIn": "Admin session", "expires": "Expires", "mfa": "MFA verified", "logout": "Sign out", "menu": "Open navigation", "close": "Close navigation", "language": "Language", "light": "Switch to light theme", "dark": "Switch to dark theme", "navLabel": "Admin navigation" },
