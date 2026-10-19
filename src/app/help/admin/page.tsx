@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { useState } from 'react';
 import { HelpFrame } from '@/features/help/help-frame';
+import { GuideSearch, matchesGuideText } from '@/features/help/guide-search';
 
 const sections = {
   id: [
@@ -35,5 +37,16 @@ const sections = {
 
 export default function AdminHelpPage() {
   const locale = useLocale() === 'en' ? 'en' : 'id'; const id = locale === 'id';
-  return <HelpFrame locale={locale}><main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14"><header className="mb-8 border-b border-[var(--color-border)] pb-7"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{id ? 'PANDUAN ADMIN' : 'ADMIN GUIDE'}</p><h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold sm:text-4xl">{id ? 'Operasi yang jelas, dengan batas kewenangan.' : 'Clear operations with clear authority.'}</h1><p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{id ? 'Panduan Superadmin Kepotret. Semua akses sensitif tetap mengikuti sesi, verifikasi, dan keputusan server.' : 'Kepotret Superadmin guide. Sensitive access always follows the current session, verification, and server decisions.'}</p></header><div className="space-y-4">{sections[locale].map(([title, body])=><section key={title} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5"><h2 className="font-[family-name:var(--font-display)] text-lg font-bold">{title}</h2><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{body}</p></section>)}</div><Link href="/admin" className="mt-8 inline-flex min-h-11 items-center rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{id ? 'Kembali ke konsol Admin' : 'Back to Admin console'}</Link></main></HelpFrame>;
+  const [query, setQuery] = useState('');
+  const visible = sections[locale].map(([title, body], index) => ({ title, body, index })).filter(({ title, body }) => matchesGuideText(query, title, body));
+  const contents = id ? 'Isi panduan' : 'Guide contents';
+  return <HelpFrame locale={locale}><main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+    <header className="mb-8 border-b border-[var(--color-border)] pb-7"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{id ? 'PANDUAN ADMIN' : 'ADMIN GUIDE'}</p><h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold sm:text-4xl">{id ? 'Operasi yang jelas, dengan batas kewenangan.' : 'Clear operations with clear authority.'}</h1><p className="mt-3 text-sm leading-6 text-[var(--color-muted-foreground)]">{id ? 'Panduan Superadmin Kepotret. Semua akses sensitif tetap mengikuti sesi, verifikasi, dan keputusan server.' : 'Kepotret Superadmin guide. Sensitive access always follows the current session, verification, and server decisions.'}</p></header>
+    <GuideSearch locale={locale} query={query} onQueryChange={setQuery} count={visible.length} />
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
+      <nav aria-label={contents} className="lg:sticky lg:top-6 lg:self-start"><details className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 lg:hidden"><summary className="cursor-pointer font-semibold">{contents}</summary><ol className="mt-3 space-y-1">{visible.map(({ title, index }) => <li key={index}><a href={`#admin-guide-${index + 1}`} className="inline-flex min-h-11 items-center text-sm hover:underline">{title}</a></li>)}</ol></details><div className="hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 lg:block"><p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--color-muted-foreground)]">{contents}</p><ol className="mt-3 space-y-1">{visible.map(({ title, index }) => <li key={index}><a href={`#admin-guide-${index + 1}`} className="flex min-h-11 items-center rounded-[var(--radius-md)] px-2 text-sm hover:bg-[var(--color-muted)]">{title}</a></li>)}</ol></div></nav>
+      <div className="min-w-0 space-y-4">{visible.map(({ title, body, index }) => <section id={`admin-guide-${index + 1}`} key={index} className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5"><h2 className="font-[family-name:var(--font-display)] text-lg font-bold">{title}</h2><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{body}</p></section>)}</div>
+    </div>
+    <Link href="/admin" className="mt-8 inline-flex min-h-11 items-center rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)]">{id ? 'Kembali ke konsol Admin' : 'Back to Admin console'}</Link>
+  </main></HelpFrame>;
 }

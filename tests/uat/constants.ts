@@ -8,6 +8,7 @@ export const uatIds = {
   issue: '77777777-7777-4777-8777-777777777777',
   package: '88888888-8888-4888-8888-888888888888',
   packageVersion: '99999999-9999-4999-8999-999999999999',
+  createdPackageVersion: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   guestSession: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   captureAttempt: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   link: 'uat-event',

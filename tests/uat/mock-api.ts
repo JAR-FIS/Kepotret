@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import type { OperationalIssue } from '../../src/lib/api/generated/index.schemas';
+import type { OperationalConfig, OperationalIssue } from '../../src/lib/api/generated/index.schemas';
 import { uatCaptureEnd, uatCaptureStart, uatEventName, uatIds, uatNow } from './constants';
 import { makeAlbum, makeGuestContext, makeGuestPreview, makeInvitationPreview, makeLiveOverview, makeTransaction, uatActivityItem, uatCategories, uatPackages, uatPhoto, uatSchedule, uatSettings } from './fixtures';
 
@@ -9,6 +9,10 @@ const dateLater = '2026-10-04T17:00:00Z';
 const photoMedia = { url: 'https://media.test/owner-uat/photo.svg', expires_at: '2026-10-01T08:15:00Z' };
 const adminMe = { admin_user_id: uatIds.user, email: 'superadmin@kepotret.test', display_name: 'Superadmin UAT', mfa_verified: true, session_expires_at: '2026-10-02T08:00:00Z', step_up_expires_at: null };
 const operationalIssue: OperationalIssue = { issue_id: uatIds.issue, status: 'OPEN', issue_type: 'PHOTO_PROCESSING', severity: 'MEDIUM', summary: 'Synthetic Owner UAT operational issue.', error_code: 'UAT_SYNTHETIC', related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: uatNow, acknowledged_at: null, resolved_at: null };
+const operationalConfigs: OperationalConfig[] = [
+  { config_key: 'synthetic_maintenance_notice', display_name: 'Synthetic maintenance notice', description: 'Synthetic editable boolean for Owner Visual UAT only.', editable: true, value_type: 'BOOLEAN', typed_value: false, version: 1, minimum: null, maximum: null, allowed_values: [true, false], updated_at: uatNow, updated_by_admin_user_id: null },
+  { config_key: 'synthetic_locked_capacity', display_name: 'Synthetic locked capacity rule', description: 'A locked product-rule example, never editable in this harness.', editable: false, value_type: 'INTEGER', typed_value: 10000, version: 1, minimum: 1, maximum: 10000, allowed_values: null, updated_at: uatNow, updated_by_admin_user_id: null },
+];
 const userSummary = { user_id: uatIds.user, email: 'owner@kepotret.test', display_name: 'Pemilik UAT', suspended: false, created_at: '2026-09-01T08:00:00Z', owned_album_count: 1, collaborator_album_count: 1, active_session_count: 1 };
 const albumSummary = (scenario: string, collaborator = false) => {
   const album = makeAlbum(scenario, collaborator);
@@ -77,9 +81,6 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
   if (pathname === `/api/v1/admin/payments/${uatIds.transaction}`) return { status: 200, body: envelope({ transaction: makeTransaction(scenario), receipt_diagnostics: [], entitlement: null, can_reconcile: true, last_reconciled_at: null }) };
   if (pathname === '/api/v1/admin/packages') return { status: 200, body: list(uatPackages.map((option) => ({ package_id: option.package_id, code: option.code, name: option.name, versions: [{ package_version_id: option.package_version_id, price_amount: option.price_amount, currency: option.currency, quota_total: option.quota_total, sale_enabled: true, effective_at: uatNow, retired_at: null }] }))) };
   if (pathname === '/api/v1/admin/event-categories') return { status: 200, body: list(uatCategories) };
-  if (pathname === '/api/v1/admin/operational-configs') return { status: 200, body: list([{ config_key: 'maintenance_mode', typed_value: false, revision: 1, updated_at: uatNow }]) };
-  if (pathname === '/api/v1/admin/issues') return { status: 200, body: list(scenario === 'empty' ? [] : [operationalIssue]) };
-  if (pathname === `/api/v1/admin/issues/${uatIds.issue}`) return { status: 200, body: envelope(operationalIssue) };
   if (pathname === '/api/v1/admin/audit-logs') return { status: 200, body: list([{ audit_id: uatIds.issue, actor_type: 'ADMIN', actor_id: uatIds.user, album_id: uatIds.album, action: 'UAT_FIXTURE_VIEW', object_type: 'ALBUM', object_ref: uatIds.album, request_id: null, result: 'SUCCESS', safe_change_summary: 'Synthetic Owner UAT fixture entry.', created_at: uatNow }]) };
   if (pathname === `/api/v1/admin/audit-logs/${uatIds.issue}`) return { status: 200, body: envelope({ summary: { audit_id: uatIds.issue, actor_type: 'ADMIN', actor_id: uatIds.user, album_id: uatIds.album, action: 'UAT_FIXTURE_VIEW', object_type: 'ALBUM', object_ref: uatIds.album, request_id: null, result: 'SUCCESS', safe_change_summary: 'Synthetic Owner UAT fixture entry.', created_at: uatNow } }) };
   if (pathname === '/api/v1/admin/admins') return { status: 200, body: list([{ admin_user_id: uatIds.user, email: 'superadmin@kepotret.test', display_name: 'Superadmin UAT', grant_status: 'ACTIVE', granted_at: uatNow, revoked_at: null, last_session_at: uatNow }]) };
@@ -159,6 +160,8 @@ export async function installUatApi(page: Page) {
   let finishPendingSave: (() => void) | null = null;
   await page.exposeFunction('__ownerUatCompleteSave', () => { finishPendingSave?.(); });
   let pendingAdminMfa = false;
+  let configState = operationalConfigs.map((config) => ({ ...config }));
+  let issueState = { ...operationalIssue };
   let syntheticCover: { cover_asset_id: string; cover_preview: { url: string; expires_at: string }; setup_revision: number } | null = null;
   let coverRevision = 3;
   await page.route('**/api/v1/**', async (route: Route) => {
@@ -256,6 +259,44 @@ export async function installUatApi(page: Page) {
       if (status === 200) pendingAdminMfa = false;
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(status === 200 ? envelope(adminMe) : { error: { code: status === 403 ? 'CSRF_INVALID' : status === 404 ? 'MFA_CHALLENGE_MISSING' : 'MFA_CODE_INVALID' } }) });
       return;
+    }
+    if (path === `/api/v1/admin/packages/${uatIds.package}/versions` && method === 'POST') {
+      if (request.headers()['x-csrf-token'] !== 'owner-uat-csrf' || !request.headers()['idempotency-key']) { await denied(); return; }
+      const body = request.postDataJSON() as { price_amount?: number; currency?: string; quota_total?: number };
+      if (!Number.isSafeInteger(body.price_amount) || body.price_amount! < 0 || body.currency !== 'IDR' || !Number.isInteger(body.quota_total) || body.quota_total! < 1 || body.quota_total! > 10000) { await respond(422, { error: { code: 'SYNTHETIC_VALIDATION' } }); return; }
+      await respond(201, envelope({ package_version_id: uatIds.createdPackageVersion, price_amount: body.price_amount, currency: 'IDR', quota_total: body.quota_total, sale_enabled: false, effective_at: uatNow, retired_at: null })); return;
+    }
+    if (path === '/api/v1/admin/operational-configs' && method === 'GET') { await respond(200, list(configState)); return; }
+    const configMatch = path.match(/^\/api\/v1\/admin\/operational-configs\/([^/]+)$/);
+    if (configMatch && method === 'PATCH') {
+      if (request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+      const config = configState.find((item) => item.config_key === decodeURIComponent(configMatch[1]));
+      if (!config || !config.editable) { await denied(); return; }
+      const body = request.postDataJSON() as { expected_version?: number; typed_value?: unknown };
+      if (body.expected_version !== config.version) { await respond(409, { error: { code: 'VERSION_CONFLICT' } }); return; }
+      if (typeof body.typed_value !== 'boolean') { await respond(422, { error: { code: 'SYNTHETIC_VALIDATION' } }); return; }
+      const updated = { ...config, typed_value: body.typed_value, version: config.version + 1, updated_at: uatNow, updated_by_admin_user_id: uatIds.user };
+      configState = configState.map((item) => item.config_key === config.config_key ? updated : item);
+      await respond(200, envelope(updated)); return;
+    }
+    if (path === '/api/v1/admin/issues' && method === 'GET') {
+      const status = url.searchParams.get('status');
+      await respond(200, list(scenario === 'empty' || status && status !== issueState.status ? [] : [issueState])); return;
+    }
+    if (path === `/api/v1/admin/issues/${uatIds.issue}` && method === 'GET') { await respond(200, envelope(issueState)); return; }
+    if (path === `/api/v1/admin/issues/${uatIds.issue}/acknowledge` && method === 'POST') {
+      if (request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+      if (issueState.status !== 'OPEN') { await respond(409, { error: { code: 'ISSUE_STATE_CONFLICT' } }); return; }
+      issueState = { ...issueState, status: 'ACKNOWLEDGED', acknowledged_at: uatNow };
+      await respond(200, envelope(issueState)); return;
+    }
+    if (path === `/api/v1/admin/issues/${uatIds.issue}/resolve` && method === 'POST') {
+      if (request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+      const reason = (request.postDataJSON() as { reason?: string }).reason?.trim();
+      if (!reason || reason.length > 500) { await respond(422, { error: { code: 'SYNTHETIC_VALIDATION' } }); return; }
+      if (issueState.status === 'RESOLVED') { await respond(409, { error: { code: 'ISSUE_STATE_CONFLICT' } }); return; }
+      issueState = { ...issueState, status: 'RESOLVED', resolved_at: uatNow };
+      await respond(200, envelope(issueState)); return;
     }
     if (url.pathname === `/api/v1/albums/${uatIds.album}/design`) {
       if (request.method() === 'PATCH') {

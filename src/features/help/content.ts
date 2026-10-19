@@ -5,6 +5,7 @@ export type TutorialSection = { id: string; title: string; lead: string; steps: 
 
 type HelpContent = {
   navigation: { home: string; host: string; collaborator: string; albums: string; language: string; indonesian: string; english: string; switchToLight: string; switchToDark: string };
+  search: { label: string; placeholder: string; clear: string; empty: string; results: string };
   landing: { eyebrow: string; title: string; description: string; guideLabel: string; guideTitle: string; guideDescription: string; guideAction: string; collaboratorTitle: string; collaboratorDescription: string; collaboratorAction: string; quickTitle: string; quickDescription: string; createAction: string; albumsAction: string };
   host: { eyebrow: string; title: string; description: string; contents: string; progress: string; back: string; start: string; sections: TutorialSection[]; finishTitle: string; finishDescription: string; finishAction: string };
   collaborator: { eyebrow: string; title: string; description: string; back: string; sections: { title: string; body: string }[] };
@@ -13,6 +14,7 @@ type HelpContent = {
 export const helpContent: Record<HelpLocale, HelpContent> = {
   id: {
     navigation: { home: 'Pusat bantuan', host: 'Panduan Host', collaborator: 'Panduan kolaborator', albums: 'Album saya', language: 'Bahasa', indonesian: 'Bahasa Indonesia', english: 'Bahasa Inggris', switchToLight: 'Ganti ke tema terang', switchToDark: 'Ganti ke tema gelap' },
+    search: { label: 'Cari dalam panduan', placeholder: 'Cari topik atau penjelasan', clear: 'Hapus pencarian', empty: 'Tidak ada bagian panduan yang cocok.', results: '{count} bagian cocok' },
     landing: { eyebrow: 'BANTUAN KEPOTRET', title: 'Siapkan album, bagikan momen.', description: 'Panduan singkat yang mengikuti alur nyata Kepotret, dari membuat album hingga mengelola foto setelah acara.', guideLabel: 'MULAI DI SINI', guideTitle: 'Panduan untuk Host', guideDescription: 'Pelajari Waktu Potret, batas foto, QR, pengaturan album, galeri, pembayaran, dan pemulihan dalam langkah yang mudah diikuti.', guideAction: 'Buka panduan Host', collaboratorTitle: 'Panduan kolaborator', collaboratorDescription: 'Pelajari cara menerima undangan, melihat album yang ditugaskan, dan memahami izin di setiap album.', collaboratorAction: 'Buka panduan kolaborator', quickTitle: 'Sudah punya album?', quickDescription: 'Buka ruang kerja untuk melanjutkan persiapan atau melihat album yang sudah dibuat.', createAction: 'Buat album', albumsAction: 'Lihat album saya' },
     host: {
       eyebrow: 'PANDUAN HOST', title: 'Dari album baru hingga momen terakhir.', description: 'Ikuti alur ini sesuai kebutuhan acaramu. Setiap tindakan di ruang kerja tetap mengikuti status album, izin, dan keputusan server.', contents: 'Isi panduan', progress: '19 langkah dalam 5 bagian', back: 'Pusat bantuan', start: 'Mulai buat album',
@@ -57,6 +59,7 @@ export const helpContent: Record<HelpLocale, HelpContent> = {
   },
   en: {
     navigation: { home: 'Help center', host: 'Host guide', collaborator: 'Collaborator guide', albums: 'My albums', language: 'Language', indonesian: 'Indonesian', english: 'English', switchToLight: 'Switch to light theme', switchToDark: 'Switch to dark theme' },
+    search: { label: 'Search this guide', placeholder: 'Search topics or explanations', clear: 'Clear search', empty: 'No guide sections match.', results: '{count} matching sections' },
     landing: { eyebrow: 'KEPOTRET HELP', title: 'Set up the album. Share the moments.', description: 'A concise guide through the real Kepotret flow, from creating an album to managing photos after the event.', guideLabel: 'START HERE', guideTitle: 'Guide for Hosts', guideDescription: 'Learn capture timing, photo limits, QR sharing, album settings, the gallery, payments, and recovery in clear steps.', guideAction: 'Open the Host guide', collaboratorTitle: 'Collaborator guide', collaboratorDescription: 'Learn how to accept an invitation, find assigned albums, and understand album permissions.', collaboratorAction: 'Open the collaborator guide', quickTitle: 'Already have an album?', quickDescription: 'Open your workspace to continue setup or review an existing album.', createAction: 'Create an album', albumsAction: 'View my albums' },
     host: {
       eyebrow: 'HOST GUIDE', title: 'From a new album to the final moment.', description: 'Follow the parts relevant to your event. Workspace actions always depend on album state, permissions, and server decisions.', contents: 'Guide contents', progress: '19 steps in 5 sections', back: 'Help center', start: 'Create an album',

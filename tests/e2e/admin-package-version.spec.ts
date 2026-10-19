@@ -33,24 +33,32 @@ test('FE-8 package version retries keep the payload key and new intents get a ne
   await page.goto(`/admin/catalog/packages/${packageId}/versions/new`);
   const price = page.getByLabel(/Harga \(IDR\)|Price \(IDR\)/i);
   const quota = page.getByLabel(/Kuota total|Total quota/i);
-  const create = page.getByRole('button', { name: /Buat versi immutable|Create immutable version/i });
+  const review = page.getByRole('button', { name: /Tinjau sebelum membuat|Review before creating/i });
+  async function createVersion() {
+    await review.click();
+    const confirmation = page.getByRole('dialog');
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: /Buat versi immutable|Create immutable version/i }).click();
+  }
   await price.fill('75000');
   await quota.fill('100');
+  await expect(price).toHaveValue('75.000');
+  await expect(page.getByText(/Perkiraan harga per foto|Approximate price per photo/i).first()).toBeVisible();
 
-  await create.click();
+  await createVersion();
   await expect.poll(() => requests.length).toBe(1);
   await expect(page.locator('p[role="alert"]')).toBeVisible();
   expect(requests[0].key).toMatch(uuidV7);
   expect(requests[0].body).toEqual({ price_amount: 75000, currency: 'IDR', quota_total: 100 });
 
-  await create.click();
+  await createVersion();
   await expect.poll(() => requests.length).toBe(2);
   await expect(page.getByText(/HTTP 503/)).toBeVisible();
   expect(requests[1].key).toBe(requests[0].key);
   expect(requests[1].body).toEqual(requests[0].body);
 
   await price.fill('85000');
-  await create.click();
+  await createVersion();
   await expect.poll(() => requests.length).toBe(3);
   await expect(page.getByText(/HTTP 503/)).toBeVisible();
   expect(requests[2].key).toMatch(uuidV7);
@@ -58,14 +66,14 @@ test('FE-8 package version retries keep the payload key and new intents get a ne
   expect(requests[2].body).toEqual({ price_amount: 85000, currency: 'IDR', quota_total: 100 });
 
   await quota.fill('200');
-  await create.click();
+  await createVersion();
   await expect.poll(() => requests.length).toBe(4);
   await expect(page.getByText(/Versi baru dibuat|New version created/i)).toBeVisible();
   expect(requests[3].key).toMatch(uuidV7);
   expect(requests[3].key).not.toBe(requests[2].key);
   expect(requests[3].body).toEqual({ price_amount: 85000, currency: 'IDR', quota_total: 200 });
 
-  await create.click();
+  await createVersion();
   await expect.poll(() => requests.length).toBe(5);
   await expect(page.getByText(/Versi baru dibuat|New version created/i)).toBeVisible();
   expect(requests[4].key).toMatch(uuidV7);
