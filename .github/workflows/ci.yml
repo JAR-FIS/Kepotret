@@ -79,6 +79,9 @@ jobs:
       - name: Full Chromium and focused cross-browser regression
         run: pnpm exec playwright test
 
+      - name: Guest Owner UAT regression (desktop and mobile)
+        run: pnpm exec playwright test --config=playwright.guest-uat.config.ts --retries=0
+
       - name: Upload Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
