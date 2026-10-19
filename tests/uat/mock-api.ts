@@ -277,6 +277,14 @@ export async function installUatApi(page: Page) {
       await respond(501, { error: { code: 'UNMATCHED_GUEST_FIXTURE' } }); return;
     }
     const result = requestFor(path, method, scenario);
+    if (path === '/api/v1/admin/albums' && method === 'GET' && result.status === 200) {
+      const query = url.searchParams.get('query')?.trim().toLocaleLowerCase() ?? '';
+      if (query) {
+        const albums = (result.body as { data: Array<{ event_name: string | null; owner_email: string }> }).data;
+        const matches = albums.filter((album) => [album.event_name ?? '', album.owner_email].some((value) => value.toLocaleLowerCase().includes(query)));
+        await respond(200, list(matches)); return;
+      }
+    }
     await route.fulfill({ status: result.status, contentType: 'application/json', body: JSON.stringify(result.body) });
   });
   await page.route('https://upload.test/**', async (route) => {

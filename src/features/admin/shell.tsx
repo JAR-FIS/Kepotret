@@ -48,7 +48,7 @@ export function AdminShell({ session, locale, onLogout, children }: { session: A
 
   return <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-5 lg:flex">
-      <Link href="/admin" aria-label="Kepotret" className="mb-8 inline-flex min-h-11 items-center self-start rounded bg-white px-2 py-1"><Image src="/brand/logo.svg" alt="Kepotret" width={112} height={37} priority /></Link>
+      <Link href="/admin" aria-label="Kepotret" className="mb-8 inline-flex min-h-11 items-center self-start rounded px-2 py-1"><Image src="/brand/logo.svg" alt="Kepotret" width={112} height={37} priority className="dark:hidden" /><Image src="/brand/logo_white.svg" alt="" width={112} height={37} priority className="hidden dark:block" /></Link>
       {navigation}
       <div className="mt-auto space-y-2 border-t border-[var(--color-border)] pt-4">
         <Link href="/help/admin" className="flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-medium hover:bg-[var(--color-muted)]"><BookOpen size={18} aria-hidden="true" />{labels.help}</Link>
@@ -68,7 +68,7 @@ export function AdminShell({ session, locale, onLogout, children }: { session: A
       </header>
       {menuOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setMenuOpen(false)}>
         <aside className="h-full w-[min(21rem,88vw)] overflow-y-auto border-r border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-          <div className="mb-5 flex items-center justify-between"><Link href="/admin" aria-label="Kepotret" className="inline-flex rounded bg-white px-2 py-1"><Image src="/brand/logo.svg" alt="Kepotret" width={105} height={35} /></Link><Button variant="ghost" className="size-11 px-0" aria-label={labels.close} onClick={() => setMenuOpen(false)}><X size={18} aria-hidden="true" /></Button></div>
+          <div className="mb-5 flex items-center justify-between"><Link href="/admin" aria-label="Kepotret" className="inline-flex rounded px-2 py-1"><Image src="/brand/logo.svg" alt="Kepotret" width={105} height={35} className="dark:hidden" /><Image src="/brand/logo_white.svg" alt="" width={105} height={35} className="hidden dark:block" /></Link><Button variant="ghost" className="size-11 px-0" aria-label={labels.close} onClick={() => setMenuOpen(false)}><X size={18} aria-hidden="true" /></Button></div>
           {navigation}
           <Link href="/help/admin" onClick={() => setMenuOpen(false)} className="mt-5 flex min-h-11 items-center gap-3 rounded px-3 text-sm font-semibold hover:bg-[var(--color-muted)]"><BookOpen size={18} aria-hidden="true" />{labels.help}</Link>
         </aside>

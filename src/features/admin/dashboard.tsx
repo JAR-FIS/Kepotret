@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { Activity, Album, Camera, CreditCard, ShieldAlert, Users } from 'lucide-react';
+import { Activity, Album, Camera, CreditCard, Hourglass, RefreshCw, ShieldAlert, TriangleAlert, Users } from 'lucide-react';
 
 import { getApiV1AdminOverview } from '@/lib/api/admin-browser';
 import type { AdminOverview } from '@/lib/api/generated/index.schemas';
@@ -45,7 +45,13 @@ export function AdminDashboard() {
           {cards.map(({ label, value, note, icon: Icon, href }) => <Link key={label} href={href} className="group min-w-0 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:border-[var(--color-foreground)] sm:p-5"><span className="inline-flex size-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-muted)]"><Icon size={19} aria-hidden="true" /></span><span className="mt-4 block text-sm font-semibold text-[var(--color-muted-foreground)]">{label}</span><span className="mt-1 block font-[family-name:var(--font-display)] text-3xl font-bold tabular-nums">{formatAdminNumber(value, locale)}</span><span className="mt-2 block text-xs leading-5 text-[var(--color-muted-foreground)]">{note}</span></Link>)}
         </section>
         <AdminCard title={t('otherPayments')}>
-          <div className="grid gap-3 sm:grid-cols-2"><p className="rounded-[var(--radius-md)] bg-[var(--color-muted)] p-4 text-sm">{t('pending')} <strong className="ml-2 tabular-nums">{formatAdminNumber(data.pending_payments, locale)}</strong></p><p className="rounded-[var(--radius-md)] bg-[var(--color-muted)] p-4 text-sm">{t('processing')} <strong className="ml-2 tabular-nums">{formatAdminNumber(data.processing_payments, locale)}</strong></p><p className="rounded-[var(--radius-md)] bg-[var(--color-muted)] p-4 text-sm">{t('failed')} <strong className="ml-2 tabular-nums">{formatAdminNumber(data.failed_payments, locale)}</strong></p></div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            {[
+              { label: t('pending'), value: data.pending_payments, icon: Hourglass, color: 'border-amber-500/40 bg-amber-500/10' },
+              { label: t('processing'), value: data.processing_payments, icon: RefreshCw, color: 'border-sky-500/40 bg-sky-500/10' },
+              { label: t('failed'), value: data.failed_payments, icon: TriangleAlert, color: 'border-red-500/40 bg-red-500/10' },
+            ].map(({ label, value, icon: Icon, color }) => <div key={label} className={`min-w-0 rounded-[var(--radius-md)] border p-4 ${color}`}><p className="flex items-center gap-2 text-sm font-semibold"><Icon size={18} aria-hidden="true" />{label}</p><p className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold tabular-nums">{formatAdminNumber(value, locale)}</p></div>)}
+          </div>
         </AdminCard>
         <AdminFeedback kind="status">{t('updated', { date: formatAdminDate(data.generated_at, locale) })}</AdminFeedback>
       </>}
