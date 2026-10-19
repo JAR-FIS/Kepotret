@@ -23,10 +23,13 @@ export async function adminCsrfHeaders(): Promise<HeadersInit> {
 }
 
 export function adminErrorKey(status?: number) {
+  if (status === 0) return 'errorNetwork';
+  if (status === 400) return 'error422';
   if (status === 401) return 'error401';
   if (status === 403) return 'error403';
   if (status === 404) return 'error404';
   if (status === 409) return 'error409';
+  if (status === 410) return 'error410';
   if (status === 422) return 'error422';
   if (status === 429) return 'error429';
   if (status === 503) return 'error503';

@@ -29,7 +29,7 @@ test('FE-8 H91 requires reason and step-up before creating an album-scoped view-
 
   await page.goto(`/admin/albums/${albumId}`);
   await page.getByRole('link', { name: /Sensitive media access|Akses media sensitif/i }).click();
-  await expect(page.getByRole('heading', { name: /Sensitive media access|Akses media sensitif/i })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: /Sensitive media access|Akses media sensitif/i })).toBeVisible();
   await expect(page.getByText(/No download|Tidak ada unduhan/i)).toBeVisible();
   await page.getByLabel(/Audit reason|Alasan audit/i).fill('Review reported photo');
   await page.getByLabel(/TOTP code|Kode TOTP/i).fill('123456');
@@ -40,6 +40,9 @@ test('FE-8 H91 requires reason and step-up before creating an album-scoped view-
   await expect.poll(() => grantRequests).toBe(1);
   await expect.poll(() => mediaRequests).toBe(1);
   await expect(page.getByText('grant-1')).toBeVisible();
+  await page.getByLabel(/TOTP code|Kode TOTP/i).fill('654321');
+  await expect(page.getByLabel(/TOTP code|Kode TOTP/i)).toHaveValue('654321');
+  await expect(page.getByRole('button', { name: /Revoke access and close workspace|Cabut akses dan tutup workspace/i })).toBeEnabled();
   await page.getByRole('button', { name: /Revoke access and close workspace|Cabut akses dan tutup workspace/i }).click();
   const revokeDialog = page.getByRole('dialog');
   await revokeDialog.getByRole('button', { name: /Confirm|Konfirmasi/i }).click();

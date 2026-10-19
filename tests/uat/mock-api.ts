@@ -5,9 +5,10 @@ import { makeAlbum, makeGuestContext, makeGuestPreview, makeInvitationPreview, m
 
 const envelope = (data: unknown) => ({ data });
 const list = (data: unknown[]) => ({ data, meta: { has_more: false, next_cursor: null } });
+const futureTime = (minutes: number) => new Date(Date.now() + minutes * 60_000).toISOString();
 const dateLater = '2026-10-04T17:00:00Z';
 const photoMedia = { url: 'https://media.test/owner-uat/photo.svg', expires_at: '2026-10-01T08:15:00Z' };
-const adminMe = { admin_user_id: uatIds.user, email: 'superadmin@kepotret.test', display_name: 'Superadmin UAT', mfa_verified: true, session_expires_at: '2026-10-02T08:00:00Z', step_up_expires_at: null };
+const adminMe = { admin_user_id: uatIds.user, email: 'superadmin@kepotret.test', display_name: 'Superadmin UAT', mfa_verified: true, session_expires_at: futureTime(60), step_up_expires_at: null };
 const operationalIssue: OperationalIssue = { issue_id: uatIds.issue, status: 'OPEN', issue_type: 'PHOTO_PROCESSING', severity: 'MEDIUM', summary: 'Synthetic Owner UAT operational issue.', error_code: 'UAT_SYNTHETIC', related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: uatNow, acknowledged_at: null, resolved_at: null };
 const operationalConfigs: OperationalConfig[] = [
   { config_key: 'synthetic_maintenance_notice', display_name: 'Synthetic maintenance notice', description: 'Synthetic editable boolean for Owner Visual UAT only.', editable: true, value_type: 'BOOLEAN', typed_value: false, version: 1, minimum: null, maximum: null, allowed_values: [true, false], updated_at: uatNow, updated_by_admin_user_id: null },
@@ -69,14 +70,11 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
 
   if (pathname === '/api/v1/auth/me') return { status: 200, body: envelope({ user_id: uatIds.user, email: 'owner@kepotret.test', display_name: 'Pemilik UAT' }) };
   if (pathname === '/api/v1/admin/auth/me') return { status: 200, body: envelope(adminMe) };
-  if (pathname === '/api/v1/admin/auth/step-up') return { status: 200, body: envelope({ verified_at: uatNow, expires_at: '2026-10-01T08:10:00Z' }) };
-  if (pathname === `/api/v1/admin/albums/${uatIds.album}/sensitive-access-grants`) return { status: 201, body: envelope({ grant_id: 'owner-uat-grant', album_id: uatIds.album, reason: 'Synthetic Owner UAT review', expires_at: '2026-10-01T08:15:00Z', view_only: true }) };
   if (pathname === '/api/v1/admin/overview') return { status: 200, body: envelope({ total_users: 128, suspended_users: 2, total_albums: 46, draft_albums: 8, payment_pending_albums: 3, ready_albums: 21, committed_photos: 1280, reserved_photos: 12, pending_payments: 2, processing_payments: 1, successful_payments: 15, failed_payments: 1, open_issues: 4, acknowledged_issues: 2, active_holds: 1, generated_at: uatNow }) };
   if (pathname === '/api/v1/admin/users') return { status: 200, body: list(scenario === 'empty' ? [] : [userSummary]) };
   if (pathname === `/api/v1/admin/users/${uatIds.user}`) return { status: 200, body: envelope({ summary: userSummary, last_activity_at: uatNow }) };
   if (pathname === '/api/v1/admin/albums') return { status: 200, body: list(scenario === 'empty' ? [] : [{ album_id: uatIds.album, owner_user_id: uatIds.user, owner_email: 'owner@kepotret.test', event_name: uatEventName, readiness: 'READY', capture_state: 'OPEN', reveal_state: 'HIDDEN', retention_state: 'ACTIVE', capture_start: uatCaptureStart, capture_end: uatCaptureEnd, quota_total: 100, reserved_count: 2, committed_count: 24, hold_active: scenario === 'hold' }]) };
   if (pathname === `/api/v1/admin/albums/${uatIds.album}`) return { status: 200, body: envelope({ summary: { album_id: uatIds.album, owner_user_id: uatIds.user, owner_email: 'owner@kepotret.test', event_name: uatEventName, readiness: 'READY', capture_state: 'OPEN', reveal_state: 'HIDDEN', retention_state: 'ACTIVE', capture_start: uatCaptureStart, capture_end: uatCaptureEnd, quota_total: 100, reserved_count: 2, committed_count: 24, hold_active: scenario === 'hold' }, event_location: 'Jakarta', timezone: 'Asia/Jakarta', schedule: uatSchedule, lifecycle: null, entitlement: { album_id: uatIds.album, quota_total: 100, reserved_count: 2, committed_count: 24, payment_cutoff_at: uatSchedule.payment_cutoff_at }, payment_transactions: [makeTransaction('pending')], related_issues: [] }) };
-  if (pathname === `/api/v1/admin/albums/${uatIds.album}/sensitive-media`) return { status: 200, body: list([]) };
   if (pathname === '/api/v1/admin/payments') return { status: 200, body: list([makeTransaction('pending')]) };
   if (pathname === `/api/v1/admin/payments/${uatIds.transaction}`) return { status: 200, body: envelope({ transaction: makeTransaction(scenario), receipt_diagnostics: [], entitlement: null, can_reconcile: true, last_reconciled_at: null }) };
   if (pathname === '/api/v1/admin/packages') return { status: 200, body: list(uatPackages.map((option) => ({ package_id: option.package_id, code: option.code, name: option.name, versions: [{ package_version_id: option.package_version_id, price_amount: option.price_amount, currency: option.currency, quota_total: option.quota_total, sale_enabled: true, effective_at: uatNow, retired_at: null }] }))) };
@@ -131,10 +129,6 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
 
   if (pathname === `/api/v1/payments/${uatIds.transaction}`) return { status: 200, body: envelope(makeTransaction(scenario)) };
   if (pathname === `/api/v1/exports/${uatIds.export}`) return { status: 200, body: envelope(makeExportJob(scenario)) };
-  if (pathname === `/api/v1/admin/albums/${uatIds.album}/operational-hold`) {
-    const active = scenario === 'hold';
-    return { status: 200, body: envelope({ album_id: uatIds.album, active, reason: active ? 'Synthetic Owner UAT operational review' : null, created_at: active ? uatNow : null, released_at: null }) };
-  }
   if (pathname.endsWith('/design-assets/upload-authorizations')) return { status: 201, body: envelope({ asset_id: uatIds.photo, upload_url: 'https://upload.test/owner-uat/design', expires_at: '2026-10-01T08:15:00Z', required_headers: { 'Content-Type': 'image/jpeg' } }) };
 
   if (method !== 'GET') return { status: 200, body: envelope({ synthetic: true, accepted: true }) };
@@ -160,6 +154,13 @@ export async function installUatApi(page: Page) {
   let finishPendingSave: (() => void) | null = null;
   await page.exposeFunction('__ownerUatCompleteSave', () => { finishPendingSave?.(); });
   let pendingAdminMfa = false;
+  let stepUpVerified = false;
+  let grantActive = false;
+  let grantExpiresAt = '';
+  let holdActive = false;
+  let holdInitialized = false;
+  let holdReason = 'Synthetic Owner UAT operational review';
+  let holdCreatedAt = uatNow;
   let configState = operationalConfigs.map((config) => ({ ...config }));
   let issueState = { ...operationalIssue };
   let syntheticCover: { cover_asset_id: string; cover_preview: { url: string; expires_at: string }; setup_revision: number } | null = null;
@@ -259,6 +260,50 @@ export async function installUatApi(page: Page) {
       if (status === 200) pendingAdminMfa = false;
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(status === 200 ? envelope(adminMe) : { error: { code: status === 403 ? 'CSRF_INVALID' : status === 404 ? 'MFA_CHALLENGE_MISSING' : 'MFA_CODE_INVALID' } }) });
       return;
+    }
+    if (path === '/api/v1/admin/auth/step-up' && method === 'POST') {
+      stepUpVerified = false;
+      const code = (request.postDataJSON() as { totp_code?: string }).totp_code;
+      if (request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+      if (!code || !/^[0-9]{6,12}$/.test(code)) { await respond(422, { error: { code: 'INVALID_CODE' } }); return; }
+      stepUpVerified = true;
+      await respond(200, envelope({ verified_at: new Date().toISOString(), expires_at: futureTime(10) })); return;
+    }
+    if (path === `/api/v1/admin/albums/${uatIds.album}/sensitive-access-grants` && method === 'POST') {
+      const reason = (request.postDataJSON() as { reason?: string }).reason?.trim();
+      if (!stepUpVerified || request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+      stepUpVerified = false;
+      if (!reason) { await respond(422, { error: { code: 'REASON_REQUIRED' } }); return; }
+      grantActive = true;
+      grantExpiresAt = futureTime(15);
+      await respond(201, envelope({ grant_id: 'owner-uat-grant', album_id: uatIds.album, reason, expires_at: grantExpiresAt, view_only: true })); return;
+    }
+    if (path === '/api/v1/admin/sensitive-access-grants/owner-uat-grant' && method === 'DELETE') {
+      if (!stepUpVerified || request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+      stepUpVerified = false;
+      if (!grantActive) { await denied(404); return; }
+      grantActive = false;
+      await respond(200, envelope({ grant_id: 'owner-uat-grant', album_id: uatIds.album, reason: 'Synthetic Owner UAT review', expires_at: grantExpiresAt, view_only: true })); return;
+    }
+    if (path === `/api/v1/admin/albums/${uatIds.album}/sensitive-media` && method === 'GET') {
+      if (!grantActive || Date.parse(grantExpiresAt) <= Date.now() || url.searchParams.get('grant_id') !== 'owner-uat-grant') { await denied(410); return; }
+      await respond(200, list(scenario === 'empty' ? [] : [{ photo_id: uatIds.photo, created_at: uatNow, media: { url: 'https://media.test/owner-uat/photo.svg', expires_at: futureTime(10) } }])); return;
+    }
+    if (path === `/api/v1/admin/albums/${uatIds.album}/operational-hold`) {
+      if (!holdInitialized) { holdActive = scenario === 'hold'; holdInitialized = true; }
+      if (method === 'GET') {
+        if (scenario === 'error') { await denied(503); return; }
+        await respond(200, envelope({ album_id: uatIds.album, active_hold: holdActive ? { hold_id: 'owner-uat-hold', album_id: uatIds.album, reason: holdReason, created_at: holdCreatedAt, released_at: null } : null })); return;
+      }
+      const reason = (request.postDataJSON() as { reason?: string }).reason?.trim();
+      if (!stepUpVerified || request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+      stepUpVerified = false;
+      if (!reason) { await respond(422, { error: { code: 'REASON_REQUIRED' } }); return; }
+      if ((method === 'POST' && holdActive) || (method === 'DELETE' && !holdActive)) { await denied(409); return; }
+      holdActive = method === 'POST';
+      holdReason = reason;
+      if (holdActive) holdCreatedAt = new Date().toISOString();
+      await respond(200, envelope({ hold_id: 'owner-uat-hold', album_id: uatIds.album, reason, created_at: holdCreatedAt, released_at: holdActive ? null : new Date().toISOString() })); return;
     }
     if (path === `/api/v1/admin/packages/${uatIds.package}/versions` && method === 'POST') {
       if (request.headers()['x-csrf-token'] !== 'owner-uat-csrf' || !request.headers()['idempotency-key']) { await denied(); return; }
