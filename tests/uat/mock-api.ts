@@ -46,15 +46,22 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
       : { status: 201, body: envelope({ user_id: uatIds.user, display_name: 'Pemilik UAT', email: 'owner@kepotret.test', permission_version: 1, permissions: { can_setup: false, can_moderate: true, can_export_zip: false }, joined_at: uatNow }) };
   }
 
-  if (pathname === '/api/v1/guest/access/resolve') return { status: 200, body: envelope(makeGuestPreview(scenario)) };
-  if (pathname === '/api/v1/guest/sessions') return { status: 201, body: envelope(makeGuestContext(scenario).guest_session) };
-  if (pathname === '/api/v1/guest/me') return { status: 200, body: envelope(makeGuestContext(scenario)) };
   if (pathname === `/api/v1/albums/${uatIds.album}/capture-readiness`) {
-    const state = scenario === 'waiting' ? 'WAITING' : scenario === 'closed' ? 'CLOSED' : 'READY';
-    return { status: 200, body: envelope({ album_id: uatIds.album, state, can_capture: state === 'READY', server_time: uatNow, capture_start: uatCaptureStart, capture_end: uatCaptureEnd, reveal_at: dateLater, reveal_state: state === 'CLOSED' ? 'REVEALED' : 'HIDDEN', album_remaining_count: state === 'CLOSED' ? 0 : 76, guest_remaining_count: 10 }) };
+    const state = scenario === 'waiting' ? 'WAITING' : scenario === 'closed' || scenario === 'closed-revealed' ? 'CLOSED' : 'READY';
+    return { status: 200, body: envelope({ album_id: uatIds.album, state, can_capture: state === 'READY', server_time: uatNow, capture_start: uatCaptureStart, capture_end: uatCaptureEnd, reveal_at: scenario === 'closed-revealed' ? uatNow : dateLater, reveal_state: scenario === 'closed-revealed' ? 'REVEALED' : 'HIDDEN', album_remaining_count: state === 'CLOSED' ? 0 : 76, guest_remaining_count: 10 }) };
   }
-  if (pathname === '/api/v1/guest/gallery/photos') return { status: 200, body: list(scenario === 'empty' ? [] : [uatPhoto]) };
-  if (pathname.startsWith('/api/v1/guest/gallery/photos/')) return { status: 200, body: envelope(uatPhoto) };
+  if (pathname === '/api/v1/guest/gallery/photos' || pathname.startsWith('/api/v1/guest/gallery/photos/')) {
+    if (!['revealed', 'empty', 'permissions-off', 'detail-denied', 'closed-revealed'].includes(scenario)) return { status: 403, body: { error: { code: 'GALLERY_NOT_AVAILABLE' } } };
+    const photo = scenario === 'permissions-off' ? { ...uatPhoto, actions: { can_like: false, liked_by_me: false, can_download: false, can_share: false } } : uatPhoto;
+    if (pathname === '/api/v1/guest/gallery/photos' && method === 'GET') return { status: 200, body: list(scenario === 'empty' ? [] : [photo]) };
+    if (scenario === 'detail-denied' || scenario === 'empty') return { status: 403, body: { error: { code: 'PHOTO_NOT_AVAILABLE' } } };
+    if (pathname === `/api/v1/guest/gallery/photos/${uatIds.photo}` && method === 'GET') return { status: 200, body: envelope(photo) };
+    if (scenario === 'permissions-off') return { status: 403, body: { error: { code: 'ACTION_NOT_ALLOWED' } } };
+    if (pathname === `/api/v1/guest/gallery/photos/${uatIds.photo}/like` && method === 'PUT') return { status: 200, body: envelope({ ...photo, like_count: 4, actions: { ...photo.actions, liked_by_me: true } }) };
+    if (pathname === `/api/v1/guest/gallery/photos/${uatIds.photo}/download` && method === 'GET') return { status: 200, body: envelope({ url: 'https://media.test/owner-uat/photo.svg' }) };
+    if (pathname === `/api/v1/guest/gallery/photos/${uatIds.photo}/share-link` && method === 'POST') return { status: 200, body: envelope({ url: 'https://kepotret.test/synthetic-owner-uat-photo' }) };
+    return { status: 404, body: { error: { code: 'PHOTO_NOT_FOUND' } } };
+  }
 
   if (pathname === '/api/v1/auth/me') return { status: 200, body: envelope({ user_id: uatIds.user, email: 'owner@kepotret.test', display_name: 'Pemilik UAT' }) };
   if (pathname === '/api/v1/admin/auth/me') return { status: 200, body: envelope(adminMe) };
@@ -128,8 +135,6 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
     return { status: 200, body: envelope({ album_id: uatIds.album, active, reason: active ? 'Synthetic Owner UAT operational review' : null, created_at: active ? uatNow : null, released_at: null }) };
   }
   if (pathname.endsWith('/design-assets/upload-authorizations')) return { status: 201, body: envelope({ asset_id: uatIds.photo, upload_url: 'https://upload.test/owner-uat/design', expires_at: '2026-10-01T08:15:00Z', required_headers: { 'Content-Type': 'image/jpeg' } }) };
-  if (pathname.endsWith('/upload-authorization')) return { status: 200, body: envelope({ upload_url: 'https://upload.test/owner-uat/capture', expires_at: '2026-10-01T08:15:00Z', object_key: 'synthetic/owner-uat/photo.jpg' }) };
-  if (pathname.includes('/capture-attempts/')) return { status: 200, body: envelope({ attempt_id: uatIds.captureAttempt, album_id: uatIds.album, status: scenario === 'recovery-active' ? 'ACTIVE' : 'COMMITTED', expires_at: '2026-10-01T09:00:00Z', committed_at: uatNow }) };
 
   if (method !== 'GET') return { status: 200, body: envelope({ synthetic: true, accepted: true }) };
   return { status: 200, body: list([]) };
@@ -142,6 +147,17 @@ function makeExportJob(scenario: string) {
 
 export async function installUatApi(page: Page) {
   let requestCount = 0;
+  const unmatchedGuestRequests: string[] = [];
+  const captureRequests: string[] = [];
+  let currentScenario = 'normal';
+  let reservationCount = 0;
+  let putCount = 0;
+  let commitCount = 0;
+  let guestJoined = false;
+  let attemptStatus: 'ACTIVE' | 'RELEASED' | 'EXPIRED' | 'COMMITTED' | null = null;
+  let uploaded = false;
+  let finishPendingSave: (() => void) | null = null;
+  await page.exposeFunction('__ownerUatCompleteSave', () => { finishPendingSave?.(); });
   let pendingAdminMfa = false;
   let syntheticCover: { cover_asset_id: string; cover_preview: { url: string; expires_at: string }; setup_revision: number } | null = null;
   let coverRevision = 3;
@@ -149,8 +165,82 @@ export async function installUatApi(page: Page) {
     requestCount += 1;
     const request = route.request();
     const url = new URL(request.url());
-    let scenario = 'normal';
-    try { scenario = new URL(page.url()).searchParams.get('uat') ?? 'normal'; } catch { /* about:blank before app navigation */ }
+    try { currentScenario = new URL(page.url()).searchParams.get('uat') ?? currentScenario; } catch { /* about:blank before app navigation */ }
+    const scenario = currentScenario;
+    const respond = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    const denied = (status = 403) => respond(status, { error: { code: status === 429 ? 'RATE_LIMITED' : 'GUEST_ACCESS_DENIED' } });
+    const path = url.pathname;
+    const method = request.method();
+    const guestRoute = new URL(page.url()).pathname;
+    const guestLinkId = guestRoute.match(/^\/j\/([^/]+)/)?.[1];
+    const knownSyntheticLink = guestLinkId !== undefined && /^uat-event(?:-waiting-(?:id|en))?$/.test(guestLinkId);
+    const galleryEntry = guestRoute.startsWith(`/j/${uatIds.link}/galeri`);
+    if (path === '/api/v1/guest/access/resolve' && method === 'POST') {
+      const payload = request.postDataJSON() as { link_id?: string; access_secret?: string };
+      if (!knownSyntheticLink || payload.link_id !== guestLinkId || payload.access_secret !== 'synthetic-owner-uat-secret') { await denied(); return; }
+      await respond(200, envelope(makeGuestPreview(scenario))); return;
+    }
+    if (path === '/api/v1/guest/sessions' && method === 'POST') {
+      const payload = request.postDataJSON() as { link_id?: string; access_secret?: string; display_name?: string; accepted_consent_version?: string };
+      if (!knownSyntheticLink || payload.link_id !== guestLinkId || payload.access_secret !== 'synthetic-owner-uat-secret' || !payload.display_name?.trim() || payload.accepted_consent_version !== 'owner-uat-photo-consent-v1' || !request.headers()['idempotency-key']) { await denied(); return; }
+      guestJoined = true;
+      await respond(201, envelope(makeGuestContext(scenario).guest_session)); return;
+    }
+    if (path === '/api/v1/guest/me') {
+      if (scenario === 'unauthorized') { await denied(401); return; }
+      if (scenario === 'denied') { await denied(403); return; }
+      if (scenario === 'expired') { await denied(410); return; }
+      if (!guestJoined && !galleryEntry) { await denied(401); return; }
+      await respond(200, envelope(makeGuestContext(scenario))); return;
+    }
+    if (path === `/api/v1/albums/${uatIds.album}/capture-attempts` && method === 'POST') {
+      captureRequests.push('reserve');
+      if (scenario === 'reservation-denied') { await denied(403); return; }
+      if (scenario === 'reservation-rate-limit') { await denied(429); return; }
+      if (!guestJoined || request.headers()['x-csrf-token'] !== 'owner-uat-csrf' || !request.headers()['idempotency-key']) { await denied(); return; }
+      reservationCount += 1;
+      attemptStatus = 'ACTIVE';
+      uploaded = false;
+      await respond(201, envelope({ attempt_id: uatIds.captureAttempt, album_id: uatIds.album, status: 'ACTIVE', expires_at: '2026-10-01T17:00:00Z' }));
+      return;
+    }
+    const attemptPath = path.match(/^\/api\/v1\/capture-attempts\/([^/]+)(?:\/(upload-authorization|release|commit))?$/);
+    if (attemptPath) {
+      const [, attemptId, action] = attemptPath;
+      captureRequests.push(action ?? 'status');
+      if (!guestJoined || attemptId !== uatIds.captureAttempt || !attemptStatus) { await denied(404); return; }
+      if (scenario === 'reservation-expired' && !action) attemptStatus = 'EXPIRED';
+      if (action && request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+      const stateBody = () => envelope({ attempt_id: attemptId, album_id: uatIds.album, status: attemptStatus, expires_at: '2026-10-01T17:00:00Z', ...(attemptStatus === 'COMMITTED' ? { committed_at: uatNow } : {}) });
+      if (!action && method === 'GET') { await respond(200, stateBody()); return; }
+      if (action === 'release' && method === 'POST') {
+        if (attemptStatus === 'ACTIVE') attemptStatus = 'RELEASED';
+        await respond(200, stateBody()); return;
+      }
+      if (action === 'upload-authorization' && method === 'POST') {
+        if (scenario === 'upload-denied') { await denied(403); return; }
+        if (scenario === 'upload-rate-limit') { await denied(429); return; }
+        const payload = request.postDataJSON() as { content_type?: string; size_bytes?: number };
+        if (attemptStatus !== 'ACTIVE' || payload.content_type !== 'image/jpeg' || !Number.isInteger(payload.size_bytes) || payload.size_bytes! > 700_000 || payload.size_bytes! <= 0) { await denied(); return; }
+        await respond(200, envelope({ upload_url: 'https://upload.test/owner-uat/capture', expires_at: '2026-10-01T17:00:00Z', object_key: 'synthetic/owner-uat/photo.jpg' })); return;
+      }
+      if (action === 'commit' && method === 'POST') {
+        commitCount += 1;
+        if (scenario === 'save-fail-commit' && commitCount === 1) { await respond(503, { error: { code: 'SYNTHETIC_COMMIT_FAILURE' } }); return; }
+        if (attemptStatus !== 'ACTIVE' || !uploaded) { await denied(); return; }
+        attemptStatus = 'COMMITTED';
+        await respond(201, stateBody()); return;
+      }
+      unmatchedGuestRequests.push(`${method} ${path}`);
+      await respond(501, { error: { code: 'UNMATCHED_GUEST_FIXTURE' } }); return;
+    }
+    if (path.startsWith('/api/v1/guest/gallery/')) {
+      if (scenario === 'unauthorized') { await denied(401); return; }
+      if (scenario === 'denied') { await denied(); return; }
+      if (scenario === 'expired') { await denied(410); return; }
+      if (!galleryEntry && !guestJoined) { await denied(401); return; }
+      if ((method === 'PUT' || method === 'POST') && request.headers()['x-csrf-token'] !== 'owner-uat-csrf') { await denied(); return; }
+    }
     if (url.pathname === '/api/v1/admin/auth/login' && request.method() === 'POST') {
       const credentials = request.postDataJSON() as { email?: string; password?: string };
       const csrfValid = request.headers()['x-csrf-token'] === 'owner-uat-csrf';
@@ -178,11 +268,48 @@ export async function installUatApi(page: Page) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope(syntheticCover ?? { cover_asset_id: null, cover_preview: null, setup_revision: coverRevision })) });
       return;
     }
-    const result = requestFor(url.pathname, request.method(), scenario);
+    if (path.startsWith('/api/v1/guest/') && !['/api/v1/guest/access/resolve', '/api/v1/guest/sessions', '/api/v1/guest/me'].includes(path) && !path.startsWith('/api/v1/guest/gallery/')) {
+      unmatchedGuestRequests.push(`${method} ${path}`);
+      await respond(501, { error: { code: 'UNMATCHED_GUEST_FIXTURE' } }); return;
+    }
+    if (path.includes('/capture-attempts')) {
+      unmatchedGuestRequests.push(`${method} ${path}`);
+      await respond(501, { error: { code: 'UNMATCHED_GUEST_FIXTURE' } }); return;
+    }
+    const result = requestFor(path, method, scenario);
     await route.fulfill({ status: result.status, contentType: 'application/json', body: JSON.stringify(result.body) });
   });
-  await page.route('https://upload.test/**', (route) => route.fulfill({ status: 200, body: 'synthetic UAT upload accepted' }));
+  await page.route('https://upload.test/**', async (route) => {
+    if (new URL(route.request().url()).pathname === '/owner-uat/design') {
+      await route.fulfill({ status: 200, body: 'synthetic UAT design upload accepted' });
+      return;
+    }
+    putCount += 1;
+    if (currentScenario === 'save-pending') {
+      const pending = new Promise<void>((resolve) => { finishPendingSave = resolve; });
+      await page.evaluate(() => {
+        const button = document.createElement('button');
+        button.id = '__owner-uat-finish-save';
+        button.type = 'button';
+        button.textContent = 'SYNTHETIC UAT · Complete save';
+        button.setAttribute('aria-label', 'Synthetic UAT: complete save');
+        Object.assign(button.style, { position: 'fixed', bottom: '12px', right: '12px', zIndex: '2147483647', minHeight: '44px', padding: '8px 14px', borderRadius: '999px', background: '#172117', color: '#d8ff3d', font: '600 12px system-ui,sans-serif', cursor: 'pointer' });
+        button.addEventListener('click', () => {
+          void (window as unknown as { __ownerUatCompleteSave: () => Promise<void> }).__ownerUatCompleteSave();
+          button.remove();
+        }, { once: true });
+        document.body.append(button);
+      });
+      await pending;
+      finishPendingSave = null;
+    }
+    if (currentScenario === 'save-fail-put' && putCount === 1) { await route.fulfill({ status: 503, body: 'synthetic upload failure' }); return; }
+    if (route.request().method() !== 'PUT' || route.request().headers()['content-type'] !== 'image/jpeg' || !attemptStatus || attemptStatus !== 'ACTIVE') { await route.fulfill({ status: 403 }); return; }
+    uploaded = true;
+    await route.fulfill({ status: 200, body: 'synthetic UAT upload accepted' });
+  });
   await page.route('https://media.test/**', (route) => {
+    if (new URL(page.url()).pathname.startsWith('/j/') && !['revealed', 'permissions-off', 'detail-denied', 'closed-revealed'].includes(currentScenario)) return route.fulfill({ status: 403 });
     const body = '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720"><rect width="960" height="720" fill="#d7dfc8"/><rect x="40" y="40" width="880" height="640" rx="30" fill="#fbf8ef"/><circle cx="220" cy="260" r="88" fill="#d6a66b"/><path d="M60 620 330 350l170 160 140-130 260 240Z" fill="#64826d"/><text x="480" y="690" font-size="24" text-anchor="middle" fill="#333">SYNTHETIC OWNER UAT PHOTO</text></svg>';
     return route.fulfill({ status: 200, contentType: 'image/svg+xml', body });
   });
@@ -215,5 +342,5 @@ export async function installUatApi(page: Page) {
 
     // Chromium's fake-device/fake-UI launch flags provide a synthetic camera stream.
   });
-  return { get requestCount() { return requestCount; } };
+  return { get requestCount() { return requestCount; }, captureRequests, unmatchedGuestRequests, get reservationCount() { return reservationCount; }, get putCount() { return putCount; }, get commitCount() { return commitCount; } };
 }

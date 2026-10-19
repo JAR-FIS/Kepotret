@@ -37,6 +37,8 @@ const apiOrigin = resolveApiOrigin();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Keep the development badge clear of Guest capture controls during Owner visual UAT.
+  devIndicators: false,
   poweredByHeader: false,
   async headers() {
     return [
