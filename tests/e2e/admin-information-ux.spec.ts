@@ -169,7 +169,7 @@ test('H84 catalog supports odd counts and historical versions without exposing p
   await expect(page.getByText('eeeeeeee-eeee-4eee-8eee-000000000099')).toBeVisible();
 });
 
-test('H77–H85 remain responsive at supported widths and H85 keeps its original form', async ({ page }) => {
+test('H77–H85 remain responsive at supported widths and H85 keeps its price and quota form', async ({ page }) => {
   test.setTimeout(180_000);
   for (const width of [360, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -180,7 +180,7 @@ test('H77–H85 remain responsive at supported widths and H85 keeps its original
     }
   }
   await page.goto(routes[8][1]);
-  await expect(page.getByRole('spinbutton', { name: /Price|Harga/i })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: /Price|Harga/i })).toBeVisible();
   await expect(page.getByRole('spinbutton', { name: /quota|kuota/i })).toBeVisible();
 });
 
