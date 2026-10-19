@@ -148,7 +148,8 @@ export function makeGuestPreview(scenario: string): GuestAccessPreview {
 }
 
 export function makeGuestContext(scenario: string): GuestContext {
-  const closed = scenario === 'closed';
+  const closed = scenario === 'closed' || scenario === 'closed-revealed';
+  const revealed = ['revealed', 'empty', 'permissions-off', 'detail-denied', 'closed-revealed'].includes(scenario);
   return {
     guest_session: {
       guest_session_id: uatIds.guestSession,
@@ -163,9 +164,9 @@ export function makeGuestContext(scenario: string): GuestContext {
       timezone: 'Asia/Jakarta',
       capture_start: uatCaptureStart,
       capture_end: uatCaptureEnd,
-      reveal_at: '2026-10-04T17:00:00Z',
+      reveal_at: scenario === 'closed-revealed' ? uatNow : '2026-10-04T17:00:00Z',
       capture_state: closed ? 'CLOSED' : 'OPEN',
-      reveal_state: closed ? 'REVEALED' : 'HIDDEN',
+      reveal_state: revealed ? 'REVEALED' : 'HIDDEN',
     },
   };
 }

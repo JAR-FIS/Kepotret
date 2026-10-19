@@ -4,7 +4,7 @@
 
 This is a test-only, owner-operated visual review harness for routes H01-H92 and shared states C01-C09. It runs the real frontend against deterministic synthetic API responses intercepted in the browser. It does not require an account, contact the real API, upload real media, send messages, or perform payment actions. Do not remove the `OWNER VISUAL UAT` badge while capturing review evidence.
 
-The runner pauses on the landing page after its smoke checks. From there, change the local URL using the route catalog below to inspect each screen. Each route can select a state with `?uat=<scenario>`; synthetic state names are documented beside routes. The API interceptor remains installed while paused. A URL fragment can be used for synthetic guest-link resolution, for example `#synthetic-owner-uat-secret`.
+The runner pauses on the landing page after its smoke checks. From there, change the local URL using the route catalog below to inspect each screen. Each route can select a state with `?uat=<scenario>`; synthetic state names are documented beside routes. The API interceptor remains installed while paused. A URL fragment can be used for synthetic guest-link resolution, for example `#synthetic-owner-uat-secret`. The `uat` parameter has no special effect in the application without this Playwright session.
 
 ## Start the harness
 
@@ -25,6 +25,8 @@ pnpm uat:visual:mobile
 The mobile project uses Playwright's Pixel 7 viewport/device emulation in visible Chromium. Browser camera input is synthetic. Stop the paused run with Ctrl+C in the terminal. Use the app's language selector to review Bahasa Indonesia and English, and its appearance control to review Light and Dark themes. Keep browser zoom at 100% for consistent spacing checks.
 
 To select an API-driven scenario, append one of these values to a route's `uat` query parameter: `normal`, `live`, `draft`, `empty`, `error`, `waiting`, `closed`, `pin`, `collaborator`, `hold`, `success`, `failure`, `pending`, `queued`, `running`, `ready`, `failed`, `recovery-active`, or `recovery-media`. A scenario only affects components that consume that API projection. Use the documented route examples and check the visible badge before recording results.
+
+For H70–H76, follow the [Guest Flow Owner handoff](../../reviews/FE-UAT-T2-01/README.md). It gives the exact Guest URLs, camera/consent clicks needed for state-driven H70/H71/H72, reveal and permission scenarios, and synthetic screenshots. The Guest-only scenarios `revealed`, `hidden`, `save-pending`, `save-fail-put`, `save-fail-commit`, `closed-revealed`, `permissions-off`, `detail-denied`, `denied`, `unauthorized`, and `expired` exist only in the installed Playwright interceptor.
 
 ## Review procedure
 

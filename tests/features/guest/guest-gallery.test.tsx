@@ -1,4 +1,3 @@
-import { NextIntlClientProvider } from 'next-intl';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GuestGalleryPhoto } from '@/lib/api/generated/index.schemas';
@@ -19,7 +18,7 @@ vi.mock('@/lib/api/browser', () => ({
 }));
 
 import { GuestGallery } from '@/features/guest/components/guest-gallery';
-import messages from '@/messages/en.json';
+import { LocaleProvider } from '@/providers/locale-provider';
 
 const eventContext = {
   guest_session: { guest_session_id: 'guest-1', album_id: 'album-1', display_name: 'Guest', created_at: '2026-09-27T00:00:00Z' },
@@ -33,7 +32,7 @@ const photo: GuestGalleryPhoto = {
 const page = (items: typeof photo[], nextCursor: string | null = null) => ({ status: 200, data: { data: items, meta: { has_more: Boolean(nextCursor), next_cursor: nextCursor } } });
 
 function renderGallery(props: { linkId: string; photoId?: string }) {
-  return render(<NextIntlClientProvider locale="en" messages={messages}><GuestGallery {...props} /></NextIntlClientProvider>);
+  return render(<LocaleProvider initialLocale="en"><GuestGallery {...props} /></LocaleProvider>);
 }
 
 describe('guest gallery', () => {

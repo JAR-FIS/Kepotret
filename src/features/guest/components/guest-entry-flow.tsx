@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { LocaleControl } from '@/components/ui/locale-control';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { formatEventDateTime } from '@/lib/time/event-time';
 import {
   getApiV1AlbumsAlbumIdCaptureReadiness,
@@ -59,6 +61,7 @@ function displayNameLength(value: string) { return Array.from(value.trim()).leng
 
 export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const t = useTranslations('guest');
+  const preferences = useTranslations('guest.preferences');
   const locale = useLocale();
   const router = useRouter();
   const [stage, setStage] = useState<Stage>('loading');
@@ -88,12 +91,15 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const attemptRef = useRef<Attempt | null>(null);
   const finalJpegRef = useRef<{ attemptId: string; blob: Blob } | null>(null);
   const pendingRef = useRef(false);
+  const translationRef = useRef(t);
   const checkedBoundaryRef = useRef<string | null>(null);
   const checkedRevealRef = useRef(false);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
 
+  useEffect(() => { translationRef.current = t; }, [t]);
+
   useEffect(() => {
-    const active = stage === 'camera';
+    const active = stage === 'camera' || stage === 'review' || stage === 'uploading' || stage === 'saved';
     setGuestCameraActive(active);
     return () => {
       if (active) setGuestCameraActive(false);
@@ -114,17 +120,17 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const failAccess = useCallback(() => {
     stopCamera();
     setReadinessFresh(false);
-    setMessage(t('unavailable'));
+    setMessage(translationRef.current('unavailable'));
     setStage('error');
-  }, [stopCamera, t]);
+  }, [stopCamera]);
 
   const handleRequestError = useCallback((error: unknown, onDenied?: () => void) => {
     const status = error instanceof GuestRequestError ? error.status : null;
     if (status === 401 || status === 403) {
       onDenied?.();
       failAccess();
-    } else setMessage(status === 429 ? t('rateLimited') : t('genericError'));
-  }, [failAccess, t]);
+    } else setMessage(status === 429 ? translationRef.current('rateLimited') : translationRef.current('genericError'));
+  }, [failAccess]);
 
   const loadReadiness = useCallback(async (albumId: string) => {
     const result = await getApiV1AlbumsAlbumIdCaptureReadiness(albumId);
@@ -189,7 +195,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
       }
     })();
     return () => { active = false; stopCamera(); };
-  }, [failAccess, handleRequestError, linkId, restoreGuest, stopCamera, t]);
+  }, [failAccess, handleRequestError, linkId, restoreGuest, stopCamera]);
 
   useEffect(() => {
     if (!photoUrl) return;
@@ -571,7 +577,10 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
 
   return <main className="min-h-screen bg-[var(--color-background)] px-4 py-7 text-[var(--color-foreground)] sm:py-12">
     <div className="mx-auto flex min-h-[78vh] w-full max-w-lg flex-col justify-center">
-      <header className="mb-6 text-center"><p className="font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</p><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('subtitle')}</p></header>
+      <header className="mb-6">
+        <div className="mb-5 flex items-center justify-end gap-2"><LocaleControl label={preferences('language')} indonesianLabel={preferences('indonesian')} englishLabel={preferences('english')} /><ThemeToggle lightLabel={preferences('light')} darkLabel={preferences('dark')} /></div>
+        <div className="text-center"><p className="font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</p><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('subtitle')}</p></div>
+      </header>
       {!isOnline && <OfflineNotice />}
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm sm:p-7">
         {stage === 'loading' && <p role="status">{t('checkingInvitation')}</p>}

@@ -1,7 +1,5 @@
-import { getTranslations } from 'next-intl/server';
-import { GuestTerminal } from '@/features/guest/components/guest-gallery';
+import { GuestTerminal } from '@/features/guest/components/guest-terminal';
 
-export default async function GuestAccessEndedPage() {
-  const t = await getTranslations('guest.gallery');
-  return <GuestTerminal title={t('endedTitle')} description={t('endedDescription')} />;
+export default function GuestAccessEndedPage() {
+  return <GuestTerminal kind="ended" />;
 }
