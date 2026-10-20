@@ -70,7 +70,7 @@ export function CaptureWaitingState({ readiness, isOffline, revalidating, camera
   const t = useTranslations('guest');
   const waiting = readiness?.state === 'WAITING';
   return <div className="space-y-4 text-center">
-    <p className="text-sm text-[var(--color-muted-foreground)]">{readiness?.can_capture ? t('captureReady') : t('captureWait')}</p>
+    {(readiness?.state === 'READY' || waiting) && <p className="text-sm text-[var(--color-muted-foreground)]">{waiting ? t('captureWait') : t('captureReady')}</p>}
     {waiting && readiness?.capture_start && <p className="text-sm">{t('photosBeginAt')}: {formatTime(readiness.capture_start)}</p>}
     {readiness?.state === 'QUOTA_FULL' && <p role="status">{t('quotaFull')}</p>}
     {readiness?.state === 'GUEST_LIMIT_REACHED' && <p role="status">{t('guestLimit')}</p>}
@@ -79,21 +79,28 @@ export function CaptureWaitingState({ readiness, isOffline, revalidating, camera
   </div>;
 }
 
-export function CameraViewfinder({ videoRef, isReady, isBusy, isOffline, onSwitch, onShutter, cameraError }: {
+export function CameraViewfinder({ videoRef, isReady, isBusy, isOffline, canSwitch, mirrored, onSwitch, onShutter, cameraError }: {
   videoRef: RefObject<HTMLVideoElement | null>; isReady: boolean; isBusy: boolean; isOffline: boolean;
+  canSwitch: boolean; mirrored: boolean;
   onSwitch: () => void; onShutter: () => void; cameraError: string;
 }) {
   const t = useTranslations('guest');
-  return <div className="mt-5 space-y-4">
-    <video ref={videoRef} playsInline muted aria-label={t('camera')} className="aspect-[3/4] w-full rounded-xl bg-black object-cover" />
-    <div className="flex gap-3"><Button variant="secondary" className="flex-1" onClick={onSwitch}><RotateCcw size={16} />{t('switchCamera')}</Button><Button className="flex-1" loading={isBusy} disabled={!isReady || isOffline} onClick={onShutter}><Camera size={18} />{t('shutter')}</Button></div>
-    {cameraError && <p role="alert" className="text-sm text-[var(--color-destructive)]">{cameraError}</p>}
-  </div>;
+  return <main className="relative h-dvh min-h-dvh w-full overflow-hidden bg-black text-white" aria-label={t('camera')}>
+    <video ref={videoRef} playsInline muted aria-label={t('camera')} className={`absolute inset-0 h-full w-full object-cover ${mirrored ? '-scale-x-100' : ''}`} />
+    {(cameraError || isOffline || !isReady || isBusy) && <p role={cameraError ? 'alert' : 'status'} className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+1rem)] mx-auto max-w-sm rounded-xl bg-black/75 px-4 py-3 text-center text-sm font-medium text-white">
+      {cameraError || (isOffline ? t('offlineBeforeCapture') : !isReady ? t('cameraPreparing') : t('cameraCapturing'))}
+    </p>}
+    <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] mx-auto grid w-full max-w-xs grid-cols-3 place-items-center px-4">
+      <span aria-hidden="true" />
+      <button type="button" aria-label={t('shutter')} title={t('shutter')} disabled={!isReady || isBusy || isOffline} onClick={onShutter} className="flex size-20 items-center justify-center rounded-full border-4 border-white bg-black/35 shadow-lg transition-colors hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true" className="size-14 rounded-full bg-white" /></button>
+      {canSwitch && <button type="button" aria-label={t('switchCamera')} title={t('switchCamera')} disabled={!isReady || isBusy || isOffline} onClick={onSwitch} className="flex size-13 items-center justify-center rounded-full border border-white/70 bg-black/65 shadow-lg transition-colors hover:bg-black/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-50"><RotateCcw size={24} aria-hidden="true" /></button>}
+    </div>
+  </main>;
 }
 
 export function CaptureReview({ photoUrl, isBusy, onRetake, onUse }: { photoUrl: string; isBusy: boolean; onRetake: () => void; onUse: () => void }) {
   const t = useTranslations('guest');
-  return <div className="mt-5 space-y-4"><Image src={photoUrl} alt={t('previewAlt')} width={600} height={800} unoptimized className="aspect-[3/4] w-full rounded-xl bg-black object-contain" /><div className="flex gap-3"><Button variant="secondary" className="flex-1" loading={isBusy} onClick={onRetake}><RotateCcw size={16} />{t('retake')}</Button><Button className="flex-1" loading={isBusy} onClick={onUse}><Check size={18} />{t('usePhoto')}</Button></div></div>;
+  return <div className="space-y-4"><Image src={photoUrl} alt={t('previewAlt')} width={600} height={800} unoptimized className="aspect-[3/4] w-full rounded-xl bg-black object-contain" /><div className="grid gap-3 min-[380px]:grid-cols-2"><Button variant="secondary" className="w-full whitespace-nowrap px-2" loading={isBusy} onClick={onRetake}><RotateCcw size={16} />{t('retake')}</Button><Button className="w-full whitespace-nowrap px-2" loading={isBusy} onClick={onUse}><Check size={18} />{t('usePhoto')}</Button></div></div>;
 }
 
 export function UploadStatus() {

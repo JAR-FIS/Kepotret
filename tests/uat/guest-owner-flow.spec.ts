@@ -52,7 +52,7 @@ test('H70 preferences preserve the captured photo and retake releases reservatio
   await expect(page.locator('html')).toHaveClass(/dark/);
   await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
   await evidence(page, testInfo, 'h70-review-en-dark');
-  await page.getByRole('button', { name: 'Retake' }).click();
+  await page.getByRole('button', { name: 'Take again' }).click();
   await expect(page.getByRole('button', { name: 'Open camera' })).toBeVisible();
   expect(fixture.captureRequests).toContain('release');
   expect(fixture.unmatchedGuestRequests).toEqual([]);
