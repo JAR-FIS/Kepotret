@@ -30,9 +30,11 @@ Engineering handoff from baseline `51a17438eec28ccea8ca1ccd66127af762120ba1`. **
 | Owner UAT catalog smoke | 2 passed against synthetic fixtures |
 | Guest Owner UAT regression, `--retries=0` | 36 passed: desktop and mobile synthetic scenarios |
 | Full Playwright matrix, `--retries=0` | 215 passed, 3 existing evidence-only skips; no flaky passes |
-| Hosted CI | Pending PR creation |
+| Hosted CI (PR #33, initial implementation commit `9f9a275`) | Quality passed (42 files, 281 tests, lint, typecheck, OpenAPI check, build). Full E2E: 214 passed, 3 existing evidence-only skips, 1 retry-pass in the unrelated Host setup flow. Privileged Admin regression: 28 passed, 1 existing skip, no retries. Guest Owner UAT: 36 passed, no retries. |
 
 The new Playwright assertions check portrait/landscape/desktop geometry, only the normal camera controls, actual stream switch order with no overlapping streams, hidden switch on a single camera, switch failure recovery, rapid double shutter, empty-frame rejection, portrait/landscape crop, H70 preference persistence, H71 label width, and H72 localized server-state guidance. The synthetic camera feed is black by design; these tests validate layout and state flow, not physical camera image quality.
+
+The hosted retry-pass was `tests/e2e/host-core.spec.ts` expecting the Host setup route after dashboard navigation; it is outside H69–H72. The focused Guest Owner UAT run passed all 36 cases without retries. Final PR HEAD check status is tracked on [PR #33](https://github.com/JAR-FIS/Kepotret/pull/33/checks).
 
 ## Synthetic screenshots
 
