@@ -86,7 +86,7 @@ describe('Admin album server search', () => {
 
     fireEvent.change(search, { target: { value: 'error' } });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    expect(await screen.findByText(/supporting service is unavailable/i)).toBeInTheDocument();
+    expect(await screen.findByText(/service is unavailable/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
     await waitFor(() => expect(screen.getAllByText('Recovered')).toHaveLength(2));
     expect(api.albums).toHaveBeenLastCalledWith({ limit: 25, query: 'error' });

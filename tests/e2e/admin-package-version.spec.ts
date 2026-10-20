@@ -53,14 +53,14 @@ test('FE-8 package version retries keep the payload key and new intents get a ne
 
   await createVersion();
   await expect.poll(() => requests.length).toBe(2);
-  await expect(page.getByText(/HTTP 503/)).toBeVisible();
+  await expect(page.getByText(/Layanan sedang tidak tersedia/)).toBeVisible();
   expect(requests[1].key).toBe(requests[0].key);
   expect(requests[1].body).toEqual(requests[0].body);
 
   await price.fill('85000');
   await createVersion();
   await expect.poll(() => requests.length).toBe(3);
-  await expect(page.getByText(/HTTP 503/)).toBeVisible();
+  await expect(page.getByText(/Layanan sedang tidak tersedia/)).toBeVisible();
   expect(requests[2].key).toMatch(uuidV7);
   expect(requests[2].key).not.toBe(requests[1].key);
   expect(requests[2].body).toEqual({ price_amount: 85000, currency: 'IDR', quota_total: 100 });

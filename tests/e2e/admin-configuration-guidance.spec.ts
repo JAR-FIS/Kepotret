@@ -89,7 +89,7 @@ test('H85 reports 409, 422, 403, and 429 without losing safe retry semantics', a
   const keys: string[] = [];
   await page.route(`**/api/v1/admin/packages/${uatIds.package}/versions`, async (route) => {
     keys.push(route.request().headers()['idempotency-key'] ?? '');
-    await route.fulfill({ status: statuses[keys.length - 1], json: { error: { code: 'SYNTHETIC_REJECTION' } } });
+    await route.fulfill({ status: statuses[keys.length - 1], json: { error: { code: 'SYNTHETIC_REJECTION', message: '<script>internal-token-and-stack</script>' } } });
   });
   await page.goto(versionRoute);
   await page.getByLabel('Harga (IDR)').fill('450000');
@@ -98,7 +98,9 @@ test('H85 reports 409, 422, 403, and 429 without losing safe retry semantics', a
     await page.getByRole('button', { name: 'Tinjau sebelum membuat' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Buat versi immutable' }).click();
     await expect.poll(() => keys.length).toBe(statuses.indexOf(status) + 1);
-    await expect(page.getByRole('alert').filter({ hasText: status === 409 ? /Konflik versi/ : new RegExp(`HTTP ${status}`) })).toBeVisible();
+    const safeMessage = status === 409 ? /Konflik versi/ : status === 422 ? /Nilai tidak dapat diterima/ : status === 403 ? /Akses Admin tidak tersedia/ : /Terlalu banyak permintaan/;
+    await expect(page.getByRole('alert').filter({ hasText: safeMessage })).toBeVisible();
+    await expect(page.getByText('internal-token-and-stack')).toHaveCount(0);
   }
   expect(keys[0]).toBe(keys[1]);
   expect(keys[2]).not.toBe(keys[1]);
@@ -128,7 +130,7 @@ test('H85 blocks a second submit while the server request is pending', async ({ 
   } finally {
     finish?.();
   }
-  await expect(page.getByRole('alert').filter({ hasText: 'HTTP 503' })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'Layanan sedang tidak tersedia' })).toBeVisible();
 });
 
 test('H86 keeps locked values read only and saves an editable typed value with version and CSRF', async ({ page }) => {

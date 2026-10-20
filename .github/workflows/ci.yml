@@ -79,6 +79,9 @@ jobs:
       - name: Full Chromium and focused cross-browser regression
         run: pnpm exec playwright test
 
+      - name: Privileged Admin regression without retries
+        run: pnpm exec playwright test tests/e2e/admin-privileged.spec.ts tests/e2e/admin-privileged-uat.spec.ts --retries=0
+
       - name: Guest Owner UAT regression (desktop and mobile)
         run: pnpm exec playwright test --config=playwright.guest-uat.config.ts --retries=0
 
