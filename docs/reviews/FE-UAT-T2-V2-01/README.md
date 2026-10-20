@@ -36,6 +36,12 @@ The new Playwright assertions check portrait/landscape/desktop geometry, only th
 
 The hosted retry-pass was `tests/e2e/host-core.spec.ts` expecting the Host setup route after dashboard navigation; it is outside H69–H72. The focused Guest Owner UAT run passed all 36 cases without retries. Final PR HEAD check status is tracked on [PR #33](https://github.com/JAR-FIS/Kepotret/pull/33/checks).
 
+## Independent review follow-up
+
+The independent review of `23b2ea3` requested three camera lifecycle corrections on PR #33. The switch path now preserves terminal 401/403 denial instead of replacing it with Ready; a rejected video playback stops the stream and returns to Ready with localized retry guidance; and camera entry checks its operation generation after the readiness request, so a late response cannot start media after a terminal stage exit or unmount. Focused synthetic regressions cover switch denial at both statuses, playback rejection and retry with track cleanup, and delayed readiness after a terminal stage exit. The latter test also navigates away after verifying no acquisition.
+
+Remediation validation: lint, typecheck, 281 unit/component tests, OpenAPI freshness, production build, and all 27 Chromium guest-capture tests passed locally. The four new focused regressions passed with `--retries=0`. Final hosted quality and E2E results are available on the PR checks page. These checks do not replace real-device Owner validation.
+
 ## Synthetic screenshots
 
 | Stage | Evidence |

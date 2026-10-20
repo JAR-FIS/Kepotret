@@ -413,6 +413,7 @@
     "cameraUnsupported": "This browser does not support camera access.",
     "cameraNotFound": "No camera was found on this device.",
     "cameraBusy": "The camera is busy in another app.",
+    "cameraPlaybackFailed": "The camera could not start. Try opening it again.",
     "cameraPermission": "Camera permission is needed to take a photo.",
     "eventInvitation": "Event invitation",
     "phaseNotStarted": "Photos begin according to the event schedule.",

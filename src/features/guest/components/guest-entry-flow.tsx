@@ -225,9 +225,15 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     const markReady = () => { if (active && video.videoWidth && video.videoHeight) setCameraReady(true); };
     video.addEventListener('loadedmetadata', markReady);
     video.addEventListener('resize', markReady);
-    void video.play().then(markReady).catch(() => { if (active) setCameraError(t('cameraBusy')); });
+    void video.play().then(markReady).catch(() => {
+      if (!active) return;
+      stopCamera();
+      setCameraReady(false);
+      setCameraError(t('cameraPlaybackFailed'));
+      setStage('ready');
+    });
     return () => { active = false; video.removeEventListener('loadedmetadata', markReady); video.removeEventListener('resize', markReady); setCameraReady(false); };
-  }, [cameraStreamVersion, stage, t]);
+  }, [cameraStreamVersion, stage, stopCamera, t]);
 
   useEffect(() => {
     if (stage !== 'camera') stopCamera();
@@ -381,11 +387,13 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     if (!isOnline || !navigator.onLine) { setMessage(t('offlineBeforeCapture')); return; }
     if (!context || !navigator.mediaDevices?.getUserMedia) { setCameraError(t('cameraUnsupported')); return; }
     cameraOperationRef.current = true;
+    let requestId = cameraRequestRef.current;
     setBusy(true);
     setMessage('');
     setCameraError('');
     try {
       const current = await loadReadiness(context.guest_session.album_id);
+      if (cameraRequestRef.current !== requestId) return;
       if (!current.can_capture) {
         applyReadiness(current);
         if (current.state !== 'UNAVAILABLE') setStage(current.state === 'CLOSED' ? 'closed' : 'ready');
@@ -397,7 +405,7 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
       setCameraDevices([]);
       stopCamera();
       setCameraReady(false);
-      const requestId = cameraRequestRef.current;
+      requestId = cameraRequestRef.current;
       let selectedFacing = mode;
       let switchFailed = false;
       let stream: MediaStream;
@@ -433,12 +441,13 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
         }).catch(() => setCameraDevices([]));
       }
     } catch (error) {
+      if (cameraRequestRef.current !== requestId) return;
       if (error instanceof GuestRequestError) handleRequestError(error);
       else {
         const name = error instanceof DOMException ? error.name : '';
         setCameraError(name === 'NotFoundError' ? t('cameraNotFound') : name === 'NotAllowedError' ? t('cameraPermission') : name === 'NotReadableError' ? t('cameraBusy') : t('genericError'));
       }
-      if (deviceId) setStage('ready');
+      if (deviceId && !(error instanceof GuestRequestError && (error.status === 401 || error.status === 403))) setStage('ready');
     } finally { cameraOperationRef.current = false; setBusy(false); setCameraConnecting(false); }
   }
 

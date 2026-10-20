@@ -413,6 +413,7 @@
     "cameraUnsupported": "Peramban ini tidak mendukung kamera.",
     "cameraNotFound": "Kamera tidak ditemukan pada perangkat ini.",
     "cameraBusy": "Kamera sedang digunakan aplikasi lain.",
+    "cameraPlaybackFailed": "Kamera belum dapat dimulai. Coba buka lagi.",
     "cameraPermission": "Izin kamera diperlukan untuk mengambil foto.",
     "eventInvitation": "Undangan acara",
     "phaseNotStarted": "Foto dimulai sesuai jadwal acara.",

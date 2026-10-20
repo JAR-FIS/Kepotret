@@ -23,7 +23,10 @@ type Options = {
   cameraCount?: number;
   cameraSwitchFails?: boolean;
   cameraFailure?: 'NotFoundError' | 'NotReadableError';
+  playFailures?: number;
   holdCamera?: boolean;
+  holdReadinessAt?: number;
+  readinessStatuses?: number[];
   emptyFrame?: boolean;
   reservationConflict?: boolean;
   closed?: boolean;
@@ -39,7 +42,7 @@ type Options = {
 
 async function prepareGuestPage(page: Page, options: Options = {}) {
   await page.context().addCookies([{ name: 'kepotret-locale', value: 'en', domain: 'localhost', path: '/' }]);
-  await page.addInitScript(({ cameraDenied, cameraCount, cameraSwitchFails, cameraFailure, holdCamera, emptyFrame }) => {
+  await page.addInitScript(({ cameraDenied, cameraCount, cameraSwitchFails, cameraFailure, playFailures, holdCamera, emptyFrame }) => {
     const cameraTrace: string[] = [];
     Object.defineProperty(window, 'cameraTrace', { configurable: true, value: cameraTrace });
     if (typeof MediaStream === 'undefined') Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', { configurable: true, writable: true, value: null });
@@ -69,7 +72,11 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     } });
     Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', { configurable: true, get: () => 640 });
     Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', { configurable: true, get: () => 480 });
-    HTMLVideoElement.prototype.play = async function () {};
+    let playCalls = 0;
+    HTMLVideoElement.prototype.play = async function () {
+      playCalls += 1;
+      if (playCalls <= playFailures) throw new DOMException('playback failed', 'NotAllowedError');
+    };
     let canvasExports = 0;
     const nativeToBlob = HTMLCanvasElement.prototype.toBlob;
     HTMLCanvasElement.prototype.toBlob = function (callback, type = 'image/png') {
@@ -82,12 +89,14 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     Object.defineProperty(window, 'revokedCaptureUrls', { configurable: true, value: [] });
     const revokeObjectURL = URL.revokeObjectURL.bind(URL);
     URL.revokeObjectURL = (url) => { window.revokedCaptureUrls?.push(url); revokeObjectURL(url); };
-  }, { cameraDenied: options.cameraDenied ?? false, cameraCount: options.cameraCount ?? 1, cameraSwitchFails: options.cameraSwitchFails ?? false, cameraFailure: options.cameraFailure, holdCamera: options.holdCamera ?? false, emptyFrame: options.emptyFrame ?? false });
+  }, { cameraDenied: options.cameraDenied ?? false, cameraCount: options.cameraCount ?? 1, cameraSwitchFails: options.cameraSwitchFails ?? false, cameraFailure: options.cameraFailure, playFailures: options.playFailures ?? 0, holdCamera: options.holdCamera ?? false, emptyFrame: options.emptyFrame ?? false });
 
   let reservations = 0;
   let sessions = 0;
   let guestMeRequests = 0;
   let readinessRequests = 0;
+  let readinessFulfilled = 0;
+  let releaseReadiness: (() => void) | undefined;
   let recoveryChecks = 0;
   let commits = 0;
   let uploadAuthorizations = 0;
@@ -107,8 +116,12 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     const status = options.guestMeStatuses?.shift() ?? 200;
     return status === 200 ? route.fulfill({ status, json: { data: { guest_session: guest, event: eventContext } } }) : route.fulfill({ status, json: { error: { code: 'TEMPORARY', message: 'internal details' } } });
   });
-  await page.route(`**/api/v1/albums/${albumId}/capture-readiness`, (route) => {
+  await page.route(`**/api/v1/albums/${albumId}/capture-readiness`, async (route) => {
     readinessRequests += 1;
+    const status = options.readinessStatuses?.shift() ?? 200;
+    if (readinessRequests === options.holdReadinessAt) await new Promise<void>((resolve) => { releaseReadiness = resolve; });
+    readinessFulfilled += 1;
+    if (status !== 200) return route.fulfill({ status, json: { error: { code: 'DENIED', message: 'internal details' } } });
     const nextState = options.readinessSequence?.shift();
     const state = options.closed ? 'CLOSED' : recoveryChecks > 0 && options.readinessAfterRecovery ? options.readinessAfterRecovery : options.reservationConflict && reservations > 0 ? 'QUOTA_FULL' : nextState ?? 'READY';
     const waitBoundary = options.waitingStart ?? (recoveryChecks > 0 && options.readinessAfterRecovery === 'WAITING' ? '2026-10-01T10:00:00Z' : '2026-09-27T00:00:02Z');
@@ -143,7 +156,7 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     return route.fulfill({ status: 200, json: { data: { attempt_id: attemptId, album_id: albumId, status: 'RELEASED', expires_at: '2026-09-27T01:00:00Z' } } });
   });
   return {
-    get reservations() { return reservations; }, get sessions() { return sessions; }, get guestMeRequests() { return guestMeRequests; }, get readinessRequests() { return readinessRequests; },
+    get reservations() { return reservations; }, get sessions() { return sessions; }, get guestMeRequests() { return guestMeRequests; }, get readinessRequests() { return readinessRequests; }, get readinessFulfilled() { return readinessFulfilled; }, releaseReadiness() { releaseReadiness?.(); },
     get recoveryChecks() { return recoveryChecks; }, get commits() { return commits; }, get uploadAuthorizations() { return uploadAuthorizations; },
     reservationKeys, sessionKeys, releaseIds, uploadAttemptIds,
   };
@@ -277,6 +290,54 @@ test('H69 failed camera switch restores the original stream without a second act
   await expect(page.getByRole('button', { name: 'Switch camera' })).toHaveCount(0);
   expect(await page.evaluate(() => window.cameraTrace)).toEqual(['open:rear:1', 'stop:rear:0', 'open:rear:1']);
   expect(state.reservations).toBe(0);
+});
+
+for (const status of [401, 403]) {
+  test(`H69 switch readiness ${status} keeps access denied and stops the stream`, async ({ page }) => {
+    const state = await prepareGuestPage(page, { cameraCount: 2, readinessStatuses: [200, 200, status] });
+    await reachJoin(page, state);
+    await acceptConsent(page);
+    await page.getByRole('button', { name: 'Open camera' }).click();
+    await expect(page.getByRole('button', { name: 'Switch camera' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Switch camera' }).click();
+    await expect(page.locator('section p[role="alert"]')).toContainText('This event link or access is unavailable.');
+    await expect(page.getByRole('button', { name: 'Open camera' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Take photo' })).toHaveCount(0);
+    expect(await page.evaluate(() => window.cameraTrace)).toEqual(['open:rear:1', 'stop:rear:0']);
+    expect(state.reservations).toBe(0);
+  });
+}
+
+test('H69 playback rejection stops media and offers a successful camera retry', async ({ page }) => {
+  const state = await prepareGuestPage(page, { playFailures: 1 });
+  await reachJoin(page, state);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.locator('section p[role="alert"]')).toContainText('The camera could not start. Try opening it again.');
+  await expect(page.getByRole('button', { name: 'Take photo' })).toHaveCount(0);
+  expect(await page.evaluate(() => window.cameraTrace)).toEqual(['open:rear:1', 'stop:rear:0']);
+  expect(state.reservations).toBe(0);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+  expect(await page.evaluate(() => window.cameraTrace)).toEqual(['open:rear:1', 'stop:rear:0', 'open:rear:1']);
+});
+
+test('H69 late readiness after terminal stage exit cannot acquire camera media', async ({ page }) => {
+  const state = await prepareGuestPage(page, { holdReadinessAt: 2, readinessStatuses: [200, 200, 403] });
+  await reachJoin(page, state);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect.poll(() => state.readinessRequests).toBe(2);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('section p[role="alert"]')).toContainText('This event link or access is unavailable.');
+  state.releaseReadiness();
+  await expect.poll(() => state.readinessFulfilled).toBe(3);
+  await page.waitForTimeout(200);
+  await expect(page.getByRole('button', { name: 'Take photo' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open camera' })).toHaveCount(0);
+  expect(await page.evaluate(() => window.cameraTrace)).toEqual([]);
+  expect(state.reservations).toBe(0);
+  await page.goto('/');
 });
 
 test('H69 gates shutter while offline and explains missing or busy cameras', async ({ page }) => {
