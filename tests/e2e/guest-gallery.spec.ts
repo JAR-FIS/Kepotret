@@ -17,13 +17,13 @@ const photo = {
 };
 
 async function mockGuest(page: import('@playwright/test').Page, state: 'REVEALED' | 'HIDDEN' | 'ENDED' = 'REVEALED') {
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { (window as Window & { copied?: string }).copied = value; }, readText: async () => (window as Window & { copied?: string }).copied ?? '' } });
   });
   await page.route('**/api/v1/guest/me', (route) => state === 'ENDED'
     ? route.fulfill({ status: 410, json: { error: { code: 'GUEST_ACCESS_ENDED', message: 'Access ended.' } } })
     : route.fulfill({ status: 200, json: { data: { ...event, event: { ...event.event, reveal_state: state } } } }));
+  await page.route('**/api/v1/albums/album-1/capture-readiness', (route) => route.fulfill({ status: 200, json: { data: { album_id: 'album-1', state: 'CLOSED', can_capture: false, server_time: '2026-09-27T01:00:00Z', reveal_state: 'REVEALED' } } }));
   await page.route('**/api/v1/guest/gallery/photos**', async (route) => {
     const requestUrl = new URL(route.request().url());
     const cursor = requestUrl.searchParams.get('cursor');
@@ -34,7 +34,7 @@ async function mockGuest(page: import('@playwright/test').Page, state: 'REVEALED
   await page.route(`**/api/v1/guest/gallery/photos/${photoId}/share-link`, (route) => route.fulfill({ status: 200, json: { data: { url: `http://localhost:3000/j/${linkId}/galeri/${photoId}`, photo_id: photoId } } }));
   await page.route('**/api/v1/security/csrf', (route) => route.fulfill({ status: 200, json: { data: { csrf_token: 'csrf-fe5' } } }));
   await page.route(`**/api/v1/guest/gallery/photos/${photoId}/download`, (route) => route.fulfill({ status: 200, json: { data: { url: 'https://media.test/download/photo-1', expires_at: '2026-09-27T01:05:00Z' } } }));
-  await page.route('https://media.test/**', (route) => route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) }));
+  await page.route('https://media.test/**', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"><rect width="12" height="12" fill="#a8bfdf"/></svg>' }));
   await page.route('https://media.test/download/**', (route) => route.fulfill({ status: 200, contentType: 'application/octet-stream', headers: { 'content-disposition': 'attachment; filename="photo.jpg"' }, body: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) }));
 }
 
@@ -42,6 +42,7 @@ test('guest gallery paginates, sorts, opens detail, likes once, downloads, copie
   await mockGuest(page);
   await page.goto(`/j/${linkId}/galeri`);
   await expect(page.getByRole('heading', { name: 'FE5 Gallery E2E' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ambil foto' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: /Ari/ })).toBeVisible();
   await page.getByRole('button', { name: 'Muat foto berikutnya' }).click();
   await expect(page.getByText('Bima')).toBeVisible();
@@ -92,6 +93,122 @@ test('guest server-authorized actions are disabled offline and return after reco
   await page.evaluate(() => { Object.defineProperty(navigator, 'onLine', { configurable: true, value: true }); window.dispatchEvent(new Event('online')); });
   await expect(page.getByRole('button', { name: 'Sukai foto' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Unduh' })).toBeEnabled();
+});
+
+test('Gallery list mode and authorized lightbox retain route context on close @cross-browser', async ({ page }) => {
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri`);
+  await expect(page.getByRole('heading', { name: 'FE5 Gallery E2E' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tampilan daftar' }).click();
+  await expect(page.getByRole('button', { name: 'Tampilan daftar' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('link', { name: 'Lihat foto oleh Ari' }).click();
+  await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri/${photoId}$`));
+  const dialog = page.getByRole('dialog', { name: 'Detail foto' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('img', { name: /Ari/ })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: /Bahasa|tema/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Kembali ke galeri' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
+  await expect(page.getByRole('button', { name: 'Tampilan daftar' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('link', { name: 'Lihat foto oleh Ari' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Lihat foto oleh Ari' })).toBeFocused();
+  await page.goBack();
+  await expect(page).not.toHaveURL(new RegExp(`/j/${linkId}/galeri/${photoId}$`));
+  await expect(dialog).toHaveCount(0);
+});
+
+test('browser Back from an open photo returns to the Gallery @cross-browser', async ({ page }) => {
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri`);
+  await page.getByRole('button', { name: 'Tampilan daftar' }).click();
+  await page.getByRole('link', { name: 'Lihat foto oleh Ari' }).click();
+  await expect(page.getByRole('dialog', { name: 'Detail foto' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
+  await expect(page.getByRole('dialog', { name: 'Detail foto' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Tampilan daftar' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('close button and backdrop do not reopen the photo on browser Back', async ({ page }) => {
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri`);
+  const open = page.getByRole('link', { name: 'Lihat foto oleh Ari' });
+  const dialog = page.getByRole('dialog', { name: 'Detail foto' });
+  await open.click();
+  await expect(dialog).toBeVisible();
+  await page.getByRole('button', { name: 'Kembali ke galeri' }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.goBack();
+  await expect(page).not.toHaveURL(new RegExp(`/j/${linkId}/galeri/${photoId}$`));
+  await expect(dialog).toHaveCount(0);
+
+  await page.goto(`/j/${linkId}/galeri`);
+  await open.click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('..').click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toHaveCount(0);
+  await page.goBack();
+  await expect(page).not.toHaveURL(new RegExp(`/j/${linkId}/galeri/${photoId}$`));
+  await expect(dialog).toHaveCount(0);
+});
+
+test('desktop sidebar closes and reopens with keyboard focus preserved', async ({ page }) => {
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri`);
+  const close = page.getByRole('button', { name: 'Tutup navigasi galeri' });
+  await close.focus();
+  await page.keyboard.press('Enter');
+  const open = page.getByRole('button', { name: 'Buka navigasi galeri' });
+  await expect(open).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(close).toBeFocused();
+  await expect(page.getByRole('link', { name: 'Galeri' })).toBeVisible();
+});
+
+test('direct photo link reauthorizes detail and denied media stays hidden', async ({ page }) => {
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri/${photoId}`);
+  await expect(page.getByRole('dialog', { name: 'Detail foto' }).getByRole('img', { name: /Ari/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Kembali ke galeri' }).click();
+  await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
+  await page.route(`**/api/v1/guest/gallery/photos/${photoId}`, (route) => route.fulfill({ status: 403, json: { error: { code: 'DENIED' } } }));
+  await page.getByRole('link', { name: 'Lihat foto oleh Ari' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Detail foto' });
+  await expect(dialog.getByText('Foto ini tidak lagi tersedia untuk tamu.')).toBeVisible();
+  await expect(dialog.getByRole('img')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Unduh' })).toHaveCount(0);
+});
+
+test('mobile drawer exposes only Gallery and Guest guidance', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri`);
+  await page.getByRole('button', { name: 'Buka navigasi galeri' }).click();
+  const drawer = page.getByRole('dialog', { name: 'Navigasi galeri tamu' });
+  await expect(drawer.getByRole('link', { name: 'Galeri' })).toBeVisible();
+  await expect(drawer.getByRole('button', { name: 'Panduan' })).toBeVisible();
+  await expect(drawer.getByText(/Menu Tamu|Host/i)).toHaveCount(0);
+  await drawer.getByRole('button', { name: 'Panduan' }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Cara menikmati galeri' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tutup panduan' }).click();
+  await expect(page.getByRole('heading', { name: 'Cara menikmati galeri' })).toHaveCount(0);
+});
+
+test('synthetic inconsistent reveal/readiness projection rechecks before camera entry', async ({ page }) => {
+  await mockGuest(page);
+  await page.unroute('**/api/v1/albums/album-1/capture-readiness');
+  let requests = 0;
+  await page.route('**/api/v1/albums/album-1/capture-readiness', (route) => {
+    requests += 1;
+    return route.fulfill({ status: 200, json: { data: { album_id: 'album-1', state: requests === 1 ? 'READY' : 'QUOTA_FULL', can_capture: requests === 1, server_time: '2026-09-27T01:00:00Z', reveal_state: 'REVEALED' } } });
+  });
+  await page.goto(`/j/${linkId}/galeri`);
+  await page.getByRole('button', { name: 'Ambil foto' }).click();
+  await expect(page.getByText(/Kamera belum tersedia saat ini/)).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
+  expect(requests).toBe(2);
 });
 
 for (const width of [320, 375, 390, 430]) {

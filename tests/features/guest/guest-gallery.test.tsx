@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GuestGalleryPhoto } from '@/lib/api/generated/index.schemas';
 
 const api = vi.hoisted(() => ({
-  getMe: vi.fn(), list: vi.fn(), detail: vi.fn(), like: vi.fn(), download: vi.fn(), share: vi.fn(), csrf: vi.fn(),
+  getMe: vi.fn(), list: vi.fn(), detail: vi.fn(), like: vi.fn(), download: vi.fn(), share: vi.fn(), csrf: vi.fn(), readiness: vi.fn(),
 }));
+const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }));
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => router }));
 vi.mock('@/lib/api/browser', () => ({
+  getApiV1AlbumsAlbumIdCaptureReadiness: api.readiness,
   getApiV1GuestMe: api.getMe,
   getApiV1GuestGalleryPhotos: api.list,
   getApiV1GuestGalleryPhotosPhotoId: api.detail,
@@ -38,10 +40,12 @@ function renderGallery(props: { linkId: string; photoId?: string }) {
 describe('guest gallery', () => {
   beforeEach(() => {
     Object.values(api).forEach((mock) => mock.mockReset());
+    Object.values(router).forEach((mock) => mock.mockReset());
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
     api.getMe.mockResolvedValue({ status: 200, data: { data: eventContext } });
     api.list.mockResolvedValue(page([photo]));
     api.detail.mockResolvedValue({ status: 200, data: { data: photo } });
+    api.readiness.mockResolvedValue({ status: 200, data: { data: { album_id: 'album-1', state: 'CLOSED', can_capture: false } } });
     api.csrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'test-csrf' } } });
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
   });
@@ -119,5 +123,62 @@ describe('guest gallery', () => {
     expect(screen.getByRole('button', { name: 'Download' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'WhatsApp' })).toBeEnabled();
+  });
+
+  it('switches grid and list without losing loaded photos or requesting another page', async () => {
+    api.list.mockResolvedValueOnce(page([photo], 'next-1')).mockResolvedValueOnce(page([{ ...photo, photo_id: 'photo-2', photographer_display_name: 'Bima' }]));
+    renderGallery({ linkId: 'link-1' });
+    await screen.findByRole('link', { name: 'View photo by Ari' });
+    fireEvent.click(screen.getByRole('button', { name: 'Load more photos' }));
+    await screen.findByRole('link', { name: 'View photo by Bima' });
+    fireEvent.click(screen.getByRole('button', { name: 'List view' }));
+    expect(screen.getByRole('button', { name: 'List view' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('link', { name: 'View photo by Ari' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View photo by Bima' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Sort')).toHaveValue('NEWEST');
+    expect(api.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('likes from a card without opening detail or offering unlike', async () => {
+    api.like.mockResolvedValue({ status: 200, data: { data: { ...photo, like_count: 3, actions: { ...photo.actions, liked_by_me: true } } } });
+    renderGallery({ linkId: 'link-1' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Like photo' }));
+    expect(await screen.findByRole('button', { name: 'Photo liked' })).toBeDisabled();
+    expect(api.like).toHaveBeenCalledWith('photo-1', { headers: { 'X-CSRF-Token': 'test-csrf' } });
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('offers only Gallery and contextual Guest guidance in the navigation', async () => {
+    renderGallery({ linkId: 'link-1' });
+    await screen.findByRole('heading', { name: 'Shared event' });
+    expect(screen.getByRole('navigation', { name: 'Guest gallery navigation' })).toBeInTheDocument();
+    expect(screen.queryByText(/guest directory|guest menu|host guide/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Guide' }));
+    expect(screen.getByRole('heading', { name: 'Enjoy the gallery' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close guide' }));
+    expect(screen.queryByRole('heading', { name: 'Enjoy the gallery' })).not.toBeInTheDocument();
+  });
+
+  it('rechecks server readiness before opening capture and denies a changed permission', async () => {
+    const ready = { album_id: 'album-1', state: 'READY', can_capture: true };
+    const closed = { album_id: 'album-1', state: 'QUOTA_FULL', can_capture: false };
+    api.readiness.mockResolvedValueOnce({ status: 200, data: { data: ready } }).mockResolvedValueOnce({ status: 200, data: { data: closed } });
+    renderGallery({ linkId: 'link-1' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Take a photo' }));
+    await screen.findByText(/camera is unavailable right now/i);
+    expect(api.readiness).toHaveBeenCalledTimes(2);
+    expect(router.push).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Take a photo' })).not.toBeInTheDocument();
+  });
+
+  it('keeps denied detail media and actions out of the accessible dialog', async () => {
+    api.detail.mockResolvedValue({ status: 403, data: { error: { code: 'DENIED' } } });
+    renderGallery({ linkId: 'link-1', photoId: 'photo-1' });
+    const dialog = await screen.findByRole('dialog', { name: 'Photo details' });
+    expect(await screen.findByText('This photo is no longer available to guests.')).toBeInTheDocument();
+    expect(dialog.querySelector('img')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Download' })).not.toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(router.replace).toHaveBeenCalledWith('/j/link-1/galeri', { scroll: false });
   });
 });
