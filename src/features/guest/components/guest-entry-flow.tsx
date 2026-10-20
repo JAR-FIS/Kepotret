@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { AuthPageFrame } from '@/features/auth/components/auth-page-frame';
 import { LocaleControl } from '@/components/ui/locale-control';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { formatEventDateTime } from '@/lib/time/event-time';
@@ -81,10 +82,16 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   const [cameraError, setCameraError] = useState('');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraConnecting, setCameraConnecting] = useState(false);
+  const [cameraStreamVersion, setCameraStreamVersion] = useState(0);
+  const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [photoUrl, setPhotoUrl] = useState('');
   const [committedPhoto, setCommittedPhoto] = useState<CommittedPhoto | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const activeDeviceIdRef = useRef('');
+  const cameraRequestRef = useRef(0);
+  const cameraOperationRef = useRef(false);
   const linkSecretRef = useRef<string | null>(null);
   const joinKeyRef = useRef<string | null>(null);
   const reservationKeyRef = useRef<string | null>(null);
@@ -99,12 +106,12 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   useEffect(() => { translationRef.current = t; }, [t]);
 
   useEffect(() => {
-    const active = stage === 'camera' || stage === 'review' || stage === 'uploading' || stage === 'saved';
+    const active = cameraConnecting || stage === 'camera' || stage === 'review' || stage === 'uploading' || stage === 'saved';
     setGuestCameraActive(active);
     return () => {
       if (active) setGuestCameraActive(false);
     };
-  }, [stage]);
+  }, [cameraConnecting, stage]);
 
   const clearCommittedPhoto = useCallback(() => setCommittedPhoto(null), []);
   const keepCommittedPhoto = useCallback((attemptId: string) => {
@@ -113,8 +120,10 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
   }, []);
 
   const stopCamera = useCallback(() => {
+    cameraRequestRef.current += 1;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
   const failAccess = useCallback(() => {
@@ -212,9 +221,17 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     const stream = streamRef.current;
     if (stage !== 'camera' || !video || !stream) return;
     video.srcObject = stream;
-    void video.play().then(() => setCameraReady(true)).catch(() => setCameraError(t('genericError')));
-    return () => setCameraReady(false);
-  }, [facing, stage, t]);
+    let active = true;
+    const markReady = () => { if (active && video.videoWidth && video.videoHeight) setCameraReady(true); };
+    video.addEventListener('loadedmetadata', markReady);
+    video.addEventListener('resize', markReady);
+    void video.play().then(markReady).catch(() => { if (active) setCameraError(t('cameraBusy')); });
+    return () => { active = false; video.removeEventListener('loadedmetadata', markReady); video.removeEventListener('resize', markReady); setCameraReady(false); };
+  }, [cameraStreamVersion, stage, t]);
+
+  useEffect(() => {
+    if (stage !== 'camera') stopCamera();
+  }, [stage, stopCamera]);
 
   useEffect(() => {
     if (!context || stage === 'error') return;
@@ -359,10 +376,13 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     finally { setBusy(false); }
   }
 
-  async function openCamera(mode: 'environment' | 'user' = facing) {
+  async function openCamera(mode: 'environment' | 'user' = facing, deviceId?: string) {
+    if (cameraOperationRef.current || pendingRef.current) return;
     if (!isOnline || !navigator.onLine) { setMessage(t('offlineBeforeCapture')); return; }
     if (!context || !navigator.mediaDevices?.getUserMedia) { setCameraError(t('cameraUnsupported')); return; }
+    cameraOperationRef.current = true;
     setBusy(true);
+    setMessage('');
     setCameraError('');
     try {
       const current = await loadReadiness(context.guest_session.album_id);
@@ -371,21 +391,67 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
         if (current.state !== 'UNAVAILABLE') setStage(current.state === 'CLOSED' ? 'closed' : 'ready');
         return;
       }
-      clearCommittedPhoto();
+      const previousDeviceId = activeDeviceIdRef.current;
+      const previousFacing = facing;
+      setCameraConnecting(true);
+      setCameraDevices([]);
       stopCamera();
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: mode } } });
+      setCameraReady(false);
+      const requestId = cameraRequestRef.current;
+      let selectedFacing = mode;
+      let switchFailed = false;
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: mode } } });
+      } catch (error) {
+        if (!deviceId) throw error;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: previousDeviceId ? { deviceId: { exact: previousDeviceId } } : { facingMode: { ideal: previousFacing } } });
+          selectedFacing = previousFacing;
+          switchFailed = true;
+          setCameraError(t('cameraSwitchFailed'));
+        } catch { throw error; }
+      }
+      if (cameraRequestRef.current !== requestId) { stream.getTracks().forEach((track) => track.stop()); return; }
+      streamRef.current = stream;
+      clearCommittedPhoto();
+      const settings = stream.getVideoTracks()[0]?.getSettings();
+      activeDeviceIdRef.current = settings?.deviceId || deviceId || '';
+      const switchUnavailable = switchFailed || Boolean(deviceId && settings?.deviceId === previousDeviceId);
+      if (switchUnavailable) {
+        selectedFacing = previousFacing;
+        setCameraDevices([]);
+        setCameraError(t('cameraSwitchFailed'));
+      }
+      if (settings?.facingMode === 'environment' || settings?.facingMode === 'user') selectedFacing = settings.facingMode;
+      setFacing(selectedFacing);
+      setCameraStreamVersion((version) => version + 1);
       setStage('camera');
+      if (navigator.mediaDevices.enumerateDevices && !switchUnavailable) {
+        void navigator.mediaDevices.enumerateDevices().then((devices) => {
+          if (cameraRequestRef.current === requestId) setCameraDevices(devices.filter((device) => device.kind === 'videoinput' && Boolean(device.deviceId)));
+        }).catch(() => setCameraDevices([]));
+      }
     } catch (error) {
       if (error instanceof GuestRequestError) handleRequestError(error);
       else {
         const name = error instanceof DOMException ? error.name : '';
         setCameraError(name === 'NotFoundError' ? t('cameraNotFound') : name === 'NotAllowedError' ? t('cameraPermission') : name === 'NotReadableError' ? t('cameraBusy') : t('genericError'));
       }
-    } finally { setBusy(false); }
+      if (deviceId) setStage('ready');
+    } finally { cameraOperationRef.current = false; setBusy(false); setCameraConnecting(false); }
+  }
+
+  function switchCamera() {
+    const alternatives = cameraDevices.filter((device) => device.deviceId !== activeDeviceIdRef.current);
+    const oppositeLabel = facing === 'environment' ? /front|user|selfie/i : /back|rear|environment/i;
+    const nextDevice = alternatives.find((device) => oppositeLabel.test(device.label)) ?? alternatives[0];
+    if (!nextDevice || !cameraReady || busy || cameraOperationRef.current) return;
+    void openCamera(facing === 'environment' ? 'user' : 'environment', nextDevice.deviceId);
   }
 
   async function shutter() {
-    if (!context || !videoRef.current || pendingRef.current) return;
+    if (!context || !videoRef.current || !streamRef.current || !cameraReady || busy || cameraOperationRef.current || pendingRef.current) return;
     if (!isOnline || !navigator.onLine) { setMessage(t('offlineBeforeCapture')); return; }
     if (!readinessFresh || onlineRefreshing) { setMessage(t('genericError')); return; }
     pendingRef.current = true;
@@ -415,14 +481,19 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
         return;
       }
       const video = videoRef.current;
-      if (!video.videoWidth || !video.videoHeight) throw new Error('camera-frame');
+      if (!video.videoWidth || !video.videoHeight || !video.clientWidth || !video.clientHeight) throw new Error('camera-frame');
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      const viewAspect = video.clientWidth / video.clientHeight;
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const sourceWidth = videoAspect > viewAspect ? Math.floor(video.videoHeight * viewAspect) : video.videoWidth;
+      const sourceHeight = videoAspect > viewAspect ? video.videoHeight : Math.floor(video.videoWidth / viewAspect);
+      canvas.width = sourceWidth;
+      canvas.height = sourceHeight;
       const drawContext = canvas.getContext('2d', { alpha: false });
       if (!drawContext) throw new Error('camera-frame');
-      drawContext.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const frame = await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('camera-frame')), 'image/jpeg', 0.95));
+      if (facing === 'user') { drawContext.translate(canvas.width, 0); drawContext.scale(-1, 1); }
+      drawContext.drawImage(video, Math.floor((video.videoWidth - sourceWidth) / 2), Math.floor((video.videoHeight - sourceHeight) / 2), sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+      const frame = await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob?.size ? resolve(blob) : reject(new Error('camera-frame')), 'image/jpeg', 0.95));
       canvas.width = 0;
       canvas.height = 0;
       stopCamera();
@@ -575,6 +646,14 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     seconds: Math.floor((revealRemaining % 60_000) / 1000),
   });
 
+  if (stage === 'camera' || cameraConnecting) return <CameraViewfinder videoRef={videoRef} isReady={cameraReady} isBusy={busy} isOffline={!isOnline || onlineRefreshing} canSwitch={Boolean(activeDeviceIdRef.current) && cameraDevices.some((device) => device.deviceId !== activeDeviceIdRef.current)} mirrored={facing === 'user'} onSwitch={switchCamera} onShutter={() => void shutter()} cameraError={cameraError || message} />;
+
+  if (stage === 'review' && photoUrl) return <AuthPageFrame homeLabel={t('home')} headerControls={<div className="flex items-center gap-2"><LocaleControl label={preferences('language')} indonesianLabel={preferences('indonesian')} englishLabel={preferences('english')} /><ThemeToggle lightLabel={preferences('light')} darkLabel={preferences('dark')} /></div>}>
+    <h1 className="mb-5 text-center font-[family-name:var(--font-display)] text-2xl font-bold">{event?.event_name}</h1>
+    {message && <p role="alert" className="mb-4 text-sm text-[var(--color-destructive)]">{message}</p>}
+    <CaptureReview photoUrl={photoUrl} isBusy={busy} onRetake={() => void retake()} onUse={() => void upload()} />
+  </AuthPageFrame>;
+
   return <main className="min-h-screen bg-[var(--color-background)] px-4 py-7 text-[var(--color-foreground)] sm:py-12">
     <div className="mx-auto flex min-h-[78vh] w-full max-w-lg flex-col justify-center">
       <header className="mb-6">
@@ -599,16 +678,14 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
           checked={consented} setChecked={setConsented} error={message}
           onBack={() => { setMessage(''); setStage('join'); }} onContinue={() => void acceptConsent()} busy={busy}
         />}
-        {(stage === 'ready' || stage === 'closed' || stage === 'camera' || stage === 'review' || stage === 'uploading' || stage === 'saved') && <>
+        {(stage === 'ready' || stage === 'closed' || stage === 'uploading' || stage === 'saved') && <>
           <div className="text-center"><p className="inline-flex min-h-8 items-center rounded-full bg-[var(--color-foreground)] px-3 py-1 text-xs font-bold text-[var(--color-background)]">{locale === 'id' ? 'Acara' : 'Event'}</p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{event?.event_name}</h1></div>
-          {stage === 'closed' && <div className="mt-6 rounded-lg bg-[var(--color-muted)] p-4"><p className="font-semibold">{t('closed')}</p>{readiness?.reveal_at && <><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('photosReveal')}: {formatTime(readiness.reveal_at)}</p><p className="mt-1 font-mono text-sm" aria-live="off">{revealCountdown}</p></>}</div>}
+          {stage === 'closed' && <div className="mt-6 rounded-lg bg-[var(--color-muted)] p-4"><p className="font-semibold">{t('closed')}</p>{readiness?.reveal_state === 'REVEALED' ? <p className="mt-2 text-sm">{t('photosPublished')}</p> : readiness?.reveal_at && revealRemaining > 0 ? <><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('photosReveal')}: {formatTime(readiness.reveal_at)}</p><p className="mt-1 text-sm font-semibold">{t('revealCountdownLabel')}</p><p className="font-mono text-sm" role="timer" aria-live="off">{revealCountdown}</p></> : <p className="mt-2 text-sm">{t('revealPending')}</p>}</div>}
           {stage === 'ready' && <div className="mt-6"><CaptureWaitingState readiness={readiness} isOffline={!isOnline} revalidating={onlineRefreshing || !readinessFresh} cameraError={cameraError} onOpenCamera={() => void openCamera()} formatTime={formatTime} /></div>}
-          {stage === 'camera' && <CameraViewfinder videoRef={videoRef} isReady={cameraReady} isBusy={busy} isOffline={!isOnline || onlineRefreshing} onSwitch={() => { const next = facing === 'environment' ? 'user' : 'environment'; stopCamera(); setStage('ready'); setCameraReady(false); setFacing(next); void openCamera(next); }} onShutter={() => void shutter()} cameraError={cameraError} />}
-          {stage === 'review' && photoUrl && <div className="mt-5">{message && <p role="alert" className="mb-4 text-sm text-[var(--color-destructive)]">{message}</p>}<CaptureReview photoUrl={photoUrl} isBusy={busy} onRetake={() => void retake()} onUse={() => void upload()} /></div>}
           {stage === 'uploading' && <UploadStatus />}
           {stage === 'saved' && <CaptureSuccess photoUrl={committedPhoto?.url ?? null} canCapture={Boolean(readiness?.state === 'READY' && readiness.can_capture && readinessFresh && isOnline)} onSave={saveToDevice} onNext={() => void openCamera()} />}
-          {message && stage !== 'review' && stage !== 'uploading' && <p role="alert" className="mt-4 text-sm text-[var(--color-destructive)]">{message}</p>}
+          {message && stage !== 'uploading' && <p role="alert" className="mt-4 text-sm text-[var(--color-destructive)]">{message}</p>}
         </>}
       </section>
       <p className="mt-5 text-center text-xs text-[var(--color-muted-foreground)]">{t('cameraOnly')}</p>

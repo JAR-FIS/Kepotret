@@ -62,7 +62,7 @@ test('Guest clears the join fragment and reaches camera entry without a file pic
       get() { return streams.get(this) ?? null; },
       set(value: MediaStream | null) { if (value) streams.set(this, value); else streams.delete(this); },
     });
-    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [] }) } });
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [], getVideoTracks: () => [{ getSettings: () => ({}) }] }) } });
     HTMLVideoElement.prototype.play = async function () {};
   });
   const preview = { album_id: albumId, event_name: 'Browser matrix event', event_location: 'Jakarta', timezone: 'Asia/Jakarta', capture_start: '2026-09-26T10:00:00Z', capture_end: '2026-10-01T10:00:00Z', reveal_at: '2026-10-02T10:00:00Z', capture_state: 'OPEN', reveal_state: 'HIDDEN', pin_required: false, consent_version: 'guest-photo-v1' };

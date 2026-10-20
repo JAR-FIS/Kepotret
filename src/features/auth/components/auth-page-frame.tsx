@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-export function AuthPageFrame({ children, headerControls }: { children: ReactNode; headerControls?: ReactNode }) {
+export function AuthPageFrame({ children, headerControls, homeLabel = 'Kepotret' }: { children: ReactNode; headerControls?: ReactNode; homeLabel?: string }) {
   return <main className="grid min-h-[calc(100vh-0px)] place-items-center bg-[var(--color-surface-muted)] px-4 py-10">
     <div className="w-full max-w-lg">
       <header className={`mb-5 flex items-center ${headerControls ? 'justify-between gap-2' : 'justify-center'}`}>
@@ -13,7 +13,7 @@ export function AuthPageFrame({ children, headerControls }: { children: ReactNod
         {headerControls}
       </header>
       <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-soft)] sm:p-9">{children}</section>
-      <Link href="/" className="mx-auto mt-5 inline-flex min-h-11 w-fit items-center text-sm font-semibold text-[var(--color-muted-foreground)] hover:underline">← {`Kepotret`}</Link>
+      <Link href="/" className="mx-auto mt-5 inline-flex min-h-11 w-fit items-center text-sm font-semibold text-[var(--color-muted-foreground)] hover:underline">← {homeLabel}</Link>
     </div>
   </main>;
 }

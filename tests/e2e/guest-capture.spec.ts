@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 declare global {
-  interface Window { captureTrace?: string[]; revokedCaptureUrls?: string[] }
+  interface Window { captureTrace?: string[]; revokedCaptureUrls?: string[]; cameraTrace?: string[]; frameTrace?: number[]; releaseCamera?: () => void }
 }
 
 const linkId = '11111111-1111-4111-8111-111111111111';
@@ -20,8 +20,15 @@ const readyReadiness = { album_id: albumId, state: 'READY', can_capture: true, s
 
 type Options = {
   cameraDenied?: boolean;
+  cameraCount?: number;
+  cameraSwitchFails?: boolean;
+  cameraFailure?: 'NotFoundError' | 'NotReadableError';
+  holdCamera?: boolean;
+  emptyFrame?: boolean;
   reservationConflict?: boolean;
   closed?: boolean;
+  revealState?: 'HIDDEN' | 'REVEALED';
+  waitingStart?: string;
   readinessSequence?: Array<'WAITING' | 'READY'>;
   sessionStatuses?: number[];
   guestMeStatuses?: number[];
@@ -32,11 +39,34 @@ type Options = {
 
 async function prepareGuestPage(page: Page, options: Options = {}) {
   await page.context().addCookies([{ name: 'kepotret-locale', value: 'en', domain: 'localhost', path: '/' }]);
-  await page.addInitScript((cameraDenied) => {
-    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => {
-      if (cameraDenied) throw new DOMException('denied', 'NotAllowedError');
-      return new MediaStream();
-    } } });
+  await page.addInitScript(({ cameraDenied, cameraCount, cameraSwitchFails, cameraFailure, holdCamera, emptyFrame }) => {
+    const cameraTrace: string[] = [];
+    Object.defineProperty(window, 'cameraTrace', { configurable: true, value: cameraTrace });
+    if (typeof MediaStream === 'undefined') Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', { configurable: true, writable: true, value: null });
+    let activeStreams = 0;
+    let heldFirstOpen = false;
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: {
+      getUserMedia: async (constraints: MediaStreamConstraints) => {
+        if (cameraDenied) throw new DOMException('denied', 'NotAllowedError');
+        if (cameraFailure) throw new DOMException('unavailable', cameraFailure);
+        if (holdCamera && !heldFirstOpen) {
+          heldFirstOpen = true;
+          await new Promise<void>((resolve) => { window.releaseCamera = resolve; });
+        }
+        const video = constraints.video && typeof constraints.video === 'object' ? constraints.video : {};
+        const requested = video.deviceId && !Array.isArray(video.deviceId) && typeof video.deviceId === 'object' ? video.deviceId.exact : undefined;
+        const deviceId = typeof requested === 'string' ? requested : 'rear';
+        if (cameraSwitchFails && deviceId === 'front') throw new DOMException('busy', 'NotReadableError');
+        activeStreams += 1;
+        cameraTrace.push(`open:${deviceId}:${activeStreams}`);
+        const track = { stop: () => { activeStreams -= 1; cameraTrace.push(`stop:${deviceId}:${activeStreams}`); }, getSettings: () => ({ deviceId, facingMode: deviceId === 'front' ? 'user' : 'environment' }) };
+        const stream = typeof MediaStream === 'undefined' ? {} as MediaStream : new MediaStream();
+        Object.defineProperty(stream, 'getVideoTracks', { value: () => [track] });
+        Object.defineProperty(stream, 'getTracks', { value: () => [track] });
+        return stream;
+      },
+      enumerateDevices: async () => Array.from({ length: cameraCount }, (_, index) => ({ kind: 'videoinput', deviceId: index ? 'front' : 'rear', label: index ? 'Front camera' : 'Rear camera', groupId: 'fixture', toJSON() { return this; } })),
+    } });
     Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', { configurable: true, get: () => 640 });
     Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', { configurable: true, get: () => 480 });
     HTMLVideoElement.prototype.play = async function () {};
@@ -44,15 +74,15 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     const nativeToBlob = HTMLCanvasElement.prototype.toBlob;
     HTMLCanvasElement.prototype.toBlob = function (callback, type = 'image/png') {
       canvasExports += 1;
-      if (canvasExports === 1) callback(new Blob([new Uint8Array([1, 2, 3])], { type }));
+      if (emptyFrame && canvasExports === 1) callback(new Blob([], { type }));
       else nativeToBlob.call(this, callback, type);
     };
-    HTMLCanvasElement.prototype.getContext = (() => ({ drawImage() {} })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = (() => ({ drawImage(...args: unknown[]) { window.frameTrace = args.slice(1).map(Number); }, translate() {}, scale() {} })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
     Object.defineProperty(window, 'createImageBitmap', { configurable: true, value: async () => ({ width: 640, height: 480, close() {} }) });
     Object.defineProperty(window, 'revokedCaptureUrls', { configurable: true, value: [] });
     const revokeObjectURL = URL.revokeObjectURL.bind(URL);
     URL.revokeObjectURL = (url) => { window.revokedCaptureUrls?.push(url); revokeObjectURL(url); };
-  }, options.cameraDenied ?? false);
+  }, { cameraDenied: options.cameraDenied ?? false, cameraCount: options.cameraCount ?? 1, cameraSwitchFails: options.cameraSwitchFails ?? false, cameraFailure: options.cameraFailure, holdCamera: options.holdCamera ?? false, emptyFrame: options.emptyFrame ?? false });
 
   let reservations = 0;
   let sessions = 0;
@@ -81,8 +111,8 @@ async function prepareGuestPage(page: Page, options: Options = {}) {
     readinessRequests += 1;
     const nextState = options.readinessSequence?.shift();
     const state = options.closed ? 'CLOSED' : recoveryChecks > 0 && options.readinessAfterRecovery ? options.readinessAfterRecovery : options.reservationConflict && reservations > 0 ? 'QUOTA_FULL' : nextState ?? 'READY';
-    const waitBoundary = recoveryChecks > 0 && options.readinessAfterRecovery === 'WAITING' ? '2026-10-01T10:00:00Z' : '2026-09-27T00:00:02Z';
-    const data = state === 'WAITING' ? { ...readyReadiness, state, can_capture: false, server_time: '2026-09-27T00:00:00Z', capture_start: waitBoundary } : { ...readyReadiness, state, can_capture: state === 'READY', album_remaining_count: state === 'QUOTA_FULL' ? 0 : 29 };
+    const waitBoundary = options.waitingStart ?? (recoveryChecks > 0 && options.readinessAfterRecovery === 'WAITING' ? '2026-10-01T10:00:00Z' : '2026-09-27T00:00:02Z');
+    const data = state === 'WAITING' ? { ...readyReadiness, state, can_capture: false, server_time: '2026-09-27T00:00:00Z', capture_start: waitBoundary } : { ...readyReadiness, state, reveal_state: options.revealState ?? 'HIDDEN', can_capture: state === 'READY', album_remaining_count: state === 'QUOTA_FULL' ? 0 : 29 };
     return route.fulfill({ status: 200, json: { data } });
   });
   await page.route('**/api/v1/security/csrf', (route) => route.fulfill({ status: 200, json: { data: { csrf_token: 'csrf-e2e' } } }));
@@ -142,6 +172,171 @@ async function captureForUploadRecovery(page: Page, state: Awaited<ReturnType<ty
   await page.getByRole('button', { name: 'Take photo' }).click();
   await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
 }
+
+test('H69 fullscreen camera and H70 review retain capture across preferences and retake @release-critical @cross-browser', async ({ page }) => {
+  const state = await prepareGuestPage(page, { cameraCount: 2 });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await reachJoin(page, state);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  const shutter = page.getByRole('button', { name: 'Take photo' });
+  await expect(shutter).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Switch camera' })).toBeVisible();
+  expect(await page.locator('main button').count()).toBe(2);
+  await expect(page.getByRole('heading', { name: 'Kepotret E2E' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Language/ })).toHaveCount(0);
+  const cameraGeometry = await page.evaluate(() => ({ width: document.querySelector('main')?.getBoundingClientRect().width, height: document.querySelector('main')?.getBoundingClientRect().height, viewportWidth: innerWidth, viewportHeight: innerHeight, scrollWidth: document.documentElement.scrollWidth }));
+  expect(cameraGeometry.width).toBe(cameraGeometry.viewportWidth);
+  expect(cameraGeometry.height).toBe(cameraGeometry.viewportHeight);
+  expect(cameraGeometry.scrollWidth).toBeLessThanOrEqual(cameraGeometry.viewportWidth + 1);
+  for (const viewport of [{ width: 320, height: 568 }, { width: 412, height: 915 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    const bounds = await page.evaluate(() => ({ viewportWidth: innerWidth, viewportHeight: innerHeight, main: document.querySelector('main')!.getBoundingClientRect().toJSON(), shutter: document.querySelector('main button')!.getBoundingClientRect().toJSON(), scrollWidth: document.documentElement.scrollWidth }));
+    expect(bounds.main.width).toBe(bounds.viewportWidth);
+    expect(bounds.main.height).toBe(bounds.viewportHeight);
+    expect(bounds.shutter.bottom).toBeLessThanOrEqual(bounds.viewportHeight);
+    expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.viewportWidth + 1);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await page.getByRole('button', { name: 'Switch camera' }).click();
+  await expect(shutter).toBeEnabled();
+  const cameraTrace = await page.evaluate(() => window.cameraTrace ?? []);
+  expect(cameraTrace).toEqual(['open:rear:1', 'stop:rear:0', 'open:front:1']);
+  await shutter.evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+  await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
+  expect(state.reservations).toBe(1);
+  const frameTrace = await page.evaluate(() => window.frameTrace ?? []);
+  expect(frameTrace[2]).toBeLessThan(640);
+  expect(frameTrace[3]).toBe(480);
+  await expect(page.getByRole('link', { name: 'Kepotret' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Home/ })).toBeVisible();
+  await expect.poll(() => page.locator('header img').first().evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  await expect.poll(() => page.getByRole('img', { name: 'Event photo preview' }).evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  const photo = page.getByRole('img', { name: 'Event photo preview' });
+  const photoUrl = await photo.getAttribute('src');
+  await page.getByRole('button', { name: /Language/ }).click();
+  await page.getByRole('option', { name: 'Indonesian' }).click();
+  await expect(page.getByRole('img', { name: 'Pratinjau foto acara' })).toHaveAttribute('src', photoUrl ?? '');
+  await page.getByRole('button', { name: 'Ganti ke tema gelap' }).click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true);
+  expect(state.reservations).toBe(1);
+  const retake = page.getByRole('button', { name: 'Ambil ulang' });
+  await expect(retake).toHaveCSS('white-space', 'nowrap');
+  await retake.click();
+  await expect(page.getByRole('button', { name: 'Buka kamera' })).toBeVisible();
+  expect(state.releaseIds).toHaveLength(1);
+  await page.getByRole('button', { name: 'Buka kamera' }).click();
+  await expect(page.getByRole('button', { name: 'Ambil foto' })).toBeEnabled();
+  await expect(page.getByRole('link', { name: /Beranda/ })).toHaveCount(0);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.getByRole('button', { name: 'Ambil foto' }).click();
+  await expect(page.getByRole('button', { name: 'Gunakan foto' })).toBeVisible();
+  expect((await page.evaluate(() => window.frameTrace ?? []))[3]).toBeLessThan(480);
+});
+
+test('H69 hides unavailable switching and never reviews an empty camera frame', async ({ page }) => {
+  const state = await prepareGuestPage(page, { emptyFrame: true });
+  await reachJoin(page, state);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Switch camera' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Take photo' }).click();
+  await expect.poll(() => state.reservations).toBe(1);
+  await expect(page.locator('main [role="alert"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Use photo' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Take photo' }).click();
+  await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
+  expect(state.reservationKeys).toHaveLength(2);
+  expect(state.reservationKeys[0]).toBe(state.reservationKeys[1]);
+});
+
+test('H69 shows the dedicated viewfinder while camera permission is pending', async ({ page }) => {
+  const state = await prepareGuestPage(page, { holdCamera: true });
+  await reachJoin(page, state);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.locator('main').getByRole('status')).toHaveText('Preparing the camera…');
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeDisabled();
+  await expect(page.getByRole('heading', { name: 'Kepotret E2E' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open AI Assistant' })).toHaveCount(0);
+  expect(state.reservations).toBe(0);
+  await page.evaluate(() => window.releaseCamera?.());
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+});
+
+test('H69 failed camera switch restores the original stream without a second active camera', async ({ page }) => {
+  const state = await prepareGuestPage(page, { cameraCount: 2, cameraSwitchFails: true });
+  await reachJoin(page, state);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await page.getByRole('button', { name: 'Switch camera' }).click();
+  await expect(page.getByText('Could not switch cameras. Try again.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Switch camera' })).toHaveCount(0);
+  expect(await page.evaluate(() => window.cameraTrace)).toEqual(['open:rear:1', 'stop:rear:0', 'open:rear:1']);
+  expect(state.reservations).toBe(0);
+});
+
+test('H69 gates shutter while offline and explains missing or busy cameras', async ({ page }) => {
+  const active = await prepareGuestPage(page);
+  await reachJoin(page, active);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+  await page.context().setOffline(true);
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeDisabled();
+  await expect(page.getByText('An internet connection is required before taking a photo.')).toBeVisible();
+  expect(active.reservations).toBe(0);
+  await page.context().setOffline(false);
+  await expect(page.getByRole('button', { name: 'Take photo' })).toBeEnabled();
+
+  await page.goto('/');
+  const missing = await prepareGuestPage(page, { cameraFailure: 'NotFoundError' });
+  await reachJoin(page, missing);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.getByText('No camera was found on this device.')).toBeVisible();
+  expect(missing.reservations).toBe(0);
+
+  await page.goto('/');
+  const busy = await prepareGuestPage(page, { cameraFailure: 'NotReadableError' });
+  await reachJoin(page, busy);
+  await acceptConsent(page);
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  await expect(page.getByText('The camera is busy in another app.')).toBeVisible();
+  expect(busy.reservations).toBe(0);
+});
+
+test('H72 separates waiting, closed reveal countdown, and published states in both locales', async ({ page }) => {
+  const waiting = await prepareGuestPage(page, { readinessSequence: ['WAITING'], waitingStart: '2026-09-27T01:00:00Z' });
+  await reachJoin(page, waiting);
+  await acceptConsent(page);
+  await expect(page.getByText('It is not time to take photos yet')).toBeVisible();
+  await expect(page.getByText(/Photo session begins:/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open camera' })).toBeDisabled();
+
+  await page.goto('/');
+  const closed = await prepareGuestPage(page, { closed: true });
+  await reachJoin(page, closed);
+  await acceptConsent(page);
+  await expect(page.getByText('The photo session is closed')).toBeVisible();
+  await expect(page.getByText('Time until photos are published')).toBeVisible();
+  await expect(page.getByRole('timer')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open camera' })).toHaveCount(0);
+  await page.getByRole('button', { name: /Language/ }).click();
+  await page.getByRole('option', { name: 'Indonesian' }).click();
+  await expect(page.getByText('Waktu menuju publikasi foto')).toBeVisible();
+
+  await page.goto('/');
+  const published = await prepareGuestPage(page, { closed: true, revealState: 'REVEALED' });
+  await reachJoin(page, published);
+  await acceptConsent(page);
+  await expect(page.getByText("Photos are available according to the album's gallery settings. Capture remains closed.")).toBeVisible();
+  await expect(page.getByRole('timer')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open camera' })).toHaveCount(0);
+});
 
 test('H65 to H68 consent flow creates the guest only after locked consent and captures through direct upload @release-critical', async ({ page }) => {
   await page.context().addCookies([{ name: 'kepotret-locale', value: 'en', domain: 'localhost', path: '/' }]);
@@ -360,7 +555,7 @@ test('RELEASED recovery discards the old photo and allows only a fresh reservati
 test('Retake recognizes an already EXPIRED attempt and does not call release again', async ({ page }) => {
   const state = await prepareGuestPage(page, { recoveryStatuses: ['EXPIRED'], readinessAfterRecovery: 'READY' });
   await captureForUploadRecovery(page, state);
-  await page.getByRole('button', { name: 'Retake' }).click();
+  await page.getByRole('button', { name: 'Take again' }).click();
   await expect(page.getByText('The previous photo can no longer be saved. Take a new photo to continue.')).toBeVisible();
   await expect(page.getByRole('img', { name: 'Event photo preview' })).toHaveCount(0);
   expect(state.recoveryChecks).toBe(1);
@@ -437,7 +632,7 @@ test('reservation 503 retry reuses the key, then retake releases and the next sh
   await page.getByRole('button', { name: 'Take photo' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
   await page.getByRole('button', { name: 'Take photo' }).click();
-  await page.getByRole('button', { name: 'Retake' }).click();
+  await page.getByRole('button', { name: 'Take again' }).click();
   await page.getByRole('button', { name: 'Open camera' }).click();
   await page.getByRole('button', { name: 'Take photo' }).click();
   await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
