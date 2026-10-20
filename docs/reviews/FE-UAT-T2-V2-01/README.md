@@ -42,6 +42,8 @@ The independent review of `23b2ea3` requested three camera lifecycle corrections
 
 Remediation validation: lint, typecheck, 281 unit/component tests, OpenAPI freshness, production build, and all 27 Chromium guest-capture tests passed locally. The four new focused regressions passed with `--retries=0`. Final hosted quality and E2E results are available on the PR checks page. These checks do not replace real-device Owner validation.
 
+The first hosted remediation run and its diagnostic rerun both passed the full browser matrix but stopped in the separate zero-retry Admin gate: the existing H91 WebKit grant test observed no grant request within its five-second poll. The same 29-test Admin suite passed locally without retries. Its assertion now records CSRF/step-up request counts and safe UI feedback, and allows 15 seconds for the asynchronous grant request so a further hosted failure can identify the preceding state. This test-only change does not alter H91 permissions, MFA, or the separate server-side revoke contract dependency.
+
 ## Synthetic screenshots
 
 | Stage | Evidence |

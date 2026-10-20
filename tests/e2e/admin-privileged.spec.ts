@@ -13,9 +13,11 @@ test('FE-8 H91 requires reason and step-up before creating an album-scoped view-
   let grantRequests = 0;
   let revokeRequests = 0;
   let mediaRequests = 0;
+  let csrfRequests = 0;
+  let stepUpRequests = 0;
   const grantExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-  await page.route('**/api/v1/admin/security/csrf', route => route.fulfill({ status: 200, json: { data: { csrf_token: 'admin-csrf' } } }));
-  await page.route('**/api/v1/admin/auth/step-up', route => route.fulfill({ status: 200, json: { data: { verified_at: '2026-09-28T10:00:00Z', expires_at: '2026-09-28T10:10:00Z' } } }));
+  await page.route('**/api/v1/admin/security/csrf', route => { csrfRequests += 1; return route.fulfill({ status: 200, json: { data: { csrf_token: 'admin-csrf' } } }); });
+  await page.route('**/api/v1/admin/auth/step-up', route => { stepUpRequests += 1; return route.fulfill({ status: 200, json: { data: { verified_at: '2026-09-28T10:00:00Z', expires_at: '2026-09-28T10:10:00Z' } } }); });
   await page.route(`**/api/v1/admin/albums/${albumId}/sensitive-access-grants`, async route => {
     grantRequests += 1;
     expect(route.request().postDataJSON()).toEqual({ reason: 'Review reported photo' });
@@ -37,7 +39,12 @@ test('FE-8 H91 requires reason and step-up before creating an album-scoped view-
   const createDialog = page.getByRole('dialog');
   await expect(createDialog).toContainText(/temporary|sementara/i);
   await createDialog.getByRole('button', { name: /Confirm|Konfirmasi/i }).click();
-  await expect.poll(() => grantRequests).toBe(1);
+  await expect.poll(async () => ({
+    grantRequests,
+    stepUpRequests,
+    csrfRequests,
+    feedback: await page.locator('[role="alert"]').allTextContents(),
+  }), { timeout: 15_000 }).toMatchObject({ grantRequests: 1, stepUpRequests: 1 });
   await expect.poll(() => mediaRequests).toBe(1);
   await expect(page.getByText('grant-1')).toBeVisible();
   await page.getByLabel(/TOTP code|Kode TOTP/i).fill('654321');
