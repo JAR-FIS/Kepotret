@@ -12,6 +12,14 @@ async function evidence(page: Page, testInfo: TestInfo, name: string) {
   await page.screenshot({ path: join(dir, `${name}-${testInfo.project.name}.png`), fullPage: true, animations: 'disabled' });
 }
 
+async function galleryEvidence(page: Page, testInfo: TestInfo, name: string) {
+  if (process.env.UAT_CAPTURE_EVIDENCE !== '1' || testInfo.repeatEachIndex !== 0) return;
+  await expect(page.locator('#__owner-visual-uat-badge')).toBeVisible();
+  const dir = join(process.cwd(), 'docs', 'reviews', 'FE-UAT-T2-V2-03', 'evidence');
+  await mkdir(dir, { recursive: true });
+  await page.screenshot({ path: join(dir, `${name}-${testInfo.project.name}.png`), fullPage: true, animations: 'disabled' });
+}
+
 async function joinGuest(page: Page, scenario = 'normal') {
   await page.goto(`/j/${uatIds.link}?uat=${scenario}#synthetic-owner-uat-secret`);
   await page.getByRole('button', { name: 'Lanjut' }).click();
@@ -170,6 +178,44 @@ test('H73 gallery requires revealed Guest context and supports empty and termina
   await page.goto(`/j/${uatIds.link}/galeri?uat=expired#synthetic-owner-uat-secret`);
   await expect(page).toHaveURL(/\/akhir-acara$/);
   expect(fixture.unmatchedGuestRequests).toEqual([]);
+});
+
+test('H73/H74 gallery layouts and overlay are responsive in ID/EN and Light/Dark', async ({ page }, testInfo) => {
+  await installUatApi(page);
+  await page.setViewportSize(testInfo.project.name === 'guest-mobile' ? { width: 390, height: 844 } : { width: 1440, height: 900 });
+  await page.goto(`/j/${uatIds.link}/galeri?uat=revealed#synthetic-owner-uat-secret`);
+  await expect(page.getByRole('img', { name: /Ari UAT/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tampilan kisi' })).toHaveAttribute('aria-pressed', 'true');
+  await galleryEvidence(page, testInfo, 'h73-grid-id-light');
+  await page.getByRole('button', { name: 'Tampilan daftar' }).click();
+  await expect(page.getByRole('button', { name: 'Tampilan daftar' })).toHaveAttribute('aria-pressed', 'true');
+  await galleryEvidence(page, testInfo, 'h73-list-id-light');
+  await page.getByRole('link', { name: 'Lihat foto oleh Ari UAT' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Detail foto' });
+  await expect(dialog.getByRole('img', { name: /Ari UAT/ })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: /Bahasa|tema/ })).toHaveCount(0);
+  await galleryEvidence(page, testInfo, 'h74-overlay-id-light');
+  await page.getByRole('link', { name: 'Kembali ke galeri' }).click();
+  await page.getByRole('button', { name: 'Bahasa: ID' }).click();
+  await page.getByRole('option', { name: 'Bahasa Inggris' }).click();
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.getByRole('link', { name: 'View photo by Ari UAT' }).click();
+  await expect(page.getByRole('dialog', { name: 'Photo details' }).getByRole('img', { name: /Ari UAT/ })).toBeVisible();
+  await galleryEvidence(page, testInfo, 'h74-overlay-en-dark');
+});
+
+test('H73/H74 remain usable without horizontal overflow at 320/390/412/tablet/desktop', async ({ page }) => {
+  await installUatApi(page);
+  for (const width of [320, 390, 412, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/j/${uatIds.link}/galeri?uat=revealed#synthetic-owner-uat-secret`);
+    await expect(page.getByRole('img', { name: /Ari UAT/ })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+    await page.getByRole('link', { name: 'Lihat foto oleh Ari UAT' }).click();
+    await expect(page.getByRole('dialog', { name: 'Detail foto' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+  }
 });
 
 test('H74 detail obeys action permissions and denied detail hides media', async ({ page }, testInfo) => {

@@ -94,6 +94,7 @@ test('revealed Guest gallery requests one bounded page and lazily renders media 
   const photo = { photo_id: photoId, created_at: '2026-09-27T01:00:00Z', photographer_display_name: 'Ari', like_count: 2, media: { url: 'https://media.test/delivery/photo', expires_at: '2026-09-27T01:05:00Z' }, actions: { can_like: false, liked_by_me: false, can_download: false, can_share: false } };
   const requests: URL[] = [];
   await page.route('**/api/v1/guest/me', route => route.fulfill({ status: 200, json: { data: { guest_session: { guest_session_id: 'guest-1', album_id: albumId, display_name: 'Guest', created_at: '2026-09-27T00:00:00Z' }, event: { album_id: albumId, event_name: 'Browser matrix event', event_location: null, timezone: 'Asia/Jakarta', capture_start: null, capture_end: null, reveal_at: '2026-09-27T00:00:00Z', capture_state: 'CLOSED', reveal_state: 'REVEALED' } } } }));
+  await page.route(`**/api/v1/albums/${albumId}/capture-readiness`, route => route.fulfill({ status: 200, json: { data: { album_id: albumId, state: 'CLOSED', can_capture: false, server_time: '2026-09-27T01:00:00Z', reveal_state: 'REVEALED' } } }));
   await page.route('**/api/v1/guest/gallery/photos?**', route => {
     const url = new URL(route.request().url());
     requests.push(url);
