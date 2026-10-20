@@ -69,13 +69,14 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   const [guideOpen, setGuideOpen] = useState(false);
   const loadVersion = useRef(0);
   const dialogRef = useRef<HTMLElement>(null);
-  const closeRef = useRef<HTMLAnchorElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const mobileNavRef = useRef<HTMLElement>(null);
   const mobileCloseRef = useRef<HTMLButtonElement>(null);
   const sidebarCloseRef = useRef<HTMLButtonElement>(null);
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const photoOpenerRef = useRef<{ photoId: string; element: HTMLAnchorElement } | null>(null);
+  const closeDetail = useCallback(() => router.replace(guestRoutes.gallery(linkId), { scroll: false }), [router, linkId]);
 
   const loadFirstPage = useCallback(async (selectedSort: GetApiV1GuestGalleryPhotosSort, version: number) => {
     const current = () => loadVersion.current === version;
@@ -168,7 +169,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
     document.body.style.overflow = 'hidden';
     const frame = window.requestAnimationFrame(() => closeRef.current?.focus());
     const onKeydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); router.push(guestRoutes.gallery(linkId)); }
+      if (event.key === 'Escape') { event.preventDefault(); closeDetail(); }
       else if (dialogRef.current) trapTab(event, dialogRef.current);
     };
     document.addEventListener('keydown', onKeydown);
@@ -181,7 +182,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
         else galleryHeading?.focus();
       });
     };
-  }, [photoId, state, router, linkId]);
+  }, [photoId, state, closeDetail]);
 
   useEffect(() => {
     if (!mobileNavOpen || photoId) return;
@@ -301,7 +302,6 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
 
   const dateTime = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
   const activePhoto = photoId && detail?.photo_id === photoId && detailState === 'ready' ? detail : null;
-  const closeDetail = () => router.push(guestRoutes.gallery(linkId));
   const showCapture = state === 'ready' && isOnline && readiness?.state === 'READY' && readiness.can_capture;
   const navItem = 'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]';
   const navigation = (mobile: boolean) => <nav aria-label={t('navigation')} className="space-y-1">
@@ -368,7 +368,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
     </div>
 
     {photoId && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgb(8_12_20_/_78%)] px-3 py-4 backdrop-blur-sm sm:px-6" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDetail(); }}><section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="guest-photo-title" tabIndex={-1} className="flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-foreground)] shadow-2xl">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3 sm:px-6"><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">{context?.event.event_name}</p><h2 id="guest-photo-title" className="font-[family-name:var(--font-display)] text-lg font-bold">{t('viewer')}</h2></div><Link ref={closeRef} href={guestRoutes.gallery(linkId)} aria-label={t('back')} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] px-3 text-sm font-semibold hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)]"><X size={18} aria-hidden="true" /><span className="hidden sm:inline">{t('closeViewer')}</span></Link></header>
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3 sm:px-6"><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">{context?.event.event_name}</p><h2 id="guest-photo-title" className="font-[family-name:var(--font-display)] text-lg font-bold">{t('viewer')}</h2></div><button ref={closeRef} type="button" onClick={closeDetail} aria-label={t('back')} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] px-3 text-sm font-semibold hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)]"><X size={18} aria-hidden="true" /><span className="hidden sm:inline">{t('closeViewer')}</span></button></header>
       {!isOnline && <p role="status" className="mx-4 mt-3 rounded-xl border border-[var(--color-border)] p-3 text-sm sm:mx-6">{t('offline')}</p>}
       {!activePhoto ? <div className="grid min-h-64 place-items-center p-8 text-center"><p role={detailState === 'loading' ? 'status' : 'alert'}>{detailState === 'loading' ? t('loading') : detailState === 'unavailable' ? t('unavailable') : t('error')}</p></div> : <div className="min-h-0 p-3 sm:p-6"><div className="grid min-h-48 place-items-center rounded-xl bg-[var(--color-surface-muted)] p-2 sm:p-4"><DeliveryImage key={activePhoto.photo_id} src={activePhoto.media.url} alt={t('photoAltNamed', { name: activePhoto.photographer_display_name })} unavailableLabel={t('mediaUnavailable')} loading="eager" className="max-h-[48dvh] max-w-full rounded-lg object-contain sm:max-h-[60dvh]" /></div><div className="mt-4 flex flex-wrap items-start justify-between gap-4 px-1"><div><p className="text-base font-bold">{activePhoto.photographer_display_name}</p><time className="mt-1 block text-sm text-[var(--color-muted-foreground)]" dateTime={activePhoto.created_at}>{dateTime(activePhoto.created_at)}</time></div><div className="flex flex-wrap gap-2">
         {activePhoto.actions.can_like && <Button variant="secondary" disabled={!isOnline || activePhoto.actions.liked_by_me} loading={busy} onClick={() => void like(activePhoto)} aria-label={activePhoto.actions.liked_by_me ? t('liked') : t('like')}><Heart size={17} aria-hidden="true" fill={activePhoto.actions.liked_by_me ? 'currentColor' : 'none'} />{activePhoto.like_count}</Button>}

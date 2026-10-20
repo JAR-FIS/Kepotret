@@ -7,11 +7,17 @@ This batch starts from merged PR #34, squash commit `27dc6ca23f5efe80369835887b9
 | Finding | Verified prior behavior | Correction and evidence |
 | --- | --- | --- |
 | H73, UAT-T2-05: Gallery presentation | Gallery had one card layout, sort/cursor loading and action permissions, but no Guest navigation, Guest guide or list view. Its photo link replaced the Gallery with a full-page detail. | Branded Gallery shell, grid default/list toggle, Gallery and Panduan only, close/reopen sidebar and mobile drawer, contextual Guest guide, metadata row with an independent right-aligned like action, and a subdued footer. [Grid desktop](evidence/h73-grid-id-light-guest-desktop.png), [grid mobile](evidence/h73-grid-id-light-guest-mobile.png), [list desktop](evidence/h73-list-id-light-guest-desktop.png), [list mobile](evidence/h73-list-id-light-guest-mobile.png). |
-| H73: capture action | The prior Gallery did not offer a capture action. Reveal and event data alone do not authorize capture. | The CTA is shown only after the existing capture-readiness API returns matching album, `READY` and `can_capture`; it is hidden offline/unknown/closed and rechecks immediately on activation. A quota-closed response prevents navigation. |
+| H73: capture action | The prior Gallery did not offer a capture action. Reveal and event data alone do not authorize capture. | The CTA is shown only after the existing capture-readiness API returns matching album, `READY` and `can_capture`; it is hidden offline/unknown/closed and rechecks immediately on activation. A quota-closed response prevents navigation. Revealed Owner fixtures now use a closed capture period; screenshots and UAT tests confirm no capture CTA. |
 | H74, UAT-T2-06: detail presentation | The detail route rendered a separate full-page view, losing visible Gallery context and its loaded list/sort state. | A shared Gallery route layout retains the grid/list, sort and loaded pages beneath a centered responsive dialog. The dialog uses a translucent blurred backdrop, contained media, compact authorized actions, close/Escape/Back behavior, focus containment and focus return, with no locale/theme controls. [Overlay desktop ID/Light](evidence/h74-overlay-id-light-guest-desktop.png), [mobile ID/Light](evidence/h74-overlay-id-light-guest-mobile.png), [desktop EN/Dark](evidence/h74-overlay-en-dark-guest-desktop.png), [mobile EN/Dark](evidence/h74-overlay-en-dark-guest-mobile.png). |
 | H74: direct link and access loss | The existing detail API provided per-photo authorization; it had to remain decisive after introducing a background Gallery. | Direct links fetch Guest context, a revealed list and the individual detail. A 403/404 hides the media/actions, 401/410 reaches the existing terminal routes, and network or expired media has safe visible feedback. |
 
 The Owner's Gallery reference image #2 and Photo Detail reference image #3 were inspected from the local handoff ZIP. They informed the compact photo-first layout and overlay geometry only; Kepotret colors, typography and permissions remain project-owned.
+
+## Independent review follow-up on PR #35
+
+The review of `fe4274f8e290dcf9d6ec55392791cb91d4a54b60` requested a browser-history correction. Escape, the close button and backdrop now share `router.replace` to return to Gallery, so browser Back after an explicit close does not reopen the photo. Native Back from an open photo still returns to Gallery; a direct deep link can close to Gallery. Focus and loaded Gallery state remain in place during an explicit close. Focused Playwright cases cover all four paths.
+
+The normal revealed synthetic fixture now has capture `CLOSED`, matching the product's delayed reveal lifecycle; eight H73/H74 screenshots were regenerated. A separate test explicitly labels the deliberately inconsistent `REVEALED`/`READY` projection and verifies that a fresh server readiness check blocks camera entry when quota closes. These fixtures do not change production authorization.
 
 ## Before and after visual evidence
 
@@ -32,12 +38,12 @@ Additional Owner fixture routes: [H73 hidden](http://localhost:3000/j/uat-event/
 | --- | --- |
 | `pnpm lint`, `pnpm typecheck`, `pnpm api:check`, `pnpm build` | Passed. |
 | `pnpm test` | 42 files, 286 tests passed. One first run hit a 20-second timeout while the production build ran concurrently; the full suite passed when rerun alone. |
-| Focused Guest Gallery Chromium E2E, `--retries=0` | 12 passed on final rerun. |
-| Gallery modal cross-browser, `--retries=0` | 5 passed: desktop Chromium/Firefox/WebKit and mobile Chromium/WebKit. |
-| Existing synthetic Guest Owner UAT H70–H76, `--retries=0` | 28 passed across desktop and mobile projects. |
-| New H73/H74 ID/EN, Light/Dark, 320/390/412/tablet/desktop and screenshot tests, `--retries=0` | 4 passed across desktop and mobile projects; eight screenshots generated. |
-| Full E2E, `--retries=0` | 228 passed, 3 existing evidence-capture-only tests skipped; no retry passes. A subsequent Gallery fixture correction passed in all 5 browser projects. |
-| Hosted CI | Pending PR. |
+| Focused Guest Gallery Chromium E2E, `--retries=0` | 14 passed after review correction. |
+| Gallery modal cross-browser, `--retries=0` | 10 passed: two navigation tests on desktop Chromium/Firefox/WebKit and mobile Chromium/WebKit. |
+| Synthetic Guest Owner UAT H70–H76, `--retries=0` | Full suite: 40 passed across desktop and mobile projects after review correction. |
+| H73/H74 ID/EN, Light/Dark, 320/390/412/tablet/desktop and screenshot tests, `--retries=0` | 4 passed across desktop and mobile projects; eight screenshots regenerated. |
+| Full E2E on original PR HEAD, `--retries=0` | 228 passed, 3 existing evidence-capture-only tests skipped; no retry passes. The correction is covered locally by focused Gallery/browser-matrix and full Guest Owner UAT, then by hosted full E2E on the new HEAD. |
+| Hosted CI on reviewed HEAD `fe4274f` | Run `39477701246`: quality passed (286 unit, lint/typecheck/API check/build); broad E2E 225 direct passes, 3 retry-passing flaky (Guest terminal redirect, Host setup navigation, Host moderation), 3 skipped; privileged Admin 28 passed/1 skipped; Guest Owner UAT 40 passed. New HEAD must pass hosted CI again before independent re-review. |
 
 ## Deferred dependencies and Owner review
 

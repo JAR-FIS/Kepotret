@@ -52,8 +52,9 @@ function requestFor(pathname: string, method: string, scenario: string): { statu
   }
 
   if (pathname === `/api/v1/albums/${uatIds.album}/capture-readiness`) {
-    const state = scenario === 'waiting' ? 'WAITING' : scenario === 'closed' || scenario === 'closed-revealed' ? 'CLOSED' : 'READY';
-    return { status: 200, body: envelope({ album_id: uatIds.album, state, can_capture: state === 'READY', server_time: uatNow, capture_start: uatCaptureStart, capture_end: uatCaptureEnd, reveal_at: scenario === 'closed-revealed' ? uatNow : dateLater, reveal_state: scenario === 'closed-revealed' ? 'REVEALED' : 'HIDDEN', album_remaining_count: state === 'CLOSED' ? 0 : 76, guest_remaining_count: 10 }) };
+    const revealed = ['revealed', 'empty', 'permissions-off', 'detail-denied', 'closed-revealed'].includes(scenario);
+    const state = scenario === 'waiting' ? 'WAITING' : scenario === 'closed' || revealed ? 'CLOSED' : 'READY';
+    return { status: 200, body: envelope({ album_id: uatIds.album, state, can_capture: state === 'READY', server_time: revealed ? '2026-10-04T18:00:00Z' : uatNow, capture_start: uatCaptureStart, capture_end: uatCaptureEnd, reveal_at: dateLater, reveal_state: revealed ? 'REVEALED' : 'HIDDEN', album_remaining_count: 76, guest_remaining_count: 10 }) };
   }
   if (pathname === '/api/v1/guest/gallery/photos' || pathname.startsWith('/api/v1/guest/gallery/photos/')) {
     if (!['revealed', 'empty', 'permissions-off', 'detail-denied', 'closed-revealed'].includes(scenario)) return { status: 403, body: { error: { code: 'GALLERY_NOT_AVAILABLE' } } };

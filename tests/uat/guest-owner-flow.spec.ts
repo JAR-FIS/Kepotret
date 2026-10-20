@@ -163,6 +163,7 @@ test('H73 gallery requires revealed Guest context and supports empty and termina
   await page.goto(`/j/${uatIds.link}/galeri?uat=revealed#synthetic-owner-uat-secret`);
   await expect(page.getByRole('img', { name: /Ari UAT/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /Ari UAT/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ambil foto' })).toHaveCount(0);
   await evidence(page, testInfo, 'h73-gallery-revealed');
   await page.getByLabel('Urutkan').selectOption('MOST_LIKED');
   await expect(page.getByRole('img', { name: /Ari UAT/ })).toBeVisible();
@@ -186,6 +187,7 @@ test('H73/H74 gallery layouts and overlay are responsive in ID/EN and Light/Dark
   await page.goto(`/j/${uatIds.link}/galeri?uat=revealed#synthetic-owner-uat-secret`);
   await expect(page.getByRole('img', { name: /Ari UAT/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Tampilan kisi' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Ambil foto' })).toHaveCount(0);
   await galleryEvidence(page, testInfo, 'h73-grid-id-light');
   await page.getByRole('button', { name: 'Tampilan daftar' }).click();
   await expect(page.getByRole('button', { name: 'Tampilan daftar' })).toHaveAttribute('aria-pressed', 'true');
@@ -195,7 +197,7 @@ test('H73/H74 gallery layouts and overlay are responsive in ID/EN and Light/Dark
   await expect(dialog.getByRole('img', { name: /Ari UAT/ })).toBeVisible();
   await expect(dialog.getByRole('button', { name: /Bahasa|tema/ })).toHaveCount(0);
   await galleryEvidence(page, testInfo, 'h74-overlay-id-light');
-  await page.getByRole('link', { name: 'Kembali ke galeri' }).click();
+  await page.getByRole('button', { name: 'Kembali ke galeri' }).click();
   await page.getByRole('button', { name: 'Bahasa: ID' }).click();
   await page.getByRole('option', { name: 'Bahasa Inggris' }).click();
   await page.getByRole('button', { name: 'Switch to dark theme' }).click();
@@ -228,7 +230,7 @@ test('H74 detail obeys action permissions and denied detail hides media', async 
   await evidence(page, testInfo, 'h74-photo-detail');
   await page.getByRole('button', { name: 'Sukai foto' }).click();
   await expect(page.getByRole('button', { name: 'Foto disukai' })).toBeVisible();
-  await page.getByRole('link', { name: 'Kembali ke galeri' }).click();
+  await page.getByRole('button', { name: 'Kembali ke galeri' }).click();
   await expect(page).toHaveURL(/\/galeri$/);
   await page.goto(`${detail}?uat=permissions-off#synthetic-owner-uat-secret`);
   await expect(page.getByRole('img', { name: /Ari UAT/ })).toBeVisible();

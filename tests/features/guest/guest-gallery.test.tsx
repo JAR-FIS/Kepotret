@@ -179,6 +179,6 @@ describe('guest gallery', () => {
     expect(dialog.querySelector('img')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Download' })).not.toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(router.push).toHaveBeenCalledWith('/j/link-1/galeri');
+    expect(router.replace).toHaveBeenCalledWith('/j/link-1/galeri', { scroll: false });
   });
 });

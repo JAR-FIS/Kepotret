@@ -42,6 +42,7 @@ test('guest gallery paginates, sorts, opens detail, likes once, downloads, copie
   await mockGuest(page);
   await page.goto(`/j/${linkId}/galeri`);
   await expect(page.getByRole('heading', { name: 'FE5 Gallery E2E' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ambil foto' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: /Ari/ })).toBeVisible();
   await page.getByRole('button', { name: 'Muat foto berikutnya' }).click();
   await expect(page.getByText('Bima')).toBeVisible();
@@ -106,16 +107,50 @@ test('Gallery list mode and authorized lightbox retain route context on close @c
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('img', { name: /Ari/ })).toBeVisible();
   await expect(dialog.getByRole('button', { name: /Bahasa|tema/ })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Kembali ke galeri' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Kembali ke galeri' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
   await expect(page.getByRole('button', { name: 'Tampilan daftar' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('link', { name: 'Lihat foto oleh Ari' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Lihat foto oleh Ari' })).toBeFocused();
-  await page.getByRole('link', { name: 'Lihat foto oleh Ari' }).click();
   await page.goBack();
+  await expect(page).not.toHaveURL(new RegExp(`/j/${linkId}/galeri/${photoId}$`));
   await expect(dialog).toHaveCount(0);
+});
+
+test('browser Back from an open photo returns to the Gallery @cross-browser', async ({ page }) => {
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri`);
+  await page.getByRole('button', { name: 'Tampilan daftar' }).click();
+  await page.getByRole('link', { name: 'Lihat foto oleh Ari' }).click();
+  await expect(page.getByRole('dialog', { name: 'Detail foto' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
+  await expect(page.getByRole('dialog', { name: 'Detail foto' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Tampilan daftar' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('close button and backdrop do not reopen the photo on browser Back', async ({ page }) => {
+  await mockGuest(page);
+  await page.goto(`/j/${linkId}/galeri`);
+  const open = page.getByRole('link', { name: 'Lihat foto oleh Ari' });
+  const dialog = page.getByRole('dialog', { name: 'Detail foto' });
+  await open.click();
+  await expect(dialog).toBeVisible();
+  await page.getByRole('button', { name: 'Kembali ke galeri' }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.goBack();
+  await expect(page).not.toHaveURL(new RegExp(`/j/${linkId}/galeri/${photoId}$`));
+  await expect(dialog).toHaveCount(0);
+
+  await page.goto(`/j/${linkId}/galeri`);
+  await open.click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('..').click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toHaveCount(0);
+  await page.goBack();
+  await expect(page).not.toHaveURL(new RegExp(`/j/${linkId}/galeri/${photoId}$`));
+  await expect(dialog).toHaveCount(0);
 });
 
 test('desktop sidebar closes and reopens with keyboard focus preserved', async ({ page }) => {
@@ -135,7 +170,7 @@ test('direct photo link reauthorizes detail and denied media stays hidden', asyn
   await mockGuest(page);
   await page.goto(`/j/${linkId}/galeri/${photoId}`);
   await expect(page.getByRole('dialog', { name: 'Detail foto' }).getByRole('img', { name: /Ari/ })).toBeVisible();
-  await page.getByRole('link', { name: 'Kembali ke galeri' }).click();
+  await page.getByRole('button', { name: 'Kembali ke galeri' }).click();
   await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
   await page.route(`**/api/v1/guest/gallery/photos/${photoId}`, (route) => route.fulfill({ status: 403, json: { error: { code: 'DENIED' } } }));
   await page.getByRole('link', { name: 'Lihat foto oleh Ari' }).click();
@@ -161,7 +196,7 @@ test('mobile drawer exposes only Gallery and Guest guidance', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Cara menikmati galeri' })).toHaveCount(0);
 });
 
-test('capture CTA rechecks server readiness and never opens camera after quota closes', async ({ page }) => {
+test('synthetic inconsistent reveal/readiness projection rechecks before camera entry', async ({ page }) => {
   await mockGuest(page);
   await page.unroute('**/api/v1/albums/album-1/capture-readiness');
   let requests = 0;
