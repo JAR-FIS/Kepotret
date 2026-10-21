@@ -76,9 +76,12 @@ test('H80 album search uses the server query and resets to the first page', asyn
   const requests: URL[] = [];
   page.on('request', (request) => { if (new URL(request.url()).pathname === '/api/v1/admin/albums') requests.push(new URL(request.url())); });
   await page.goto('/admin/albums');
-  const search = page.getByRole('searchbox', { name: /Album search query|Kata kunci album/i });
+  const albumCard = page.getByRole('heading', { name: /All albums|Semua album/i }).locator('..');
+  const search = albumCard.getByRole('searchbox', { name: /Album search query|Kata kunci album/i });
+  await expect(albumCard.getByRole('search')).toContainText('Search');
+  await expect(albumCard.getByRole('button', { name: 'Search' })).toBeEnabled();
   await search.fill('Wedding');
-  await page.getByRole('button', { name: /^Search$|^Cari$/i }).click();
+  await search.press('Enter');
   await expect(page.getByText(/Wedding Demo/).first()).toBeVisible();
   expect(requests.at(-1)?.searchParams.get('query')).toBe('Wedding');
   expect(requests.at(-1)?.searchParams.has('cursor')).toBe(false);
@@ -89,6 +92,7 @@ test('H80 album search uses the server query and resets to the first page', asyn
   await page.getByRole('button', { name: /^Clear$|^Hapus$/i }).click();
   await expect(page.getByText(/Wedding Demo/).first()).toBeVisible();
   expect(requests.at(-1)?.searchParams.has('query')).toBe(false);
+  expect(requests.every((request) => !request.searchParams.has('sort'))).toBe(true);
   expect(await page.getByRole('button', { name: /sort|urutkan/i }).count()).toBe(0);
 });
 
@@ -132,11 +136,21 @@ test('H84 catalog keeps six packages in two columns, hides codes, and confirms s
   expect(Math.abs(first!.y - second!.y)).toBeLessThan(2);
   expect(first!.x).toBeLessThan(second!.x);
   expect(third!.x).toBe(first!.x);
+  const firstPackage = cards.first().locator('..');
+  const retire = firstPackage.getByRole('button', { name: /Retire|Pensiunkan/i });
+  const newVersion = firstPackage.getByRole('link', { name: /Create new version|Buat versi baru/i });
+  const retireDesktop = await retire.boundingBox();
+  const newDesktop = await newVersion.boundingBox();
+  expect(Math.abs(retireDesktop!.y - newDesktop!.y)).toBeLessThan(2);
+  expect(Math.abs(retireDesktop!.width - newDesktop!.width)).toBeLessThan(2);
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileFirst = await cards.nth(0).boundingBox();
   const mobileSecond = await cards.nth(1).boundingBox();
   expect(mobileFirst!.y).toBeLessThan(mobileSecond!.y);
   expect(mobileFirst!.x).toBe(mobileSecond!.x);
+  const retireMobile = await retire.boundingBox();
+  const newMobile = await newVersion.boundingBox();
+  expect(newMobile!.y).toBeGreaterThan(retireMobile!.y);
   await noPageOverflow(page);
 
   const changes: Array<{ url: string; body: unknown; csrf: string }> = [];
@@ -167,6 +181,44 @@ test('H84 catalog supports odd counts and historical versions without exposing p
   await expect(page.getByText(/Tidak dijual|Not for sale/i)).toBeVisible();
   await expect(page.locator('main')).not.toContainText('LOCKED100');
   await expect(page.getByText('eeeeeeee-eeee-4eee-8eee-000000000099')).toBeVisible();
+  const firstPackage = page.getByRole('heading', { name: packages[0]!.name }).locator('..');
+  await expect(firstPackage.getByRole('link', { name: /Buat versi baru/i })).toHaveCount(1);
+  await expect(firstPackage.getByRole('button', { name: new RegExp(packages[0]!.versions[0]!.package_version_id) })).toBeVisible();
+  const historicalVersionId = packages[0]!.versions[1]!.package_version_id;
+  const historicalAction = firstPackage.getByRole('button', { name: new RegExp(historicalVersionId) });
+  await expect(historicalAction).toBeVisible();
+  const changes: Array<{ path: string; body: unknown; csrf: string }> = [];
+  await page.route('**/api/v1/admin/package-versions/*/sale-status', async (route) => {
+    changes.push({ path: new URL(route.request().url()).pathname, body: route.request().postDataJSON(), csrf: route.request().headers()['x-csrf-token'] ?? '' });
+    await route.fulfill({ status: 200, json: { data: { sale_enabled: true } } });
+  });
+  await historicalAction.click();
+  await page.getByRole('dialog').getByRole('button', { name: /Konfirmasi|Confirm/i }).click();
+  await expect.poll(() => changes.length).toBe(1);
+  expect(changes[0]).toEqual({ path: `/api/v1/admin/package-versions/${historicalVersionId}/sale-status`, body: { sale_enabled: true }, csrf: 'owner-uat-csrf' });
+});
+
+test('H84 blocks offline changes, honors cancellation, and explains a denied save', async ({ page }) => {
+  let changes = 0;
+  await page.route('**/api/v1/admin/package-versions/*/sale-status', async (route) => {
+    changes += 1;
+    await route.fulfill({ status: 403, json: { error: { code: 'FORBIDDEN', message: 'internal policy detail' } } });
+  });
+  await page.goto('/admin/catalog');
+  const retire = page.getByRole('button', { name: /Pensiunkan versi/i }).first();
+  await expect(retire).toBeEnabled();
+  await page.context().setOffline(true);
+  await expect(retire).toBeDisabled();
+  await page.context().setOffline(false);
+  await expect(retire).toBeEnabled();
+  await retire.click();
+  await page.getByRole('dialog').getByRole('button', { name: /Batal|Cancel/i }).click();
+  expect(changes).toBe(0);
+  await retire.click();
+  await page.getByRole('dialog').getByRole('button', { name: /Konfirmasi|Confirm/i }).click();
+  await expect.poll(() => changes).toBe(1);
+  await expect(page.getByText(/Akses Admin tidak tersedia/i)).toBeVisible();
+  await expect(page.locator('main')).not.toContainText('internal policy detail');
 });
 
 test('H77–H85 remain responsive at supported widths and H85 keeps its price and quota form', async ({ page }) => {

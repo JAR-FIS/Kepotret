@@ -142,13 +142,17 @@ test('H86 keeps locked values read only and saves an editable typed value with v
   await expect(page.getByRole('heading', { name: 'Synthetic locked capacity rule' })).toBeVisible();
   const locked = page.getByRole('heading', { name: 'Synthetic locked capacity rule' }).locator('..');
   await expect(locked.getByRole('button')).toHaveCount(0);
-  await expect(page.getByText(/Aturan produk dan izin yang terkunci tetap sama/i)).toBeVisible();
+  await expect(locked.getByText(/hanya dapat dibaca/i)).toBeVisible();
   const editable = page.getByRole('heading', { name: 'Synthetic maintenance notice' }).locator('..');
+  await expect(editable.getByRole('combobox')).toHaveCSS('appearance', 'none');
+  await expect(editable.getByRole('option', { name: 'Ya' })).toHaveAttribute('value', 'true');
+  await expect(editable.getByRole('option', { name: 'Tidak' })).toHaveAttribute('value', 'false');
+  await expect(editable.getByText('BOOLEAN', { exact: true })).toBeHidden();
   await editable.getByRole('combobox').selectOption('true');
-  await editable.getByRole('button', { name: /Simpan versi ini/i }).click();
+  await editable.getByRole('button', { name: /Simpan perubahan/i }).click();
   await expect.poll(() => patches.length).toBe(1);
   expect(patches[0]).toEqual({ body: { expected_version: 1, typed_value: true }, csrf: 'owner-uat-csrf' });
-  await expect(editable).toContainText('v2');
+  await expect(editable).toContainText('Pembaruan: 2');
 });
 
 test('H86 reloads current server configuration after a version conflict', async ({ page }) => {
@@ -159,10 +163,76 @@ test('H86 reloads current server configuration after a version conflict', async 
   });
   await page.goto('/admin/config');
   const editable = page.getByRole('heading', { name: 'Synthetic maintenance notice' }).locator('..');
-  await editable.getByRole('button', { name: 'Simpan versi ini' }).click();
+  await editable.getByRole('button', { name: 'Simpan perubahan' }).click();
   await expect.poll(() => patches).toBe(1);
   await expect(page.getByRole('status').filter({ hasText: /Konfigurasi terkini sudah dimuat ulang/i })).toBeVisible();
-  await expect(editable).toContainText('v1');
+  await expect(editable).toContainText('Pembaruan: 1');
+});
+
+test('H86 explains rejected and rate-limited updates without server details', async ({ page }) => {
+  let status = 422;
+  let attempts = 0;
+  await page.route('**/api/v1/admin/operational-configs/synthetic_maintenance_notice', async (route) => {
+    attempts += 1;
+    await route.fulfill({ status, json: { error: { code: 'REJECTED', message: 'internal configuration detail' } } });
+  });
+  await page.goto('/admin/config');
+  const save = page.getByRole('heading', { name: 'Synthetic maintenance notice' }).locator('..').getByRole('button', { name: 'Simpan perubahan' });
+  await save.click();
+  await expect.poll(() => attempts).toBe(1);
+  await expect(page.getByText(/Nilai tidak dapat diterima/i)).toBeVisible();
+  status = 429;
+  await save.click();
+  await expect.poll(() => attempts).toBe(2);
+  await expect(page.getByText(/Terlalu banyak permintaan/i)).toBeVisible();
+  await expect(page.locator('main')).not.toContainText('internal configuration detail');
+});
+
+test('H86 fails safely when server choices disagree with the declared value type', async ({ page }) => {
+  const config = { config_key: 'unsupported_boolean', display_name: 'Unsupported setting', description: 'Synthetic mismatched choices.', editable: true, value_type: 'BOOLEAN', typed_value: false, version: 1, minimum: null, maximum: null, allowed_values: ['true', 'false'], updated_at: '2026-10-01T08:00:00Z', updated_by_admin_user_id: null };
+  await page.route('**/api/v1/admin/operational-configs?*', route => route.fulfill({ status: 200, json: { data: [config], meta: { has_more: false, next_cursor: null } } }));
+  await page.goto('/admin/config');
+  const card = page.getByRole('heading', { name: 'Unsupported setting' }).locator('..');
+  await expect(card.getByText(/Pilihan dari server belum dapat ditampilkan dengan aman/i)).toBeVisible();
+  await expect(card.getByRole('combobox')).toHaveCount(0);
+  await expect(card.getByRole('button', { name: /Simpan perubahan/i })).toHaveCount(0);
+});
+
+test('H86 preserves integer, number and string payload types and rejects out-of-range drafts', async ({ page }) => {
+  const shared = { description: 'Synthetic setting for typed-value checks.', editable: true, updated_at: '2026-10-01T08:00:00Z', updated_by_admin_user_id: null };
+  const configs = [
+    { ...shared, config_key: 'integer_limit', display_name: 'Integer limit', value_type: 'INTEGER', typed_value: 3, version: 7, minimum: 1, maximum: 5, allowed_values: null },
+    { ...shared, config_key: 'numeric_rate', display_name: 'Numeric rate', value_type: 'NUMBER', typed_value: 1.5, version: 8, minimum: 0, maximum: 3, allowed_values: null },
+    { ...shared, config_key: 'selected_mode', display_name: 'Selected mode', value_type: 'STRING', typed_value: 'A', version: 9, minimum: null, maximum: null, allowed_values: ['A', 'B'] },
+  ];
+  const patches: Array<{ path: string; body: unknown; csrf: string }> = [];
+  await page.route('**/api/v1/admin/operational-configs?*', route => route.fulfill({ status: 200, json: { data: configs, meta: { has_more: false, next_cursor: null } } }));
+  await page.route('**/api/v1/admin/operational-configs/*', route => {
+    patches.push({ path: new URL(route.request().url()).pathname, body: route.request().postDataJSON(), csrf: route.request().headers()['x-csrf-token'] ?? '' });
+    return route.fulfill({ status: 200, json: { data: configs[0] } });
+  });
+  await page.goto('/admin/config');
+  const integer = page.getByRole('heading', { name: 'Integer limit' }).locator('..');
+  await integer.getByRole('spinbutton').fill('8');
+  await expect(integer.getByRole('button', { name: 'Simpan perubahan' })).toBeDisabled();
+  await integer.getByRole('spinbutton').fill('4');
+  await integer.getByRole('button', { name: 'Simpan perubahan' }).click();
+  await expect.poll(() => patches.length).toBe(1);
+  const numeric = page.getByRole('heading', { name: 'Numeric rate' }).locator('..');
+  await numeric.getByRole('spinbutton').fill('2.5');
+  await numeric.getByRole('button', { name: 'Simpan perubahan' }).click();
+  await expect.poll(() => patches.length).toBe(2);
+  const selected = page.getByRole('heading', { name: 'Selected mode' }).locator('..');
+  await selected.getByRole('combobox').selectOption('B');
+  await selected.getByRole('button', { name: 'Simpan perubahan' }).click();
+  await expect.poll(() => patches.length).toBe(3);
+  expect(patches.map(patch => patch.body)).toEqual([
+    { expected_version: 7, typed_value: 4 },
+    { expected_version: 8, typed_value: 2.5 },
+    { expected_version: 9, typed_value: 'B' },
+  ]);
+  expect(patches.every(patch => patch.csrf === 'owner-uat-csrf')).toBe(true);
+  expect(patches.map(patch => patch.path.split('/').at(-1))).toEqual(['integer_limit', 'numeric_rate', 'selected_mode']);
 });
 
 test('H87 native status filter keeps the applied server filter across pagination', async ({ page }) => {
@@ -186,7 +256,52 @@ test('H87 native status filter keeps the applied server filter across pagination
   await page.getByRole('button', { name: 'Terapkan' }).click();
   expect(seen.at(-1)?.searchParams.get('status')).toBe('RESOLVED');
   expect(seen.at(-1)?.searchParams.has('cursor')).toBe(false);
-  await expect(page.getByText(/tidak otomatis memperbaiki insiden/i)).toBeVisible();
+  await expect(page.getByText(/tidak otomatis memperbaiki penyebabnya/i)).toBeVisible();
+});
+
+test('H87/H88 use safe labels for unknown issue values and hide unsafe summaries', async ({ page }) => {
+  const issue = { issue_id: uatIds.issue, status: 'UNEXPECTED', issue_type: 'MEDIA_DELIVERY\nBearer malicious-type-value', severity: 'UNEXPECTED', summary: 'Traceback\nBearer secret-token', error_code: 'token=secret', related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: '2026-10-01T08:00:00Z', acknowledged_at: null, resolved_at: null };
+  await page.route('**/api/v1/admin/issues?*', route => route.fulfill({ status: 200, json: { data: [issue], meta: { has_more: false, next_cursor: null } } }));
+  await page.route(`**/api/v1/admin/issues/${uatIds.issue}`, route => route.fulfill({ status: 200, json: { data: issue } }));
+  await page.goto('/admin/issues');
+  await expect(page.getByText('Ada catatan masalah yang perlu ditinjau.')).toBeVisible();
+  await expect(page.getByText('Status belum dikenali')).toBeVisible();
+  await expect(page.getByText(/Tingkat belum dikenali.*Jenis masalah lain/)).toBeVisible();
+  await expect(page.locator('main')).not.toContainText('secret-token');
+  await page.goto(issueRoute);
+  await expect(page.getByRole('heading', { name: 'Ada catatan masalah yang perlu ditinjau.' })).toBeVisible();
+  await page.getByText('Rincian teknis').click();
+  await expect(page.getByText('Jenis dari server').locator('..')).toContainText('—');
+  await expect(page.locator('main')).not.toContainText('token=secret');
+  await expect(page.locator('main')).not.toContainText('malicious-type-value');
+  await page.getByLabel('Alasan penyelesaian').fill('Reviewed');
+  await expect(page.getByRole('button', { name: 'Tanggapi', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Selesaikan', exact: true })).toBeDisabled();
+});
+
+test('H88 preserves distinct contract-valid issue type identifiers in authorized technical details', async ({ page }) => {
+  const secondId = '77777777-7777-4777-8777-777777777778';
+  const base = { status: 'OPEN', severity: 'MEDIUM', summary: 'Synthetic issue category.', error_code: null, related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: '2026-10-01T08:00:00Z', acknowledged_at: null, resolved_at: null };
+  const issues = [
+    { ...base, issue_id: uatIds.issue, issue_type: 'PAYMENT_RECONCILIATION' },
+    { ...base, issue_id: secondId, issue_type: 'MEDIA_DELIVERY' },
+  ];
+  await page.route('**/api/v1/admin/issues?*', route => route.fulfill({ status: 200, json: { data: issues, meta: { has_more: false, next_cursor: null } } }));
+  await page.route('**/api/v1/admin/issues/*', route => route.fulfill({ status: 200, json: { data: issues.find(issue => route.request().url().includes(issue.issue_id)) } }));
+  await page.goto('/admin/issues');
+  await expect(page.getByText(/Jenis masalah lain/)).toHaveCount(2);
+  await expect(page.locator('main')).not.toContainText('PAYMENT_RECONCILIATION');
+  await page.goto(issueRoute);
+  await expect(page.getByText('Jenis masalah lain')).toBeVisible();
+  await expect(page.getByText('PAYMENT_RECONCILIATION')).toBeHidden();
+  await page.getByText('Rincian teknis').click();
+  await expect(page.getByText('Jenis dari server').locator('..')).toContainText('PAYMENT_RECONCILIATION');
+
+  await page.context().addCookies([{ name: 'kepotret-locale', value: 'en', domain: 'localhost', path: '/' }]);
+  await page.goto(`/admin/issues/${secondId}`);
+  await expect(page.getByText('Other issue type')).toBeVisible();
+  await page.getByText('Technical details').click();
+  await expect(page.getByText('Server issue type').locator('..')).toContainText('MEDIA_DELIVERY');
 });
 
 test('H88 confirms acknowledgement and reasoned resolution under server-owned states', async ({ page }) => {
@@ -197,6 +312,11 @@ test('H88 confirms acknowledgement and reasoned resolution under server-owned st
   await expect(page.locator('main dt').first()).toHaveClass(/muted-foreground/);
   const acknowledge = page.getByRole('button', { name: 'Tanggapi', exact: true });
   const resolveButton = page.getByRole('button', { name: 'Selesaikan', exact: true });
+  const ackHeading = page.getByRole('heading', { name: 'Tanggapi masalah' });
+  const reasonHeading = page.getByText('Alasan penyelesaian', { exact: true });
+  const ackBox = await ackHeading.boundingBox();
+  const reasonBox = await reasonHeading.boundingBox();
+  expect(Math.abs(ackBox!.y - reasonBox!.y)).toBeLessThan(2);
   await expect(resolveButton).toBeDisabled();
   await acknowledge.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Batal' }).click();
@@ -205,16 +325,16 @@ test('H88 confirms acknowledgement and reasoned resolution under server-owned st
   await page.getByRole('dialog').getByRole('button', { name: 'Konfirmasi' }).click();
   await expect.poll(() => actions.length).toBe(1);
   expect(actions[0].csrf).toBe('owner-uat-csrf');
-  await expect(page.locator('main')).toContainText('ACKNOWLEDGED');
+  await expect(page.locator('main')).toContainText('Sedang ditangani');
   await expect(acknowledge).toBeDisabled();
   await page.getByLabel('Alasan penyelesaian').fill('Synthetic incident reviewed and corrected.');
   await resolveButton.click();
   await expect(page.getByRole('dialog')).toContainText('Synthetic incident reviewed and corrected.');
   await page.getByRole('dialog').getByRole('button', { name: 'Konfirmasi' }).click();
   await expect.poll(() => actions.length).toBe(2);
-  await expect(page.locator('main')).toContainText('RESOLVED');
+  await expect(page.locator('main')).toContainText('Selesai ditangani');
   await expect(resolveButton).toBeDisabled();
-  await expect(page.getByText(/tidak otomatis membatalkan atau memperbaiki insiden/i)).toBeVisible();
+  await expect(page.getByText(/penyebab masalah tidak otomatis diperbaiki/i).first()).toBeVisible();
 });
 
 test('H88 disables triage actions while offline', async ({ page }) => {
