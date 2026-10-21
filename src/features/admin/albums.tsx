@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { getApiV1AdminAlbums, getApiV1AdminAlbumsAlbumId } from '@/lib/api/admin-browser';
 import type { AdminAlbumDetail, AdminAlbumSummary } from '@/lib/api/generated/index.schemas';
-import { AdminCard, AdminEmpty, AdminError, AdminField, AdminPage, AdminPagination, AdminStatus, adminInputClass, formatAdminDate, formatAdminNumber, type AdminLocale } from './common';
+import { AdminCard, AdminEmpty, AdminError, AdminField, AdminPage, AdminPagination, AdminStatus, adminInputClass, formatAdminDate, formatAdminNumber, type AdminLocale, useAdminOnline } from './common';
 
 function useAdminCopy() {
   const locale = (useLocale() === 'en' ? 'en' : 'id') as AdminLocale;
@@ -16,6 +16,7 @@ function useAdminCopy() {
 export function AdminAlbums() {
   const { locale, t, commonT } = useAdminCopy();
   const info = useTranslations('admin.information');
+  const online = useAdminOnline();
   const [rows, setRows] = useState<AdminAlbumSummary[]>([]); const [cursor, setCursor] = useState<string | null>(null); const [more, setMore] = useState(false); const [busy, setBusy] = useState(true); const [error, setError] = useState<number>();
   const [draftQuery, setDraftQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
@@ -37,31 +38,34 @@ export function AdminAlbums() {
   useEffect(() => { void load(); }, []);
   function search(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!online) return;
     const query = draftQuery.trim().slice(0, 120);
     setAppliedQuery(query); setRows([]); setCursor(null); setMore(false);
     void load(undefined, query);
   }
   function clearSearch() {
+    if (!online) return;
     setDraftQuery(''); setAppliedQuery(''); setRows([]); setCursor(null); setMore(false);
     void load(undefined, '');
   }
   return <AdminPage title={t('albums_albums')} description={t('albums_operational_metadata_only_opening')}>
-    <AdminCard title={info('albumSearchTitle')}>
-      <form onSubmit={search} className="flex flex-wrap items-end gap-3">
+    <AdminCard title={t('albums_all_albums')}>
+      <form onSubmit={search} role="search" className="flex flex-wrap items-end gap-3">
         <div className="min-w-[min(100%,18rem)] flex-1"><AdminField label={info('albumSearchLabel')}><input type="search" className={adminInputClass} maxLength={120} value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} /></AdminField></div>
-        <Button type="submit" variant="secondary">{info('search')}</Button>
-        <Button type="button" variant="ghost" disabled={!draftQuery && !appliedQuery} onClick={clearSearch}>{info('clear')}</Button>
+        <Button type="submit" variant="secondary" disabled={!online}>{info('search')}</Button>
+        <Button type="button" variant="ghost" disabled={!online || (!draftQuery && !appliedQuery)} onClick={clearSearch}>{info('clear')}</Button>
       </form>
-      <p className="mt-2 text-xs text-[var(--color-muted-foreground)]">{info('albumSearchHint')}</p>
-    </AdminCard>
-    {error !== undefined ? <AdminError locale={locale} status={error} retry={() => void load(lastRequest.current.next, lastRequest.current.query)} /> : <AdminCard title={t('albums_all_albums')}>
+      <p className="mt-2 border-b border-[var(--color-border)] pb-4 text-xs text-[var(--color-muted-foreground)]">{info('albumSearchHint')}</p>
+      {error === undefined && <div className="pt-4">
       {busy && <p role="status">{t('albums_loading_albums')}</p>}
       {!busy && rows.length === 0 ? <AdminEmpty>{t('albums_no_albums_to_display')}</AdminEmpty> : <>
         <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[56rem] text-left text-sm"><thead><tr className="border-b border-[var(--color-border)] text-xs uppercase text-[var(--color-muted-foreground)]"><th className="p-3">{t('albums_event_owner')}</th><th className="p-3">{t('albums_readiness')}</th><th className="p-3">{t('albums_capture_window')}</th><th className="p-3">{t('albums_quota')}</th><th className="p-3">{commonT('hold')}</th><th className="p-3" /></tr></thead><tbody>{rows.map(a => <tr key={a.album_id} className="border-b border-[var(--color-border)]"><td className="max-w-80 break-words p-3"><b>{a.event_name || (t('albums_untitled_event'))}</b><span className="block break-all text-xs text-[var(--color-muted-foreground)]">{a.owner_email} · {a.album_id}</span></td><td className="p-3"><AdminStatus value={a.readiness} /></td><td className="whitespace-nowrap p-3">{formatAdminDate(a.capture_start, locale)}<br />{formatAdminDate(a.capture_end, locale)}</td><td className="p-3 tabular-nums">{formatAdminNumber(a.committed_count, locale)} / {a.quota_total == null ? '—' : formatAdminNumber(a.quota_total, locale)}<span className="block text-xs text-[var(--color-muted-foreground)]">{formatAdminNumber(a.reserved_count, locale)} {t('albums_reserved')}</span></td><td className="p-3"><AdminStatus value={a.hold_active ? 'ACTIVE HOLD' : 'NONE'} /></td><td className="p-3"><Link className="font-semibold underline underline-offset-4" href={`/admin/albums/${encodeURIComponent(a.album_id)}`}>{t('albums_details')}</Link></td></tr>)}</tbody></table></div>
         <ul className="space-y-3 md:hidden">{rows.map(a => <li key={a.album_id} className="rounded-[var(--radius-md)] border border-[var(--color-border)] p-3"><div className="flex flex-wrap justify-between gap-2"><strong className="min-w-0 break-words">{a.event_name || (t('albums_untitled_event'))}</strong><AdminStatus value={a.readiness} /></div><p className="mt-1 break-all text-xs text-[var(--color-muted-foreground)]">{a.owner_email} · {a.album_id}</p><dl className="mt-3 grid grid-cols-2 gap-2 text-xs"><div><dt>{t('albums_photos')}</dt><dd>{formatAdminNumber(a.committed_count, locale)} / {a.quota_total ?? '—'}</dd></div><div><dt>{commonT('hold')}</dt><dd>{a.hold_active ? 'ACTIVE' : 'NONE'}</dd></div></dl><Link className="mt-2 inline-flex min-h-11 items-center font-semibold underline" href={`/admin/albums/${encodeURIComponent(a.album_id)}`}>{t('albums_open_diagnostics')}</Link></li>)}</ul>
       </>}
-      <AdminPagination hasMore={more} cursor={cursor} busy={busy} locale={locale} onNext={() => cursor && void load(cursor, appliedQuery)} />
-    </AdminCard>}
+      <AdminPagination hasMore={more} cursor={cursor} busy={busy || !online} locale={locale} onNext={() => cursor && void load(cursor, appliedQuery)} />
+      </div>}
+    </AdminCard>
+    {error !== undefined && <AdminError locale={locale} status={error} retry={() => void load(lastRequest.current.next, lastRequest.current.query)} />}
   </AdminPage>;
 }
 
