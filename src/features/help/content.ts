@@ -5,7 +5,7 @@ export type TutorialSection = { id: string; title: string; lead: string; steps: 
 
 type HelpContent = {
   navigation: { home: string; host: string; collaborator: string; albums: string; language: string; indonesian: string; english: string; switchToLight: string; switchToDark: string };
-  footer: { navigation: string; home: string };
+  footer: { navigation: string; home: string; guides: string };
   search: { label: string; placeholder: string; clear: string; empty: string; results: string };
   landing: { eyebrow: string; title: string; description: string; guideLabel: string; guideTitle: string; guideDescription: string; guideAction: string; collaboratorTitle: string; collaboratorDescription: string; collaboratorAction: string; quickTitle: string; quickDescription: string; createAction: string; albumsAction: string };
   host: { eyebrow: string; title: string; description: string; contents: string; progress: string; back: string; start: string; sections: TutorialSection[]; finishTitle: string; finishDescription: string; finishAction: string };
@@ -15,7 +15,7 @@ type HelpContent = {
 export const helpContent: Record<HelpLocale, HelpContent> = {
   id: {
     navigation: { home: 'Pusat bantuan', host: 'Panduan Host', collaborator: 'Panduan kolaborator', albums: 'Album saya', language: 'Bahasa', indonesian: 'Bahasa Indonesia', english: 'Bahasa Inggris', switchToLight: 'Ganti ke tema terang', switchToDark: 'Ganti ke tema gelap' },
-    footer: { navigation: 'Tautan panduan', home: 'Beranda' },
+    footer: { navigation: 'Tautan panduan', home: 'Beranda', guides: 'Panduan' },
     search: { label: 'Cari dalam panduan', placeholder: 'Cari topik atau penjelasan', clear: 'Hapus pencarian', empty: 'Tidak ada bagian panduan yang cocok.', results: '{count} bagian cocok' },
     landing: { eyebrow: 'BANTUAN KEPOTRET', title: 'Siapkan album, bagikan momen.', description: 'Panduan singkat yang mengikuti alur nyata Kepotret, dari membuat album hingga mengelola foto setelah acara.', guideLabel: 'MULAI DI SINI', guideTitle: 'Panduan untuk Host', guideDescription: 'Pelajari Waktu Potret, batas foto, QR, pengaturan album, galeri, pembayaran, dan pemulihan dalam langkah yang mudah diikuti.', guideAction: 'Buka panduan Host', collaboratorTitle: 'Panduan kolaborator', collaboratorDescription: 'Pelajari cara menerima undangan, melihat album yang ditugaskan, dan memahami izin di setiap album.', collaboratorAction: 'Buka panduan kolaborator', quickTitle: 'Sudah punya album?', quickDescription: 'Buka ruang kerja untuk melanjutkan persiapan atau melihat album yang sudah dibuat.', createAction: 'Buat album', albumsAction: 'Lihat album saya' },
     host: {
@@ -61,7 +61,7 @@ export const helpContent: Record<HelpLocale, HelpContent> = {
   },
   en: {
     navigation: { home: 'Help center', host: 'Host guide', collaborator: 'Collaborator guide', albums: 'My albums', language: 'Language', indonesian: 'Indonesian', english: 'English', switchToLight: 'Switch to light theme', switchToDark: 'Switch to dark theme' },
-    footer: { navigation: 'Guide links', home: 'Home' },
+    footer: { navigation: 'Guide links', home: 'Home', guides: 'Guides' },
     search: { label: 'Search this guide', placeholder: 'Search topics or explanations', clear: 'Clear search', empty: 'No guide sections match.', results: '{count} matching sections' },
     landing: { eyebrow: 'KEPOTRET HELP', title: 'Set up the album. Share the moments.', description: 'A concise guide through the real Kepotret flow, from creating an album to managing photos after the event.', guideLabel: 'START HERE', guideTitle: 'Guide for Hosts', guideDescription: 'Learn capture timing, photo limits, QR sharing, album settings, the gallery, payments, and recovery in clear steps.', guideAction: 'Open the Host guide', collaboratorTitle: 'Collaborator guide', collaboratorDescription: 'Learn how to accept an invitation, find assigned albums, and understand album permissions.', collaboratorAction: 'Open the collaborator guide', quickTitle: 'Already have an album?', quickDescription: 'Open your workspace to continue setup or review an existing album.', createAction: 'Create an album', albumsAction: 'View my albums' },
     host: {

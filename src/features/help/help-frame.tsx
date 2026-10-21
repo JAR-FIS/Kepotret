@@ -18,7 +18,7 @@ export function HelpFrame({ locale, children }: { locale: HelpLocale; children: 
     {children}
     <footer className="mt-auto border-t border-[var(--color-border)] bg-[var(--color-surface)]"><div className="mx-auto flex max-w-6xl flex-col items-start gap-1 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-6">
       <p className="font-[family-name:var(--font-display)] text-sm font-bold">Kepotret</p>
-      <nav aria-label={footer.navigation} className="flex flex-wrap items-center gap-1 text-sm"><Link href="/" className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] px-3 hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">{footer.home}</Link><Link href="/help" className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] px-3 hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">{copy.home}</Link></nav>
+      <nav aria-label={footer.navigation} className="flex flex-wrap items-center gap-1 text-sm"><Link href="/" className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] px-3 hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">{footer.home}</Link><Link href="/help" className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] px-3 hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">{footer.guides}</Link></nav>
     </div></footer>
   </div>;
 }

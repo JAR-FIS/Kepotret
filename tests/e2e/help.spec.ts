@@ -43,7 +43,7 @@ test('T2-40/41/42 shared footer follows Admin, Host, and Collaborator guide cont
     const footer = page.getByRole('contentinfo');
     await expect(footer).toHaveCount(1);
     await expect(footer.getByRole('navigation', { name: 'Tautan panduan' }).getByRole('link', { name: 'Beranda' })).toHaveAttribute('href', '/');
-    await expect(footer.getByRole('link', { name: 'Pusat bantuan' })).toHaveAttribute('href', '/help');
+    await expect(footer.getByRole('link', { name: 'Panduan', exact: true })).toHaveAttribute('href', '/help');
     expect(await page.evaluate(() => {
       const main = document.querySelector('main');
       const footer = document.querySelector('footer');
@@ -58,7 +58,7 @@ test('T2-40/41/42 shared footer follows Admin, Host, and Collaborator guide cont
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/help/host');
-  await page.getByRole('contentinfo').getByRole('link', { name: 'Pusat bantuan' }).click();
+  await page.getByRole('contentinfo').getByRole('link', { name: 'Panduan', exact: true }).click();
   await expect(page).toHaveURL('/help');
   await expect(page.getByRole('contentinfo')).toHaveCount(1);
   await expect(page.getByRole('link', { name: /Buka panduan Host/ })).toBeVisible();
@@ -76,10 +76,16 @@ test('T2-45 public Help footer links to the guide landing without replacing supp
     await expect(guide).toHaveAttribute('href', '/help');
     await expect(group.getByRole('link', { name: 'Pusat Bantuan' })).toHaveAttribute('href', '/bantuan');
     await expect(group.getByRole('link', { name: 'Keamanan' })).toHaveAttribute('href', '/keamanan');
-    await group.getByRole('link', { name: 'Pusat Bantuan' }).focus();
+    await group.getByRole('link', { name: 'Pusat Bantuan' }).click();
+    await expect(page).toHaveURL('/bantuan');
+    await expect(page.getByRole('heading', { name: 'Pusat Bantuan', level: 1 })).toBeVisible();
+    await page.goto(route);
+    const activeGroup = page.getByRole('contentinfo').getByRole('heading', { name: 'Bantuan' }).locator('..');
+    await activeGroup.getByRole('link', { name: 'Pusat Bantuan' }).focus();
     await page.keyboard.press('Tab');
-    await expect(guide).toBeFocused();
-    await guide.click();
+    const activeGuide = activeGroup.getByRole('link', { name: 'Panduan' });
+    await expect(activeGuide).toBeFocused();
+    await activeGuide.click();
     await expect(page).toHaveURL('/help');
     await expect(page.getByRole('link', { name: /Buka panduan Host/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /Buka panduan kolaborator/ })).toBeVisible();
@@ -92,6 +98,12 @@ test('T2-45 public Help footer links to the guide landing without replacing supp
   await expect(group.getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/help');
   await expect(group.getByRole('link', { name: 'Help Center' })).toHaveAttribute('href', '/bantuan');
   await expect(group.getByRole('link', { name: 'Security' })).toHaveAttribute('href', '/keamanan');
+  await group.getByRole('link', { name: 'Help Center' }).click();
+  await expect(page).toHaveURL('/bantuan');
+  await expect(page.getByRole('heading', { name: 'Help Center', level: 1 })).toBeVisible();
+  await page.getByRole('contentinfo').getByRole('link', { name: 'Guides' }).click();
+  await expect(page).toHaveURL('/help');
+  await expect(page.getByRole('heading', { name: 'Set up the album. Share the moments.' })).toBeVisible();
 });
 
 test('T2 Help and public footers fit ID Light and EN Dark across viewport widths', async ({ page }) => {
@@ -123,7 +135,7 @@ test('T2 Help and public footers fit ID Light and EN Dark across viewport widths
     if (route.startsWith('/help')) {
       const navigation = page.getByRole('contentinfo').getByRole('navigation', { name: 'Guide links' });
       await expect(navigation.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
-      await expect(navigation.getByRole('link', { name: 'Help center' })).toHaveAttribute('href', '/help');
+      await expect(navigation.getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/help');
     }
   }
   await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/help');
