@@ -30,7 +30,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           <p className="mt-1 text-sm leading-6 text-[var(--color-muted-foreground)]">{footer.descriptor}</p>
         </div>
         <FooterGroup title={footer.product} links={products} />
-        <FooterGroup title={footer.help} links={[[footer.helpCenter, '/bantuan'], [footer.security, '/keamanan']]} unavailable={[[footer.contact, footer.unavailable]]} />
+        <FooterGroup title={footer.help} links={[[footer.helpCenter, '/bantuan'], [footer.guide, '/help'], [footer.security, '/keamanan']]} unavailable={[[footer.contact, footer.unavailable]]} />
         <FooterGroup title={footer.legal} links={[[footer.privacy, '/kebijakan-privasi'], [footer.terms, '/syarat-ketentuan']]} />
         <div>
           <h2 className="text-sm font-bold">{footer.social}</h2>
