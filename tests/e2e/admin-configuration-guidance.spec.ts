@@ -260,20 +260,48 @@ test('H87 native status filter keeps the applied server filter across pagination
 });
 
 test('H87/H88 use safe labels for unknown issue values and hide unsafe summaries', async ({ page }) => {
-  const issue = { issue_id: uatIds.issue, status: 'UNEXPECTED', issue_type: 'BACKEND_SECRET', severity: 'UNEXPECTED', summary: 'Traceback\nBearer secret-token', error_code: 'token=secret', related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: '2026-10-01T08:00:00Z', acknowledged_at: null, resolved_at: null };
+  const issue = { issue_id: uatIds.issue, status: 'UNEXPECTED', issue_type: 'MEDIA_DELIVERY\nBearer malicious-type-value', severity: 'UNEXPECTED', summary: 'Traceback\nBearer secret-token', error_code: 'token=secret', related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: '2026-10-01T08:00:00Z', acknowledged_at: null, resolved_at: null };
   await page.route('**/api/v1/admin/issues?*', route => route.fulfill({ status: 200, json: { data: [issue], meta: { has_more: false, next_cursor: null } } }));
   await page.route(`**/api/v1/admin/issues/${uatIds.issue}`, route => route.fulfill({ status: 200, json: { data: issue } }));
   await page.goto('/admin/issues');
   await expect(page.getByText('Ada catatan masalah yang perlu ditinjau.')).toBeVisible();
   await expect(page.getByText('Status belum dikenali')).toBeVisible();
-  await expect(page.getByText(/Tingkat belum dikenali.*Jenis masalah belum dikenali/)).toBeVisible();
+  await expect(page.getByText(/Tingkat belum dikenali.*Jenis masalah lain/)).toBeVisible();
   await expect(page.locator('main')).not.toContainText('secret-token');
   await page.goto(issueRoute);
   await expect(page.getByRole('heading', { name: 'Ada catatan masalah yang perlu ditinjau.' })).toBeVisible();
+  await page.getByText('Rincian teknis').click();
+  await expect(page.getByText('Jenis dari server').locator('..')).toContainText('—');
   await expect(page.locator('main')).not.toContainText('token=secret');
+  await expect(page.locator('main')).not.toContainText('malicious-type-value');
   await page.getByLabel('Alasan penyelesaian').fill('Reviewed');
   await expect(page.getByRole('button', { name: 'Tanggapi', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Selesaikan', exact: true })).toBeDisabled();
+});
+
+test('H88 preserves distinct contract-valid issue type identifiers in authorized technical details', async ({ page }) => {
+  const secondId = '77777777-7777-4777-8777-777777777778';
+  const base = { status: 'OPEN', severity: 'MEDIUM', summary: 'Synthetic issue category.', error_code: null, related_entity_type: 'ALBUM', related_entity_id: uatIds.album, created_at: '2026-10-01T08:00:00Z', acknowledged_at: null, resolved_at: null };
+  const issues = [
+    { ...base, issue_id: uatIds.issue, issue_type: 'PAYMENT_RECONCILIATION' },
+    { ...base, issue_id: secondId, issue_type: 'MEDIA_DELIVERY' },
+  ];
+  await page.route('**/api/v1/admin/issues?*', route => route.fulfill({ status: 200, json: { data: issues, meta: { has_more: false, next_cursor: null } } }));
+  await page.route('**/api/v1/admin/issues/*', route => route.fulfill({ status: 200, json: { data: issues.find(issue => route.request().url().includes(issue.issue_id)) } }));
+  await page.goto('/admin/issues');
+  await expect(page.getByText(/Jenis masalah lain/)).toHaveCount(2);
+  await expect(page.locator('main')).not.toContainText('PAYMENT_RECONCILIATION');
+  await page.goto(issueRoute);
+  await expect(page.getByText('Jenis masalah lain')).toBeVisible();
+  await expect(page.getByText('PAYMENT_RECONCILIATION')).toBeHidden();
+  await page.getByText('Rincian teknis').click();
+  await expect(page.getByText('Jenis dari server').locator('..')).toContainText('PAYMENT_RECONCILIATION');
+
+  await page.context().addCookies([{ name: 'kepotret-locale', value: 'en', domain: 'localhost', path: '/' }]);
+  await page.goto(`/admin/issues/${secondId}`);
+  await expect(page.getByText('Other issue type')).toBeVisible();
+  await page.getByText('Technical details').click();
+  await expect(page.getByText('Server issue type').locator('..')).toContainText('MEDIA_DELIVERY');
 });
 
 test('H88 confirms acknowledgement and reasoned resolution under server-owned states', async ({ page }) => {
