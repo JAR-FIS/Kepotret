@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { SiteFooter } from '@/features/marketing/components/site-footer';
 
@@ -16,5 +16,20 @@ describe('H01 official social links', () => {
     expect(screen.getByText(/WhatsApp/)).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByRole('link', { name: /WhatsApp/ })).not.toBeInTheDocument();
     expect(screen.getByText(/Contact/)).toHaveAttribute('aria-disabled', 'true');
+  });
+});
+
+describe('T2-45 public footer guide link', () => {
+  it.each([
+    { locale: 'id' as const, group: 'Bantuan', guide: 'Panduan', help: 'Pusat Bantuan', security: 'Keamanan' },
+    { locale: 'en' as const, group: 'Help', guide: 'Guides', help: 'Help Center', security: 'Security' },
+  ])('keeps one localized guide link and existing help destinations in $locale', ({ locale, group, guide, help, security }) => {
+    render(<SiteFooter locale={locale} />);
+    const helpGroup = screen.getByRole('heading', { name: group }).parentElement;
+    expect(helpGroup).not.toBeNull();
+    expect(within(helpGroup!).getByRole('link', { name: guide })).toHaveAttribute('href', '/help');
+    expect(screen.getAllByRole('link', { name: guide })).toHaveLength(1);
+    expect(within(helpGroup!).getByRole('link', { name: help })).toHaveAttribute('href', '/bantuan');
+    expect(within(helpGroup!).getByRole('link', { name: security })).toHaveAttribute('href', '/keamanan');
   });
 });
