@@ -64,24 +64,23 @@ export function AdminPackages() {
   // eslint-disable-next-line react-hooks/set-state-in-effect -- start the initial server read after mount
   useEffect(()=>{void load()},[]);
   async function toggleSale(){if(!pendingSale||!online)return;setSavingSale(true);setError(undefined);try{const r=await patchApiV1AdminPackageVersionsVersionIdSaleStatus(pendingSale.version.package_version_id,{sale_enabled:pendingSale.enabled},{headers:await adminCsrfHeaders()});if(r.status===200){setPendingSale(null);await load()}else setError(r.status)}catch{setError(0)}finally{setSavingSale(false)}}
-  return <AdminPage title={t('data_package_catalog')} description={t('data_historical_versions_are_immutable')}>{error!==undefined?<AdminError locale={locale} status={error} retry={()=>void load()}/>:<>
+  return <AdminPage title={t('data_package_catalog')}>{error!==undefined?<AdminError locale={locale} status={error} retry={()=>void load()}/>:<>
     {busy && <p role="status">{t('data_loading_catalog')}</p>}
     {!busy && rows.length === 0 ? <AdminEmpty>{t('data_no_packages')}</AdminEmpty> : <div className="grid gap-4 lg:grid-cols-2">
       {rows.map(pkg => {
-        const pairedVersionId = (pkg.versions.find(version => version.sale_enabled) ?? pkg.versions[0])?.package_version_id;
         return <AdminCard key={pkg.package_id} title={pkg.name} className="flex h-full flex-col">
         <p className="break-all text-xs text-[var(--color-muted-foreground)]">{info('packageId')}: <span className="font-mono">{pkg.package_id}</span></p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
+          <p className="max-w-sm text-xs leading-5 text-[var(--color-muted-foreground)]">{t('data_historical_versions_are_immutable')}</p>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-primary-foreground)] hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]" href={`/admin/catalog/packages/${encodeURIComponent(pkg.package_id)}/versions/new`}>{t('data_create_new_version')}</Link>
+        </div>
         <div className="mt-4 flex-1 space-y-3">{pkg.versions.length === 0 ? <AdminEmpty>{info('noVersions')}</AdminEmpty> : pkg.versions.map(v => <section key={v.package_version_id} className="min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-3 text-sm">
           <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-semibold">{info('version')}</h3><span className={`rounded-full border px-2 py-1 text-xs font-semibold ${v.sale_enabled ? 'border-emerald-600/40 bg-emerald-600/10' : 'border-[var(--color-border)] bg-[var(--color-muted)]'}`}>{v.sale_enabled ? info('saleEnabled') : info('saleDisabled')}</span></div>
           <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold tabular-nums">{new Intl.NumberFormat(locale,{style:'currency',currency:v.currency}).format(v.price_amount)}</p>
           <p className="mt-1 text-sm">{info('photoQuota', { count: formatAdminNumber(v.quota_total, locale) })}</p>
           <p className="mt-2 break-all font-mono text-xs text-[var(--color-muted-foreground)]">{info('versionId')}: {v.package_version_id}</p>
-          <div className={`mt-3 grid gap-2 ${v.package_version_id === pairedVersionId ? 'sm:grid-cols-2' : ''}`}>
-            <Button className="w-full px-3 text-xs" style={v.sale_enabled ? { backgroundColor: '#ff8282', color: '#241010' } : undefined} variant={v.sale_enabled ? 'danger' : 'secondary'} disabled={!online || savingSale} onClick={() => setPendingSale({version:v,enabled:!v.sale_enabled})} aria-label={info('saleActionForVersion', { action: v.sale_enabled ? t('data_retire') : t('data_enable'), versionId: v.package_version_id })}>{v.sale_enabled ? t('data_retire') : t('data_enable')}</Button>
-            {v.package_version_id === pairedVersionId && <Link className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-center text-xs font-semibold text-[var(--color-foreground)] hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]" href={`/admin/catalog/packages/${encodeURIComponent(pkg.package_id)}/versions/new`}>{t('data_create_new_version')}</Link>}
-          </div>
+          <div className="mt-3 flex justify-end"><Button className="min-h-9 px-3 py-1 text-xs" style={v.sale_enabled ? { backgroundColor: '#fff0ef', color: '#7d1a1a' } : undefined} variant="secondary" disabled={!online || savingSale} onClick={() => setPendingSale({version:v,enabled:!v.sale_enabled})} aria-label={info('saleActionForVersion', { action: v.sale_enabled ? t('data_retire') : t('data_enable'), versionId: v.package_version_id })}>{v.sale_enabled ? t('data_retire') : t('data_enable')}</Button></div>
         </section>)}</div>
-        {!pairedVersionId && <Link className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-center text-xs font-semibold text-[var(--color-foreground)] hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]" href={`/admin/catalog/packages/${encodeURIComponent(pkg.package_id)}/versions/new`}>{t('data_create_new_version')}</Link>}
       </AdminCard>})}
     </div>}
     <Link className="inline-flex min-h-11 items-center font-semibold underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" href="/admin/catalog/categories">{t('data_manage_event_categories')}</Link>

@@ -170,14 +170,13 @@ test('H84 catalog keeps six packages in two columns, hides codes, and confirms s
   const newVersion = firstPackage.getByRole('link', { name: /Create new version|Buat versi baru/i });
   const retireDesktop = await retire.boundingBox();
   const newDesktop = await newVersion.boundingBox();
-  expect(Math.abs(retireDesktop!.y - newDesktop!.y)).toBeLessThan(2);
-  expect(Math.abs(retireDesktop!.width - newDesktop!.width)).toBeLessThan(2);
-  expect(retireDesktop!.height).toBeGreaterThanOrEqual(44);
+  expect(newDesktop!.y + newDesktop!.height).toBeLessThan(retireDesktop!.y);
+  expect(retireDesktop!.width).toBeLessThan(newDesktop!.width);
+  expect(retireDesktop!.height).toBeLessThanOrEqual(44);
   expect(newDesktop!.height).toBeGreaterThanOrEqual(44);
-  await expect(retire).toHaveCSS('background-color', 'rgb(255, 130, 130)');
-  const buttonColors = await newVersion.evaluate((link) => ({ text: getComputedStyle(link).color, body: getComputedStyle(link.closest('section')!).color, size: parseFloat(getComputedStyle(link).fontSize) }));
-  expect(buttonColors.text).toBe(buttonColors.body);
-  expect(buttonColors.size).toBeLessThanOrEqual(14);
+  await expect(retire).toHaveCSS('background-color', 'rgb(255, 240, 239)');
+  await expect(retire).toHaveCSS('color', 'rgb(125, 26, 26)');
+  await expect(newVersion).toHaveCSS('background-color', 'rgb(216, 255, 61)');
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileFirst = await cards.nth(0).boundingBox();
   const mobileSecond = await cards.nth(1).boundingBox();
@@ -185,7 +184,7 @@ test('H84 catalog keeps six packages in two columns, hides codes, and confirms s
   expect(mobileFirst!.x).toBe(mobileSecond!.x);
   const retireMobile = await retire.boundingBox();
   const newMobile = await newVersion.boundingBox();
-  expect(newMobile!.y).toBeGreaterThan(retireMobile!.y);
+  expect(newMobile!.y + newMobile!.height).toBeLessThan(retireMobile!.y);
   await noPageOverflow(page);
 
   const changes: Array<{ url: string; body: unknown; csrf: string }> = [];

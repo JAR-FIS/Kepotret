@@ -119,17 +119,14 @@ test('@cross-browser FE-UAT-V2-01 Assistant, H20 password, H01 Dark Mode, and Ho
 
   await setLocale(page, 'id');
   await page.goto(`/album/${uatIds.album}/setup/jadwal`);
-  const reveal = page.getByRole('combobox', { name: 'Jeda reveal' });
+  const reveal = page.getByRole('group', { name: 'Jeda reveal' });
   await expect(reveal).toBeVisible();
-  await reveal.click();
-  const revealMenu = page.getByRole('listbox', { name: 'Jeda reveal' });
-  await expect(revealMenu.getByRole('option', { name: 'D+3' })).toBeVisible();
-  const revealBox = await revealMenu.boundingBox();
-  expect(revealBox).not.toBeNull();
+  await expect(reveal.getByRole('radio')).toHaveCount(4);
+  await expect(reveal).not.toContainText('LIVE');
   await capture(page, testInfo, 'h29-reveal-menu-id-light.png');
-  await revealMenu.getByRole('option', { name: /Mulai saat acara.*pratinjau/i }).click();
-  await expect(page.getByText(/Pratinjau LIVE saja/)).toBeVisible();
-  await expect(page.getByRole('button', { name: /Simpan jadwal/i })).toBeDisabled();
+  await reveal.getByRole('radio', { name: 'D+7' }).locator('..').click();
+  await expect(reveal.getByRole('radio', { name: 'D+7' })).toBeChecked();
+  await expect(page.getByRole('button', { name: /Simpan jadwal/i })).toBeEnabled();
 
   await setLocale(page, 'en');
   await page.goto(`/album/${uatIds.album}/galeri`);

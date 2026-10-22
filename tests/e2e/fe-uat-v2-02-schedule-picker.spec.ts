@@ -46,7 +46,7 @@ test('@cross-browser H29 and H53 disable same-day invalid time choices but prese
   }
 });
 
-test('@cross-browser H53 reveal dropdown blocks LIVE persistence and renders readable proposed times', async ({ page }) => {
+test('@cross-browser H53 reveal choices exclude LIVE and render readable proposed times', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-09-27T00:00:00Z'));
   await installUatApi(page);
   let posts = 0;
@@ -56,14 +56,13 @@ test('@cross-browser H53 reveal dropdown blocks LIVE persistence and renders rea
   await page.getByRole('textbox', { name: 'Jam berhenti memotret', exact: true }).fill('bad');
   await expect(page.getByRole('region', { name: 'Tinjauan perubahan' })).toContainText('Belum lengkap');
   await expect(page.getByRole('region', { name: 'Tinjauan perubahan' })).not.toContainText('Tbad');
-  await page.getByRole('combobox', { name: 'Jeda publikasi (hari)' }).click();
-  await page.getByRole('option', { name: /LIVE/ }).click();
-  await expect(page.getByText(/Pratinjau LIVE saja/)).toBeVisible();
+  const reveal = page.getByRole('group', { name: 'Jeda publikasi (hari)' });
+  await expect(reveal.getByRole('radio')).toHaveCount(4);
+  await expect(reveal).not.toContainText('LIVE');
   await expect(page.getByRole('button', { name: 'Tinjau jadwal' })).toBeDisabled();
   expect(posts).toBe(0);
-  await page.getByRole('combobox', { name: 'Jeda publikasi (hari)' }).click();
-  await page.getByRole('option', { name: 'D+3' }).click();
-  await expect(page.getByRole('combobox', { name: 'Jeda publikasi (hari)' })).toHaveText('D+3');
+  await reveal.getByRole('radio', { name: 'D+3' }).locator('..').click();
+  await expect(reveal.getByRole('radio', { name: 'D+3' })).toBeChecked();
 });
 
 test('H29 calendar keyboard and H53 server eligibility and boundaries', async ({ page }) => {

@@ -6,17 +6,15 @@ import { Camera, CircleStop, Clock3 } from 'lucide-react';
 import { Temporal } from '@js-temporal/polyfill';
 
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { RevealDelayChoice } from '@/features/host/components/reveal-delay-choice';
 import { DatePicker, TimePicker } from '@/components/ui/schedule-pickers';
 import { ErrorState } from '@/components/ui/error-state';
 import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { getApiV1AlbumsAlbumId, getApiV1AlbumsAlbumIdSchedule, getApiV1SecurityCsrf, putApiV1AlbumsAlbumIdSchedule } from '@/lib/api/browser';
-import { ScheduleWriteRequestRevealDelayDays, type AlbumSchedule, type ScheduleWriteRequest } from '@/lib/api/generated/index.schemas';
+import type { AlbumSchedule, ScheduleWriteRequest } from '@/lib/api/generated/index.schemas';
 import { toEventWallTime, toScheduleTimestamp, validateSchedule, type ScheduleValidationError } from '@/features/host/schedule-validation';
 import { initialStartBounds, isEndDraftInvalid, isSelectableHour, isSelectableTime, withWallPart } from '@/features/host/schedule-picker-rules';
-
-type RevealSelection = ScheduleWriteRequest['reveal_delay_days'] | 'live' | '';
 
 export function ScheduleSetup({ albumId }: { albumId: string }) {
   const t = useTranslations('host.schedule');
@@ -26,7 +24,7 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
   const [timeZone, setTimeZone] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [delay, setDelay] = useState<RevealSelection>(1);
+  const [delay, setDelay] = useState<ScheduleWriteRequest['reveal_delay_days']>(1);
   const [state, setState] = useState<'loading' | 'ready' | 'unauthenticated' | 'forbidden' | 'error'>('loading');
   const [error, setError] = useState<ScheduleValidationError | 'conflict' | 'error' | 'saved' | 'validation' | null>(null);
   const [pending, setPending] = useState(false);
@@ -62,8 +60,7 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending || revision === null || delay === '') return;
-    if (delay === 'live') return;
+    if (pending || revision === null) return;
     const validation = validateSchedule(start, end, delay, timeZone);
     if (validation) { setError(validation); return; }
     setPending(true);
@@ -132,8 +129,6 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
   } catch { /* Final schedule validation below remains authoritative. */ }
   const pickerRules = { timeZone, start, end, earliestStart: startBounds?.min, latestStart: startBounds?.max, earliestStartInstant: startBounds?.minInstant, latestStartInstant: startBounds?.maxInstant };
   const endInvalid = isEndDraftInvalid(pickerRules);
-  const inputClass = 'mt-2 min-h-11 w-full min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
-
   return <form onSubmit={submit} className="max-w-3xl space-y-6">
     <div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-muted-foreground)]">{t('eyebrow')}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">{t('heading')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted-foreground)]">{t('description')}</p></div>
     <section aria-label={t('windowLabel')} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm sm:p-7">
@@ -144,9 +139,9 @@ export function ScheduleSetup({ albumId }: { albumId: string }) {
       </div>
       <p className="mt-7 border-t border-[var(--color-border)] pt-4 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('windowConsequence')}</p>
     </section>
-    <section aria-labelledby="reveal-heading" className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><h3 id="reveal-heading" className="font-[family-name:var(--font-display)] text-xl font-bold">{t('revealHeading')}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('revealDescription')}</p><label htmlFor="reveal-delay" className="mt-4 block text-sm font-semibold">{t('reveal')}</label><Select id="reveal-delay" label={t('reveal')} required value={String(delay)} onValueChange={(value) => setDelay(value === 'live' ? 'live' : value === '' ? '' : Number(value) as ScheduleWriteRequest['reveal_delay_days'])} className={inputClass} options={[{ value: '', label: t('choose') }, { value: 'live', label: `LIVE · ${t('livePreview')}` }, ...Object.values(ScheduleWriteRequestRevealDelayDays).map((value) => ({ value: String(value), label: t('delay', { days: value }) }))]} />{delay === 'live' && <p role="status" className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-muted)] p-3 text-sm leading-6">{t('liveUnsupported')}</p>}</section>
+    <section aria-labelledby="reveal-heading" className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7"><h3 id="reveal-heading" className="font-[family-name:var(--font-display)] text-xl font-bold">{t('revealHeading')}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('revealDescription')}</p><div className="mt-4"><RevealDelayChoice label={t('reveal')} name="reveal-delay" value={delay} onValueChange={setDelay} /></div></section>
     <p className="text-sm leading-6 text-[var(--color-muted-foreground)]">{t('serverRule')}</p>
     {message && <p role="status" className="mt-3 text-sm text-[var(--color-muted-foreground)]">{message}{error === 'conflict' && <> <button type="button" onClick={() => { setError(null); setState('loading'); setAttempt((value) => value + 1); }} className="font-semibold underline">{t('reload')}</button></>}</p>}
-    <Button type="submit" loading={pending} disabled={revision === null || !startDate || !startTime || !endDate || !endTime || delay === 'live' || delay === ''} className="rounded-full font-bold">{t('save')}</Button>
+    <Button type="submit" loading={pending} disabled={revision === null || !startDate || !startTime || !endDate || !endTime} className="rounded-full font-bold">{t('save')}</Button>
   </form>;
 }

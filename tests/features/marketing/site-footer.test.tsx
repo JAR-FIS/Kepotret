@@ -15,7 +15,8 @@ describe('H01 official social links', () => {
     }
     expect(screen.getByText(/WhatsApp/)).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByRole('link', { name: /WhatsApp/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/Contact/)).toHaveAttribute('aria-disabled', 'true');
+    const helpGroup = screen.getByRole('heading', { name: 'Help' }).parentElement;
+    expect(within(helpGroup!).queryByText('Contact us')).not.toBeInTheDocument();
   });
 });
 
@@ -31,5 +32,6 @@ describe('T2-45 public footer guide link', () => {
     expect(screen.getAllByRole('link', { name: guide })).toHaveLength(1);
     expect(within(helpGroup!).getByRole('link', { name: help })).toHaveAttribute('href', '/bantuan');
     expect(within(helpGroup!).getByRole('link', { name: security })).toHaveAttribute('href', '/keamanan');
+    expect(within(helpGroup!).queryByText(locale === 'id' ? 'Hubungi Kami' : 'Contact us')).not.toBeInTheDocument();
   });
 });

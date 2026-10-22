@@ -91,7 +91,7 @@ test('H33 presents seven human-readable choices in a 4-left/3-right desktop layo
   ]);
   expect(new Set(uatPackages.map((option) => option.package_version_id)).size).toBe(6);
   expect(uatPackages.every((option) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/.test(option.package_version_id))).toBe(true);
-  await expect(page.getByText(/·\s*10\.000 foto$/)).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Paket 10.000 Foto/ }).locator('..').locator('span.mt-1')).toContainText(/Rp\s?1\.100\.000/);
   await page.getByRole('radio', { name: /Paket 250 Foto/ }).check();
   await page.getByRole('button', { name: 'Simpan pilihan paket' }).click();
   await expect.poll(() => saves.length).toBe(1);

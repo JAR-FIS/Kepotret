@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   getApiV1AdminUsers,
@@ -65,7 +66,7 @@ export function AdminUsers() {
     <AdminCard title={t('users_filter_users')}>
       <form onSubmit={applyFilters} className="grid gap-4 sm:grid-cols-[minmax(12rem,1fr)_minmax(10rem,15rem)_auto] sm:items-end">
         <AdminField label={t('users_email_or_name')}><input className={adminInputClass} type="search" value={query} maxLength={120} onChange={(event) => setQuery(event.target.value)} /></AdminField>
-        <AdminField label={t('users_account_status')}><select className={adminInputClass} value={suspended} onChange={(event) => setSuspended(event.target.value)}><option value="">{t('users_all')}</option><option value="false">{t('users_active')}</option><option value="true">{t('users_suspended')}</option></select></AdminField>
+        <div className="min-w-0"><span className="block text-sm font-semibold">{t('users_account_status')}</span><Select label={t('users_account_status')} value={suspended} onValueChange={setSuspended} className="mt-1.5" options={[{ value: '', label: t('users_all') }, { value: 'false', label: t('users_active') }, { value: 'true', label: t('users_suspended') }]} /></div>
         <Button type="submit" variant="secondary" disabled={busy}>{t('users_apply_filters')}</Button>
       </form>
     </AdminCard>

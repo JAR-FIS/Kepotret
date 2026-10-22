@@ -10,7 +10,7 @@ import { helpContent } from './content';
 export function HelpFrame({ locale, children }: { locale: HelpLocale; children: ReactNode }) {
   const copy = helpContent[locale].navigation;
   const footer = helpContent[locale].footer;
-  return <div className="flex min-h-screen flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
+  return <div className="public-help-page flex min-h-screen flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
     <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]"><div className="mx-auto flex min-h-17 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
       <Link href="/help" aria-label={copy.home} className="inline-flex min-h-11 items-center"><span className="rounded bg-white px-2 py-1"><Image src="/brand/logo.svg" alt="Kepotret" width={105} height={35} priority /></span></Link>
       <div className="flex items-center gap-1 sm:gap-3"><Link href="/help/host" className="hidden min-h-11 items-center px-2 text-sm font-semibold hover:underline sm:inline-flex">{copy.host}</Link><Link href="/help/collaborator" className="hidden min-h-11 items-center px-2 text-sm font-semibold hover:underline md:inline-flex">{copy.collaborator}</Link><LocaleControl label={copy.language} indonesianLabel={copy.indonesian} englishLabel={copy.english} /><ThemeToggle lightLabel={copy.switchToLight} darkLabel={copy.switchToDark} /></div>

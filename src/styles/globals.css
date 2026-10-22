@@ -188,8 +188,20 @@ html {
 }
 
 @keyframes h01-reveal {
-  from { opacity: 0.25; transform: translateY(1rem); }
+  from { opacity: 0.84; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .public-page-enter,
+  .public-help-page > main {
+    animation: h01-reveal 300ms ease-out both;
+  }
+
+  .public-page-enter:focus-within,
+  .public-help-page > main:focus-within {
+    animation: none;
+  }
 }
 
 @supports (animation-timeline: view()) {
@@ -202,7 +214,7 @@ html {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .h01-reveal { animation: none; }
+  .h01-reveal, .public-page-enter, .public-help-page > main { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

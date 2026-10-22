@@ -24,10 +24,10 @@ describe('H01 locked headline and content', () => {
     ]);
   });
 
-  it.each(['id', 'en'] as const)('states the approved LIVE and default D+1 gallery timing in %s', (locale) => {
+  it.each(['id', 'en'] as const)('states only the four approved reveal delays in %s', (locale) => {
     const galleryFaq = getContent(locale).faq.items.find(({ question }) => /kapan foto|when can participants view photos/i.test(question));
     expect(galleryFaq).toBeDefined();
-    expect(galleryFaq!.answer).toContain('LIVE');
+    expect(galleryFaq!.answer).not.toContain('LIVE');
     expect(galleryFaq!.answer).toContain('D+1');
     expect(galleryFaq!.answer).toContain('D+3');
     expect(galleryFaq!.answer).toContain('D+5');

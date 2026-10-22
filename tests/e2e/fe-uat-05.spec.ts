@@ -23,14 +23,14 @@ test('@cross-browser H58 cover flow is explicitly synthetic and exercises author
   expect(calls).toContain('PATCH /api/v1/albums/11111111-1111-4111-8111-111111111111/design');
 });
 
-test('@cross-browser H53 LIVE is a preview and cannot be submitted by the current API flow', async ({ page }) => {
+test('@cross-browser H53 offers only approved reveal delays', async ({ page }) => {
   await installUatApi(page);
   await page.goto(`/album/${uatIds.album}/jadwal-ulang`);
-  const reveal = page.getByRole('combobox', { name: /reveal delay|jeda publikasi/i });
-  await reveal.click();
-  await page.getByRole('option', { name: /LIVE/i }).click();
-  await expect(page.getByText(/LIVE preview only|pratinjau LIVE saja/i)).toBeVisible();
-  await expect(page.getByRole('button', { name: /review change|review schedule|tinjau perubahan|tinjau jadwal/i })).toBeDisabled();
+  const reveal = page.getByRole('group', { name: /reveal delay|jeda publikasi/i });
+  await expect(reveal.getByRole('radio')).toHaveCount(4);
+  await expect(reveal).not.toContainText('LIVE');
+  await reveal.getByRole('radio', { name: 'D+5' }).locator('..').click();
+  await expect(reveal.getByRole('radio', { name: 'D+5' })).toBeChecked();
 });
 
 test('@cross-browser H41 status badges follow only the server capture state', async ({ page }) => {

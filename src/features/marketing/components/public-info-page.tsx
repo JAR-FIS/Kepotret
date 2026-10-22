@@ -61,7 +61,7 @@ export function PublicInfoPage({ locale, kind }: { locale: Locale; kind: PublicP
     content = <><PageHeading centered eyebrow={copy.trust.eyebrow} title={page.securityTitle} description={page.securityDescription} /><ul className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">{copy.trust.items.map((item, index) => { const Icon = icons[index]; return <li key={item.title} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center"><span className="mx-auto inline-flex size-12 items-center justify-center rounded-full bg-[var(--color-primary)]"><Icon size={22} aria-hidden="true" /></span><h2 className="mt-4 font-[family-name:var(--font-display)] font-bold">{item.title}</h2><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{item.description}</p></li>; })}</ul></>;
   }
 
-  return <PublicPageFrame locale={locale}><main className="mx-auto min-h-[60vh] max-w-[1240px] px-4 py-14 sm:px-6 sm:py-20">{content}</main></PublicPageFrame>;
+  return <PublicPageFrame locale={locale}><main className="public-page-enter mx-auto min-h-[60vh] max-w-[1240px] px-4 py-14 sm:px-6 sm:py-20">{content}</main></PublicPageFrame>;
 }
 
 function ContactLink({ icon, label, href, value }: { icon: React.ReactNode; label: string; href: string; value: string }) {

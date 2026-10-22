@@ -49,7 +49,7 @@ test('FE-UAT-V3-01 corrections remain legible and capture synthetic desktop/mobi
         const choices = page.getByRole('radio');
         await expect(choices).toHaveCount(7);
         await expect(page.getByText(/LOCKED\d+/)).toHaveCount(0);
-        await expect(page.getByText(view.locale === 'id' ? /·\s*10\.000 foto$/ : /·\s*10,000 photos$/)).toBeVisible();
+        await expect(choices.last().locator('..').locator('span.mt-1')).toContainText(view.locale === 'id' ? /Rp\s?1\.100\.000/ : /IDR\s?1,100,000/);
         expect(uatPackages.map(option => [option.quota_total, option.price_amount])).toEqual([
           [100, 100000], [250, 230000], [500, 450000], [700, 620000], [1000, 840000], [10000, 1100000],
         ]);

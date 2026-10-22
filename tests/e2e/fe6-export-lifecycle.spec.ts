@@ -246,14 +246,13 @@ test('H53 uses server schedule version and preserves the proposal after a stale 
   await page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true }).fill('22:00');
   await page.getByRole('textbox', { name: 'Tanggal berhenti memotret', exact: true }).fill('2026-10-02');
   await page.getByRole('textbox', { name: 'Jam berhenti memotret', exact: true }).fill('22:00');
-  await page.getByRole('combobox', { name: 'Jeda publikasi (hari)' }).click();
-  await page.getByRole('option', { name: 'D+5' }).click();
+  await page.getByRole('group', { name: 'Jeda publikasi (hari)' }).getByRole('radio', { name: 'D+5' }).locator('..').click();
   await page.getByRole('button', { name: 'Tinjau jadwal' }).click();
   await expect(page.getByText(/Pembayaran masih tertunda/)).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Simpan jadwal' }).click();
   await expect(page.getByText('Jadwal berubah di server.', { exact: false })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true })).toHaveValue('22:00');
-  await expect(page.getByRole('combobox', { name: 'Jeda publikasi (hari)' })).toHaveText('D+5');
+  await expect(page.getByRole('group', { name: 'Jeda publikasi (hari)' }).getByRole('radio', { name: 'D+5' })).toBeChecked();
 });
 
 test('H53 refetches schedule, package options, lifecycle, and entitlement after successful reschedule', async ({ page }) => {
@@ -281,8 +280,7 @@ test('H53 refetches schedule, package options, lifecycle, and entitlement after 
   await page.getByRole('textbox', { name: 'Jam mulai memotret', exact: true }).fill('22:00');
   await page.getByRole('textbox', { name: 'Tanggal berhenti memotret', exact: true }).fill('2026-10-02');
   await page.getByRole('textbox', { name: 'Jam berhenti memotret', exact: true }).fill('22:00');
-  await page.getByRole('combobox', { name: 'Jeda publikasi (hari)' }).click();
-  await page.getByRole('option', { name: 'D+5' }).click();
+  await page.getByRole('group', { name: 'Jeda publikasi (hari)' }).getByRole('radio', { name: 'D+5' }).locator('..').click();
   await page.getByRole('button', { name: 'Tinjau jadwal' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Simpan jadwal' }).click();
   await expect.poll(() => (Object.keys(before) as Array<keyof typeof before>).every(key => reads[key] > before[key])).toBe(true);
