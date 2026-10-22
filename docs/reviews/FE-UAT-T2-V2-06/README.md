@@ -1,6 +1,6 @@
 # FE-UAT-T2-V2-06 — Owner Recheck #2 remediation
 
-Baseline: `main` at `acc71625ad90c6ff77d2497a854b148762d0de79`. Branch: `fix/fe-uat-t2-v2-06-owner-recheck2-remediation`. Owner status remains **recheck pending**. Backend remains **ON HOLD**. This is frontend work using deterministic synthetic UAT fixtures; screenshots do not establish live backend readiness or Owner approval.
+Baseline: `main` at `acc71625ad90c6ff77d2497a854b148762d0de79`. Branch: `fix/fe-uat-t2-v2-06-owner-recheck2-remediation`. PR: [#38](https://github.com/JAR-FIS/Kepotret/pull/38). Owner status remains **recheck pending**. Backend remains **ON HOLD**. This is frontend work using deterministic synthetic UAT fixtures; screenshots do not establish live backend readiness or Owner approval.
 
 ## Ticket traceability
 
