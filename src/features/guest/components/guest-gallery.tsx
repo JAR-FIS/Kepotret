@@ -60,6 +60,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   const [readiness, setReadiness] = useState<CaptureReadiness | null>(null);
   const [readinessFresh, setReadinessFresh] = useState(false);
   const [sort, setSort] = useState<GetApiV1GuestGalleryPhotosSort>('NEWEST');
+  const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [cursor, setCursor] = useState<string | null>(null);
@@ -90,6 +91,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
     setReadiness(null);
     setReadinessFresh(false);
     setPhotos([]);
+    setSelectionMode(false);
     setSelectedIds(new Set());
     setCursor(null);
     setHasMore(false);
@@ -260,6 +262,11 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
       const updated = result.data.data;
       setPhotos((items) => items.map((item) => item.photo_id === updated.photo_id ? updated : item));
       setDetail((current) => current?.photo_id === updated.photo_id ? updated : current);
+      if (!updated.actions.can_download) setSelectedIds((current) => {
+        const next = new Set(current);
+        next.delete(updated.photo_id);
+        return next;
+      });
     } catch { reportAction(t('actionUnavailable')); }
     finally { setBusy(false); }
   }
@@ -317,7 +324,7 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   const showRemaining = state === 'ready' && isOnline && readinessFresh && readiness?.album_remaining_count != null;
   const showCapture = state === 'ready' && isOnline && readinessFresh && readiness?.state === 'READY' && readiness.can_capture && readiness.reveal_state !== 'REVEALED' && context?.event.capture_state === 'OPEN' && context.event.reveal_state !== 'REVEALED';
   function toggleSelected(photo: GuestGalleryPhoto) {
-    if (!isOnline || !photo.actions.can_download || busy) return;
+    if (!selectionMode || !isOnline || !photo.actions.can_download || busy) return;
     setSelectedIds((current) => {
       const next = new Set(current);
       if (next.has(photo.photo_id)) next.delete(photo.photo_id);
@@ -366,24 +373,24 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
 
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
               <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">{t('photosHeading')}</h2>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-end gap-2">
                 <div className="min-w-[11rem]"><span className="mb-1 block text-sm font-medium">{t('sort')}</span><Select label={t('sort')} value={sort} onValueChange={(value) => { loadVersion.current += 1; setSort(value as GetApiV1GuestGalleryPhotosSort); }} options={[{ value: 'NEWEST', label: t('newest') }, { value: 'OLDEST', label: t('oldest') }, { value: 'MOST_LIKED', label: t('mostLiked') }]} /></div>
                 <div role="group" aria-label={t('viewMode')} className="flex rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5"><button type="button" aria-label={t('gridView')} aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')} className={`grid size-10 place-items-center rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] ${viewMode === 'grid' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : ''}`}><Grid2X2 size={18} aria-hidden="true" /></button><button type="button" aria-label={t('listView')} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')} className={`grid size-10 place-items-center rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] ${viewMode === 'list' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : ''}`}><List size={19} aria-hidden="true" /></button></div>
               </div>
             </div>
 
-            <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--color-muted-foreground)]"><p>{t('displayedCount', { count: photos.length })}</p>{showRemaining && <p>{t('remainingSlots', { count: readiness.album_remaining_count! })}</p>}</div>
-            <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--color-muted-foreground)]"><p>{t('displayedCount', { count: photos.length })}</p>{showRemaining && <p>{t('remainingSlots', { count: readiness.album_remaining_count! })}</p>}</div><Button className="ml-auto" variant="secondary" aria-pressed={selectionMode} onClick={() => { setSelectionMode((current) => !current); setSelectedIds(new Set()); }}>{selectionMode ? t('exitSelection') : t('selectPhotos')}</Button></div>
+            {selectionMode && <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm">
               <p role="status" className="font-semibold">{t('selectedCount', { count: selectedPhotos.length, maximum: MAX_SELECTED_PHOTOS })}</p>
               <button type="button" disabled={selectedPhotos.length === 0} onClick={() => setSelectedIds(new Set())} className="min-h-11 rounded-lg px-3 font-semibold underline underline-offset-4 hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] disabled:opacity-50">{t('clearSelection')}</button>
               <Button disabled aria-describedby="guest-zip-unavailable"><Download size={17} aria-hidden="true" />{t('downloadZip')}</Button>
               <p id="guest-zip-unavailable" className="w-full text-xs leading-5 text-[var(--color-muted-foreground)]">{t('zipUnavailable')}</p>
-            </div>
+            </div>}
 
             {photos.length === 0 ? <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center"><h2 className="text-lg font-semibold">{t('empty')}</h2><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('emptyDescription')}</p></section> : <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4 2xl:grid-cols-5' : 'space-y-3'}>
               {photos.map((photo) => <article key={photo.photo_id} className={`min-w-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm ${selectedPhotos.some((selected) => selected.photo_id === photo.photo_id) ? 'ring-2 ring-[var(--color-primary)]' : ''} ${viewMode === 'list' ? 'flex items-center gap-3 p-2 sm:gap-4' : ''}`}>
                 <Link href={guestRoutes.photo(linkId, photo.photo_id)} prefetch={false} onClick={(event) => { photoOpenerRef.current = { photoId: photo.photo_id, element: event.currentTarget }; }} aria-label={t('openPhotoNamed', { name: photo.photographer_display_name })} className={`block shrink-0 overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] ${viewMode === 'list' ? 'w-24 rounded-lg sm:w-36' : ''}`}><DeliveryImage src={photo.media.url} alt={t('photoAltNamed', { name: photo.photographer_display_name })} unavailableLabel={t('mediaUnavailable')} className={`w-full object-cover ${viewMode === 'list' ? 'aspect-square sm:aspect-[4/3]' : 'aspect-[4/3]'}`} /></Link>
-                <div className={`flex min-w-0 flex-1 items-center justify-between gap-2 ${viewMode === 'list' ? 'pr-2' : 'px-3 py-3'}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{photo.photographer_display_name}</p><time className="mt-1 block text-xs text-[var(--color-muted-foreground)]" dateTime={photo.created_at}>{dateTime(photo.created_at)}</time><label className="mt-1 inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={selectedPhotos.some((selected) => selected.photo_id === photo.photo_id)} disabled={!isOnline || busy || !photo.actions.can_download || (selectedPhotos.length >= MAX_SELECTED_PHOTOS && !selectedIds.has(photo.photo_id))} onChange={() => toggleSelected(photo)} aria-label={t('selectPhotoNamed', { name: photo.photographer_display_name })} className="size-5 accent-[var(--color-primary)]" />{t('selectPhoto')}</label></div>{photo.actions.can_like && <button type="button" aria-label={photo.actions.liked_by_me ? t('liked') : t('like')} disabled={!isOnline || photo.actions.liked_by_me || busy} onClick={() => void like(photo)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-semibold hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] disabled:cursor-default"><Heart size={17} fill={photo.actions.liked_by_me ? 'currentColor' : 'none'} aria-hidden="true" />{photo.like_count}</button>}</div>
+                <div className={`flex min-w-0 flex-1 items-center justify-between gap-2 ${viewMode === 'list' ? 'pr-2' : 'px-3 py-3'}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{photo.photographer_display_name}</p><time className="mt-1 block text-xs text-[var(--color-muted-foreground)]" dateTime={photo.created_at}>{dateTime(photo.created_at)}</time>{selectionMode && <label className="mt-1 inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={selectedPhotos.some((selected) => selected.photo_id === photo.photo_id)} disabled={!isOnline || busy || !photo.actions.can_download || (selectedPhotos.length >= MAX_SELECTED_PHOTOS && !selectedIds.has(photo.photo_id))} onChange={() => toggleSelected(photo)} aria-label={t('selectPhotoNamed', { name: photo.photographer_display_name })} className="size-5 accent-[var(--color-primary)]" />{t('selectPhoto')}</label>}</div>{photo.actions.can_like && <button type="button" aria-label={photo.actions.liked_by_me ? t('liked') : t('like')} disabled={!isOnline || photo.actions.liked_by_me || busy} onClick={() => void like(photo)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-semibold hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] disabled:cursor-default"><Heart size={17} fill={photo.actions.liked_by_me ? 'currentColor' : 'none'} aria-hidden="true" />{photo.like_count}</button>}</div>
               </article>)}
             </div>}
             {hasMore && <div className="mt-7 text-center"><Button variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void loadMore()}>{t('loadMore')}</Button></div>}

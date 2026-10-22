@@ -513,7 +513,7 @@ test('ACTIVE commit recovery keeps the same image and attempt retryable without 
   await captureForUploadRecovery(page, state);
   await page.getByRole('button', { name: 'Use photo' }).click();
   await expect(page.getByRole('button', { name: 'Use photo' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Save to device' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
   await expect(page.getByRole('img', { name: 'Event photo preview' })).toBeVisible();
   expect(state.reservations).toBe(1);
   expect(state.uploadAuthorizations).toBe(1);
@@ -521,7 +521,7 @@ test('ACTIVE commit recovery keeps the same image and attempt retryable without 
 
   await page.getByRole('button', { name: 'Use photo' }).click();
   await expect(page.getByText('Photo saved to the album')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Save to device' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
   expect(await page.evaluate(() => window.revokedCaptureUrls)).toHaveLength(1);
   expect(state.reservations).toBe(1);
   expect(state.uploadAuthorizations).toBe(2);
@@ -544,11 +544,11 @@ test('local JPEG download appears only after COMMITTED and matches the uploaded 
     }
   });
   await captureForUploadRecovery(page, state);
-  await expect(page.getByRole('button', { name: 'Save to device' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Use photo' }).click();
   await expect(page.getByText('Photo saved to the album')).toBeVisible();
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Save to device' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^kepotret-kepotret-e2e-.*\.jpg$/);
   const uploadedBytes: Buffer = uploaded ?? Buffer.alloc(0);
@@ -563,7 +563,7 @@ test('local JPEG download appears only after COMMITTED and matches the uploaded 
     databases: await indexedDB.databases().then(databases => databases.filter(database => database.name?.includes('kepotret-photo')).length),
   }))).toEqual({ stored: false, databases: 0 });
   await page.getByRole('button', { name: 'Take another photo' }).click();
-  await expect(page.getByRole('button', { name: 'Save to device' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => window.revokedCaptureUrls)).toHaveLength(2);
 });
 
@@ -572,7 +572,7 @@ test('a closed capture window still leaves the committed local copy available', 
   await captureForUploadRecovery(page, state);
   await page.getByRole('button', { name: 'Use photo' }).click();
   await expect(page.getByText('Photo saved to the album')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Save to device' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Take another photo' })).toHaveCount(0);
   expect(state.recoveryChecks).toBe(1);
 });

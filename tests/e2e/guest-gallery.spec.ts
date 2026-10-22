@@ -77,7 +77,10 @@ test('Gallery shows fresh server capacity and caps selectable photos at 20 witho
   await page.route('**/api/v1/guest/gallery/photos**', (route) => route.fulfill({ status: 200, json: { data: photos, meta: { has_more: false, next_cursor: null } } }));
   await page.goto(`/j/${linkId}/galeri`);
   await expect(page.getByText('21 foto yang ditampilkan')).toBeVisible();
-  await expect(page.getByText('Sisa tempat foto album: 76')).toBeVisible();
+  await expect(page.getByText('Sisa kuota foto: 76')).toBeVisible();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Unduh ZIP' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Pilih foto' }).click();
   const zip = page.getByRole('button', { name: 'Unduh ZIP' });
   await expect(zip).toBeDisabled();
   for (let index = 0; index < 20; index += 1) await page.getByRole('checkbox', { name: `Pilih foto oleh Guest ${index}`, exact: true }).check();
@@ -86,6 +89,8 @@ test('Gallery shows fresh server capacity and caps selectable photos at 20 witho
   await expect(zip).toBeDisabled();
   await page.getByRole('button', { name: 'Batalkan pilihan' }).click();
   await expect(page.getByText('Dipilih: 0 dari 20')).toBeVisible();
+  await page.getByRole('button', { name: 'Selesai memilih' }).click();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
 });
 
 test('guest remains waiting before reveal and routes expired access to the terminal state', async ({ page }) => {
