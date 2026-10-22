@@ -108,7 +108,7 @@ export function UploadStatus() {
   return <div role="status" className="mt-6 rounded-[var(--radius-md)] bg-[var(--color-muted)] p-4 text-center">{t('saving')}</div>;
 }
 
-export function CaptureSuccess({ photoUrl, canCapture, onSave, onNext }: { photoUrl: string | null; canCapture: boolean; onSave: () => void; onNext: () => void }) {
+export function CaptureSuccess({ photoUrl, galleryHref, canCapture, onSave, onNext }: { photoUrl: string | null; galleryHref: string; canCapture: boolean; onSave: () => void; onNext: () => void }) {
   const t = useTranslations('guest');
   return <section className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
     <span aria-hidden="true" className="pointer-events-none absolute left-3 top-3 size-5 border-l-2 border-t-2 border-[var(--color-primary)]" />
@@ -116,6 +116,6 @@ export function CaptureSuccess({ photoUrl, canCapture, onSave, onNext }: { photo
     <div className="flex items-start gap-3"><span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"><CircleCheck size={23} aria-hidden="true" /></span><div><h2 role="status" className="font-[family-name:var(--font-display)] text-xl font-bold">{t('saved')}</h2><p className="mt-1 text-sm leading-6 text-[var(--color-muted-foreground)]">{t('savedSupport')}</p></div></div>
     {photoUrl && <Image src={photoUrl} alt={t('savedPreviewAlt')} width={600} height={800} unoptimized className="mx-auto mt-5 max-h-80 w-auto max-w-full rounded-[var(--radius-md)] bg-[var(--color-muted)] object-contain" />}
     {!photoUrl && <p className="mt-5 text-sm text-[var(--color-muted-foreground)]">{t('saveUnavailable')}</p>}
-    <div className="mt-5 grid gap-3 sm:grid-cols-2">{photoUrl && <Button className="w-full" onClick={onSave}><Download size={18} aria-hidden="true" />{t('saveToDevice')}</Button>}{canCapture && <Button variant={photoUrl ? 'secondary' : 'primary'} className="w-full" onClick={onNext}><Camera size={18} aria-hidden="true" />{t('captureAgain')}</Button>}</div>
+    <div className="mt-5 grid gap-3 sm:grid-cols-2">{photoUrl && <Button className="w-full" onClick={onSave}><Download size={18} aria-hidden="true" />{t('saveToDevice')}</Button>}{canCapture && <Button variant={photoUrl ? 'secondary' : 'primary'} className="w-full" onClick={onNext}><Camera size={18} aria-hidden="true" />{t('captureAgain')}</Button>}<Link href={galleryHref} className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 text-sm font-semibold hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] sm:col-span-2">{t('viewAlbum')}</Link></div>
   </section>;
 }

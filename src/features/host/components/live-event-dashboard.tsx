@@ -1,16 +1,15 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { CircleCheck, CircleX, Clock3, Images, Share2, FileArchive } from 'lucide-react';
+import { CircleCheck, CircleX, Clock3 } from 'lucide-react';
 import { ErrorState } from '@/components/ui/error-state';
 import { ForbiddenState, ReauthState } from '@/components/ui/access-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { getApiV1AlbumsAlbumIdLiveOverview } from '@/lib/api/browser';
 import type { AlbumLiveOverview } from '@/lib/api/generated/index.schemas';
-import { hostRoutes } from '@/features/host/routes';
 import { formatEventDateTime } from '@/lib/time/event-time';
+import { AlbumQuickLinks } from '@/features/host/components/album-quick-links';
 
 export function LiveEventDashboard({ albumId }: { albumId: string }) {
   const t = useTranslations('host.liveDashboard');
@@ -52,8 +51,6 @@ export function LiveEventDashboard({ albumId }: { albumId: string }) {
     ? Math.max(0, Math.floor((Date.parse(countdownTarget) - Date.parse(overview.server_time)) / 1000) - serverElapsed)
     : null;
   const isOwner = overview.actor_access.relationship === 'OWNER';
-  const canModerate = overview.actor_access.collaborator_permissions?.can_moderate === true;
-  const canExport = isOwner || overview.actor_access.collaborator_permissions?.can_export_zip === true;
   const formatTime = (value: string) => formatEventDateTime(value, locale, overview.timezone);
   const eventStatus = overview.capture_state === 'OPEN' ? 'live' : overview.capture_state === 'CLOSED' ? 'ended' : 'scheduled';
   const captureMessage = overview.capture_state === 'OPEN' ? t('captureOpen') : overview.capture_state === 'NOT_STARTED' ? t('captureNotStarted') : t('captureClosed');
@@ -86,11 +83,7 @@ export function LiveEventDashboard({ albumId }: { albumId: string }) {
       <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('packageUnavailable')}</p>
       <p className="mt-2 text-sm">{overview.quota_total === null ? t('capacityUnavailable') : t('actualCapacity', { count: new Intl.NumberFormat(locale).format(overview.quota_total) })}</p>
     </div>}
-    <nav aria-label={t('actions')} className="flex flex-wrap gap-3">
-      {(isOwner || canModerate) && <Link className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.gallery(albumId)}><Images size={17} aria-hidden="true" />{t('gallery')}</Link>}
-      <Link className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.sharing(albumId)}><Share2 size={17} aria-hidden="true" />{t('sharing')}</Link>
-      {canExport && <Link className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-semibold hover:bg-[var(--color-muted)]" href={hostRoutes.exports(albumId)}><FileArchive size={17} aria-hidden="true" />{t('exports')}</Link>}
-    </nav>
+    <AlbumQuickLinks albumId={albumId} actorAccess={overview.actor_access} readiness={overview.readiness} />
   </section>;
 }
 

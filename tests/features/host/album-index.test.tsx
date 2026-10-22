@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { listAlbums, getAlbum, getPackages, getLiveOverview, getSettings, getCsrf, patchSettings, getInvitations, createInvitation, setPin } = vi.hoisted(() => ({ listAlbums: vi.fn(), getAlbum: vi.fn(), getPackages: vi.fn(), getLiveOverview: vi.fn(), getSettings: vi.fn(), getCsrf: vi.fn(), patchSettings: vi.fn(), getInvitations: vi.fn(), createInvitation: vi.fn(), setPin: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1Packages: getPackages, getApiV1AlbumsAlbumIdLiveOverview: getLiveOverview, getApiV1AlbumsAlbumIdSettings: getSettings, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1Albums: listAlbums, getApiV1AlbumsAlbumId: getAlbum, getApiV1Packages: getPackages, getApiV1AlbumsAlbumIdLiveOverview: getLiveOverview, getApiV1AlbumsAlbumIdSettings: getSettings, getApiV1SecurityCsrf: getCsrf, patchApiV1AlbumsAlbumIdSettings: patchSettings, getApiV1AlbumsAlbumIdCollaboratorInvitations: getInvitations, postApiV1AlbumsAlbumIdCollaboratorInvitations: createInvitation, putApiV1AlbumsAlbumIdAccessPin: setPin, getApiV1AlbumsAlbumIdSchedule: vi.fn().mockResolvedValue({ status: 503 }), getApiV1AlbumsAlbumIdPackageOptions: vi.fn().mockResolvedValue({ status: 503 }) }));
 
 import { AlbumIndex } from '@/features/host/components/album-index';
 import { AlbumOverview } from '@/features/host/components/album-overview';
@@ -129,7 +129,7 @@ describe('FE-3 Host album surfaces', () => {
     expect(screen.getByText('14')).toBeInTheDocument();
     expect(await screen.findByRole('timer')).toHaveTextContent('5 m 00 dtk');
     expect(getLiveOverview).toHaveBeenCalledWith(albumId);
-    expect(screen.getByRole('link', { name: 'Buka galeri' })).toHaveAttribute('href', `/album/${albumId}/galeri`);
+    expect(screen.getByRole('link', { name: 'Galeri album' })).toHaveAttribute('href', `/album/${albumId}/galeri`);
   });
 
   it('shows the H41 scheduled badge for a ready album that has not started', async () => {
