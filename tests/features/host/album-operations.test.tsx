@@ -5,11 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({
   getAlbum: vi.fn(), getOptions: vi.fn(), getPackages: vi.fn(), getLifecycle: vi.fn(),
   getRecoveryPhotos: vi.fn(), getExportCapabilities: vi.fn(), getDownload: vi.fn(), getLiveOverview: vi.fn(),
-  getPayments: vi.fn(), getPayment: vi.fn(),
+  getPayments: vi.fn(), getPayment: vi.fn(), getSchedule: vi.fn(),
 }));
 vi.mock('@/lib/api/browser', () => ({
   getApiV1AlbumsAlbumId: api.getAlbum,
   getApiV1AlbumsAlbumIdPackageOptions: api.getOptions,
+  getApiV1AlbumsAlbumIdSchedule: api.getSchedule,
   getApiV1Packages: api.getPackages,
   getApiV1AlbumsAlbumIdLifecycle: api.getLifecycle,
   getApiV1AlbumsAlbumIdRecoveryPhotos: api.getRecoveryPhotos,
@@ -64,6 +65,7 @@ describe('FE-UAT-V2-04 album operations', () => {
     for (const mock of Object.values(api)) mock.mockReset();
     api.getAlbum.mockResolvedValue({ status: 200, data: { data: { timezone: 'Asia/Jakarta' } } });
     api.getOptions.mockResolvedValue({ status: 200, data: { data: options } });
+    api.getSchedule.mockResolvedValue({ status: 503 });
     api.getPackages.mockResolvedValue({ status: 200, data: { data: uatPackages } });
     api.getLifecycle.mockResolvedValue({ status: 200, data: { data: life } });
     api.getRecoveryPhotos.mockResolvedValue({ status: 200, data: { data: [{ photo_id: uatIds.photo, created_at: life.server_time, photographer_display_name: 'Ari', media: { url: 'https://media.test/photo', expires_at: life.recovery_end_at }, can_download: true }], meta: { next_cursor: null } } });
@@ -235,9 +237,9 @@ describe('FE-UAT-V2-04 album operations', () => {
     expect(await screen.findByText('Kapasitas foto saat ini: 100 foto')).toBeInTheDocument();
     expect(screen.getByText('Detail paket belum tersedia untuk kolaborator.')).toBeInTheDocument();
     expect(api.getPackages).not.toHaveBeenCalled();
-    expect(screen.getByRole('link', { name: 'Buka galeri' }).querySelector('svg')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Berbagi acara' }).querySelector('svg')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Ekspor ZIP' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Galeri album' }).querySelector('svg')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Berbagi & QR' }).querySelector('svg')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Ekspor album' })).not.toBeInTheDocument();
   });
 
   it('keeps export action for an explicitly authorized collaborator', async () => {
@@ -246,6 +248,6 @@ describe('FE-UAT-V2-04 album operations', () => {
     api.getLiveOverview.mockResolvedValue({ status: 200, data: { data: overview } });
     renderHost(<LiveEventDashboard albumId={uatIds.album} />, 'en');
     expect(await screen.findByText('Current photo capacity: 100 photos')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'ZIP export' }).querySelector('svg')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Album export' }).querySelector('svg')).toBeInTheDocument();
   });
 });

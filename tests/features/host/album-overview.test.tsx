@@ -3,7 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { getAlbum, getPackages } = vi.hoisted(() => ({ getAlbum: vi.fn(), getPackages: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1AlbumsAlbumId: getAlbum, getApiV1Packages: getPackages }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1AlbumsAlbumId: getAlbum, getApiV1Packages: getPackages, getApiV1AlbumsAlbumIdSchedule: vi.fn().mockResolvedValue({ status: 503 }), getApiV1AlbumsAlbumIdPackageOptions: vi.fn().mockResolvedValue({ status: 503 }) }));
 
 import { AlbumOverview } from '@/features/host/components/album-overview';
 import idMessages from '@/messages/id.json';

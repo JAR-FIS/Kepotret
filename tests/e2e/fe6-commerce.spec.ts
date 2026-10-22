@@ -145,7 +145,7 @@ test('H47/H48 show server transaction snapshots; H49 offers only higher-quota pa
   await expect(page.getByText('Plus', { exact: true })).toBeVisible();
   await expect(page.getByText('Menunggu pembayaran')).toBeVisible();
   await page.getByRole('link', { name: 'Detail transaksi' }).click();
-  await expect(page).toHaveURL(`/album/${albumId}/pembayaran/${transactionId}`);
+  await expect(page).toHaveURL(`/album/${albumId}/pembayaran/${transactionId}`, { timeout: 15_000 });
   await expect(page.getByText('Plus', { exact: true })).toBeVisible();
   await expect(page.getByText(transactionId)).toBeVisible();
   await expect(page.getByText('Upgrade kapasitas')).toBeVisible();

@@ -114,11 +114,12 @@ test('H40 guest tutorial is distinct and preserves camera-only access rules', as
   await page.screenshot({ path: testInfo.outputPath('h40-guest-tutorial-synthetic.png'), fullPage: true });
 });
 
-test('H39 keeps the Host guide link and QR PDF inside the authorized QR card', async ({ page }, testInfo) => {
+test('H39 links the Collaborator and Guest guides and keeps QR PDF inside the authorized QR card', async ({ page }, testInfo) => {
   await page.route(`**/api/v1/albums/${albumId}/sharing`, (route) => route.fulfill({ status: 200, json: { data: { url: 'https://kepotret.test/j/active', can_rotate: false } } }));
   await page.route(`**/api/v1/albums/${albumId}/qr.pdf`, (route) => route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.7 test' }));
   await page.goto(`/album/${albumId}/berbagi`);
-  await expect(page.getByRole('link', { name: 'Panduan Host/WO/EO' })).toHaveAttribute('href', '/help/host');
+  await expect(page.getByRole('link', { name: 'Panduan kolaborator' })).toHaveAttribute('href', '/help/collaborator');
+  await expect(page.getByRole('link', { name: 'Panduan tamu' })).toHaveAttribute('href', '/help/guest');
   const qrCard = page.locator('section').filter({ has: page.locator('svg:has(title)') });
   await expect(qrCard.getByRole('button', { name: 'Unduh QR PDF' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('h39-host-sharing-synthetic.png'), fullPage: true });

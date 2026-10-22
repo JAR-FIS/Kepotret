@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({ liveOverview: vi.fn() }));
-vi.mock('@/lib/api/browser', () => ({ getApiV1AlbumsAlbumIdLiveOverview: api.liveOverview }));
+vi.mock('@/lib/api/browser', () => ({ getApiV1AlbumsAlbumIdLiveOverview: api.liveOverview, getApiV1AlbumsAlbumIdSchedule: vi.fn().mockResolvedValue({ status: 503 }), getApiV1AlbumsAlbumIdPackageOptions: vi.fn().mockResolvedValue({ status: 503 }) }));
 
 import { LiveEventDashboard } from '@/features/host/components/live-event-dashboard';
 import type { AlbumLiveOverview } from '@/lib/api/generated/index.schemas';

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Album, ArrowLeft, BookOpen, ChevronUp, Home, Images, MoreHorizontal, Plus, Settings2, UserRound } from 'lucide-react';
 
@@ -48,6 +48,7 @@ export function HostShell({ children }: { children: React.ReactNode }) {
     { href: hostRoutes.dashboard, label: t('nav.home'), icon: Home },
     { href: hostRoutes.albums, label: t('nav.albums'), icon: Album },
     { href: hostRoutes.collaborations, label: t('nav.collaborations'), icon: Images },
+    { href: '/akun', label: t('nav.account'), icon: UserRound },
   ];
 
   return (
@@ -74,7 +75,7 @@ export function HostShell({ children }: { children: React.ReactNode }) {
             <Link href="/help" aria-label={t('nav.help')} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-[var(--color-muted)] lg:hidden"><BookOpen aria-hidden="true" size={18} /></Link>
             <LocaleControl label={t('nav.language')} indonesianLabel={t('nav.indonesian')} englishLabel={t('nav.english')} />
             <ThemeToggle lightLabel={t('nav.switchToLight')} darkLabel={t('nav.switchToDark')} />
-            <Link href="/akun" aria-label={t('nav.account')} className="hidden size-11 items-center justify-center rounded-full border border-[var(--color-border)] hover:bg-[var(--color-muted)] sm:inline-flex"><UserRound aria-hidden="true" size={18} /></Link>
+            <Link href="/akun" aria-label={t('nav.account')} aria-current={pathname === '/akun' ? 'page' : undefined} className="hidden size-11 items-center justify-center rounded-full border border-[var(--color-border)] hover:bg-[var(--color-muted)] sm:inline-flex"><UserRound aria-hidden="true" size={18} /></Link>
           </div>
         </header>
         {inAlbum && albumId && accessState === 'ready' && accessPath === pathname && actorAccess && <WorkspaceNavigation
@@ -87,10 +88,10 @@ export function HostShell({ children }: { children: React.ReactNode }) {
           label={t('nav.albumLabel')}
           t={(key) => t(key)}
         />}
-        {!inAlbum && <nav aria-label={t('nav.label')} className="fixed inset-x-0 bottom-0 z-20 grid min-h-16 grid-cols-4 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
+        {!inAlbum && <nav aria-label={t('nav.label')} className="fixed inset-x-0 bottom-0 z-20 grid min-h-16 grid-cols-5 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
           {links.map(({ href, label, icon: Icon }) => {
             const active = href === hostRoutes.albums ? pathname === hostRoutes.albums || pathname === hostRoutes.createAlbum : pathname === href || pathname.startsWith(`${href}/`);
-            return <Link key={href} aria-current={active ? 'page' : undefined} href={href} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-medium ${active ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]'}`}><Icon aria-hidden="true" size={19} />{label}</Link>;
+            return <Link key={href} aria-current={active ? 'page' : undefined} href={href} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-[10px] font-medium ${active ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]'}`}><Icon aria-hidden="true" size={19} /><span className="max-w-full truncate">{label}</span></Link>;
           })}
           <Link href={hostRoutes.createAlbum} aria-current={pathname === hostRoutes.createAlbum ? 'page' : undefined} className="flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-bold"><Plus aria-hidden="true" size={19} />{t('create')}</Link>
         </nav>}
@@ -161,22 +162,64 @@ function WorkspaceNavigation({
   const manageActive = isOwner ? pathname.includes('/galeri') || pathname.includes('/jadwal-ulang') || pathname.includes('/retensi') || pathname.includes('/pemulihan') || pathname.includes('/pengaturan') || pathname.includes('/desain') || pathname.includes('/preview-tamu') || pathname.includes('/aktivitas') : pathname.includes('/galeri') || pathname.includes('/setup/') || pathname.includes('/pengaturan') || pathname.includes('/desain') || pathname.includes('/aktivitas');
   const moreActive = pathname.includes('/berbagi') || pathname.includes('/pembayaran') || pathname.includes('/checkout') || pathname.includes('/upgrade') || pathname.includes('/ekspor') || pathname.includes('/setup/') || pathname.includes('/izin') || pathname.includes('/kolaborator');
   const itemClass = 'flex min-h-11 items-center rounded-[var(--radius-md)] px-3 text-sm hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
-  const toggle = (menu: 'manage' | 'more') => setOpenMenu(openMenu === menu ? null : menu);
-  const group = (menu: 'manage' | 'more', items: typeof manageItems) => openMenu === menu ? <div role="menu" className="absolute inset-x-3 bottom-[calc(100%+0.75rem)] max-h-[min(65dvh,28rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-xl sm:inset-x-auto sm:right-3 sm:w-80">{items.map((item) => <Link key={item.href} role="menuitem" href={item.href} onClick={() => setOpenMenu(null)} className={itemClass}>{item.label}</Link>)}</div> : null;
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const mobileNavRef = useRef<HTMLElement | null>(null);
+  const desktopNavRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const trigger = triggerRef.current;
+    const frame = window.requestAnimationFrame(() => trigger?.closest('nav')?.querySelector<HTMLElement>('[role="menu"] a')?.focus());
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !mobileNavRef.current?.contains(target) && !desktopNavRef.current?.contains(target)) setOpenMenu(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setOpenMenu(null);
+      trigger?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => { window.cancelAnimationFrame(frame); document.removeEventListener('pointerdown', onPointerDown); document.removeEventListener('keydown', onKeyDown); };
+  }, [openMenu, setOpenMenu]);
+
+  const toggle = (menu: 'manage' | 'more', trigger: HTMLButtonElement) => {
+    triggerRef.current = trigger;
+    setOpenMenu(openMenu === menu ? null : menu);
+  };
+  const openWithKeyboard = (menu: 'manage' | 'more', trigger: HTMLButtonElement) => {
+    triggerRef.current = trigger;
+    if (openMenu === menu) trigger.closest('nav')?.querySelector<HTMLElement>('[role="menu"] a')?.focus();
+    else setOpenMenu(menu);
+  };
+  const menuKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLAnchorElement>('a[href]'));
+    if (!items.length) return;
+    event.preventDefault();
+    const index = items.findIndex((item) => item === document.activeElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : event.key === 'ArrowDown' ? (index + 1) % items.length : (index - 1 + items.length) % items.length;
+    items[next]?.focus();
+  };
+  const group = (menu: 'manage' | 'more', items: typeof manageItems, placement: 'mobile' | 'desktop') => openMenu === menu ? <div id={`workspace-${menu}-${placement}`} role="menu" aria-label={t(`navItems.${menu}`)} onKeyDown={menuKeys} className={`z-30 overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-xl ${placement === 'mobile' ? 'absolute inset-x-3 bottom-[calc(100%+0.75rem)] max-h-[min(65dvh,28rem)]' : 'absolute left-0 top-[calc(100%+0.5rem)] w-80 max-h-[min(65dvh,28rem)]'}`}>{items.map((item) => {
+    const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+    return <Link key={item.href} role="menuitem" aria-current={active ? 'page' : undefined} href={item.href} onClick={() => setOpenMenu(null)} className={`${itemClass} ${active ? 'bg-[var(--color-muted)] font-semibold' : ''}`}>{item.label}</Link>;
+  })}</div> : null;
   return <>
-    <nav aria-label={label} onKeyDown={(event) => { if (event.key === 'Escape') setOpenMenu(null); }} className="fixed inset-x-0 bottom-0 z-20 grid min-h-16 grid-cols-4 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <nav ref={mobileNavRef} aria-label={label} className={`fixed inset-x-0 bottom-0 grid min-h-16 grid-cols-4 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden ${openMenu ? 'z-[70]' : 'z-20'}`}>
       <Link href={hostRoutes.album(albumId)} aria-current={pathname === hostRoutes.album(albumId) ? 'page' : undefined} className="flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium"><Home size={18} aria-hidden="true" /><span>{t('navItems.overview')}</span></Link>
       <Link href={isOwner || canModerate ? hostRoutes.gallery(albumId) : hostRoutes.permissions(albumId)} aria-current={pathname.startsWith(isOwner || canModerate ? hostRoutes.gallery(albumId) : hostRoutes.permissions(albumId)) ? 'page' : undefined} className="flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium"><Images size={18} aria-hidden="true" /><span>{isOwner || canModerate ? t('navItems.gallery') : t('navItems.permissionsShort')}</span></Link>
-      <button type="button" aria-haspopup="menu" aria-expanded={openMenu === 'manage'} onClick={() => toggle('manage')} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium ${manageActive ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]'}`}><Settings2 size={18} aria-hidden="true" /><span>{t('navItems.manage')}</span></button>
-      <button type="button" aria-haspopup="menu" aria-expanded={openMenu === 'more'} onClick={() => toggle('more')} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium ${moreActive ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]'}`}><MoreHorizontal size={18} aria-hidden="true" /><span>{t('navItems.more')}</span></button>
-      {group('manage', manageItems)}{group('more', moreItems)}
+      <button type="button" aria-haspopup="menu" aria-controls={openMenu === 'manage' ? 'workspace-manage-mobile' : undefined} aria-expanded={openMenu === 'manage'} onClick={(event) => toggle('manage', event.currentTarget)} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); openWithKeyboard('manage', event.currentTarget); } }} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${manageActive ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]'}`}><Settings2 size={18} aria-hidden="true" /><span>{t('navItems.manage')}</span></button>
+      <button type="button" aria-haspopup="menu" aria-controls={openMenu === 'more' ? 'workspace-more-mobile' : undefined} aria-expanded={openMenu === 'more'} onClick={(event) => toggle('more', event.currentTarget)} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); openWithKeyboard('more', event.currentTarget); } }} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${moreActive ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]'}`}><MoreHorizontal size={18} aria-hidden="true" /><span>{t('navItems.more')}</span></button>
+      {group('manage', manageItems, 'mobile')}{group('more', moreItems, 'mobile')}
     </nav>
-    <nav aria-label={label} onKeyDown={(event) => { if (event.key === 'Escape') setOpenMenu(null); }} className="hidden border-b border-[var(--color-border)] px-6 lg:block"><div className="relative mx-auto flex max-w-7xl items-center gap-2 py-1">
+    <nav ref={desktopNavRef} aria-label={label} className="relative z-20 hidden border-b border-[var(--color-border)] px-6 lg:block"><div className="mx-auto flex max-w-7xl items-center gap-2 py-1">
       <Link href={hostRoutes.album(albumId)} aria-current={pathname === hostRoutes.album(albumId) ? 'page' : undefined} className={itemClass}>{t('navItems.overview')}</Link>
       <Link href={isOwner || canModerate ? hostRoutes.gallery(albumId) : hostRoutes.permissions(albumId)} aria-current={pathname.startsWith(isOwner || canModerate ? hostRoutes.gallery(albumId) : hostRoutes.permissions(albumId)) ? 'page' : undefined} className={itemClass}>{isOwner || canModerate ? t('navItems.gallery') : t('navItems.permissions')}</Link>
-      <button type="button" aria-haspopup="menu" aria-expanded={openMenu === 'manage'} onClick={() => toggle('manage')} className={itemClass}>{t('navItems.manage')}<ChevronUp aria-hidden="true" size={14} className="ml-2" /></button>
-      <button type="button" aria-haspopup="menu" aria-expanded={openMenu === 'more'} onClick={() => toggle('more')} className={itemClass}>{t('navItems.more')}<ChevronUp aria-hidden="true" size={14} className="ml-2" /></button>
-      {group('manage', manageItems)}{group('more', moreItems)}
+      <div className="relative"><button type="button" aria-haspopup="menu" aria-controls={openMenu === 'manage' ? 'workspace-manage-desktop' : undefined} aria-expanded={openMenu === 'manage'} onClick={(event) => toggle('manage', event.currentTarget)} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); openWithKeyboard('manage', event.currentTarget); } }} className={itemClass}>{t('navItems.manage')}<ChevronUp aria-hidden="true" size={14} className="ml-2" /></button>{group('manage', manageItems, 'desktop')}</div>
+      <div className="relative"><button type="button" aria-haspopup="menu" aria-controls={openMenu === 'more' ? 'workspace-more-desktop' : undefined} aria-expanded={openMenu === 'more'} onClick={(event) => toggle('more', event.currentTarget)} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); openWithKeyboard('more', event.currentTarget); } }} className={itemClass}>{t('navItems.more')}<ChevronUp aria-hidden="true" size={14} className="ml-2" /></button>{group('more', moreItems, 'desktop')}</div>
     </div></nav>
   </>;
 }

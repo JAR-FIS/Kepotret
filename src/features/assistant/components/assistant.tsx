@@ -26,6 +26,7 @@ export function Assistant() {
   const closeTimerRef = useRef<number | null>(null);
 
   const context = getAssistantContext(pathname);
+  const inAlbumWorkspace = /^\/album\/[^/]+/.test(pathname) && pathname !== '/album/baru';
 
   function openPanel() {
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
@@ -101,9 +102,9 @@ export function Assistant() {
     } catch { setState('unavailable'); }
   }
 
-  return <div className="fixed bottom-4 right-4 z-[60] sm:bottom-5 sm:right-5">
+  return <div className={`fixed right-4 z-[60] ${inAlbumWorkspace ? 'bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-5' : 'bottom-4 sm:bottom-5'} sm:right-5`}>
     {panelMounted && <>
-      <section id="assistant-dialog" role="dialog" aria-labelledby="assistant-title" aria-hidden={!open} inert={!open} className={`fixed inset-x-2 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 flex h-[min(42rem,calc(100dvh-7rem-env(safe-area-inset-bottom)))] max-h-none flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-foreground)] shadow-2xl transition-[opacity,transform] duration-200 ease-out motion-reduce:duration-0 sm:inset-auto sm:bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-5 sm:h-[min(42rem,calc(100dvh-6rem))] sm:w-[min(28rem,calc(100vw-2rem))] ${open ? 'translate-y-0 scale-100 opacity-100 motion-safe:animate-[assistant-enter_200ms_ease-out]' : 'pointer-events-none translate-y-3 scale-[.98] opacity-0 motion-reduce:translate-y-0 motion-reduce:scale-100'}`}>
+      <section id="assistant-dialog" role="dialog" aria-labelledby="assistant-title" aria-hidden={!open} inert={!open} className={`fixed inset-x-2 z-50 flex max-h-none flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-foreground)] shadow-2xl transition-[opacity,transform] duration-200 ease-out motion-reduce:duration-0 sm:inset-auto sm:right-5 sm:w-[min(28rem,calc(100vw-2rem))] ${inAlbumWorkspace ? 'bottom-[calc(9rem+env(safe-area-inset-bottom))] h-[min(42rem,calc(100dvh-11rem-env(safe-area-inset-bottom)))] lg:bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:h-[min(42rem,calc(100dvh-6rem))]' : 'bottom-[calc(5rem+env(safe-area-inset-bottom))] h-[min(42rem,calc(100dvh-7rem-env(safe-area-inset-bottom)))] sm:h-[min(42rem,calc(100dvh-6rem))]'} ${open ? 'translate-y-0 scale-100 opacity-100 motion-safe:animate-[assistant-enter_200ms_ease-out]' : 'pointer-events-none translate-y-3 scale-[.98] opacity-0 motion-reduce:translate-y-0 motion-reduce:scale-100'}`}>
         <header className="flex shrink-0 items-center justify-between gap-3 bg-[var(--color-primary)] px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))] text-[var(--color-primary-foreground)] sm:pt-4">
           <div><h2 id="assistant-title" className="font-[family-name:var(--font-display)] font-bold">{t('title')}</h2><p className="mt-1 text-xs opacity-80">{t('contextNotice')}</p></div>
           <button type="button" aria-label={t('close')} onClick={closePanel} className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-black/10 hover:bg-black/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]"><X size={19} aria-hidden="true" /></button>
