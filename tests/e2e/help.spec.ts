@@ -44,7 +44,7 @@ test('T2-40/41/42 shared footer follows Admin, Host, and Collaborator guide cont
     await expect(footer).toHaveCount(1);
     await expect(footer.getByRole('navigation', { name: 'Tautan panduan' }).getByRole('link', { name: 'Beranda' })).toHaveAttribute('href', '/');
     await expect(footer.getByRole('link', { name: 'Panduan', exact: true })).toHaveAttribute('href', '/help');
-    expect(await page.evaluate(() => {
+    await expect.poll(() => page.evaluate(() => {
       const main = document.querySelector('main');
       const footer = document.querySelector('footer');
       return !!main && !!footer && !!(main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING) && main.getBoundingClientRect().bottom <= footer.getBoundingClientRect().top;

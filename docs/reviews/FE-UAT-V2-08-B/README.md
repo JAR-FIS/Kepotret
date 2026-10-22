@@ -25,6 +25,7 @@ Public FAQ and Host guest-guide copy now describe the four supported delayed rev
 - `pnpm api:check` — passed; generated API client remains fresh.
 - `pnpm build` — passed.
 - Focused Chromium Playwright with `--retries=0` — 51 passed, 2 evidence-only tests skipped. Coverage includes H14/H15/H16/H23, H29/H53, H33/H35, H79, H84, footer, public motion and reduced motion, plus V2-08A navigation, Host/Collaborator access, and Guest saved/gallery gating. The separate synthetic evidence run passed (1 test). Hosted matrix results are reported on the PR checks for the exact final HEAD.
+- After the first complete hosted e2e run exposed older assertions for paid-package quota text and guest-guide wording, the four affected browser files were updated and rerun locally with `--retries=0`: 15 passed, 1 evidence-only test skipped. The Help footer geometry check now waits for the 300 ms entrance animation to finish. Lint, typecheck, 293 unit tests, API drift, and build passed again after this follow-up.
 
 Screenshots are marked **OWNER VISUAL UAT · SYNTHETIC FIXTURES**. They use deterministic browser API fixtures and include ID-light 1440 px desktop and EN-dark 390 px mobile. The browser regressions also cover 320 px overflow, no-JavaScript heading visibility, keyboard radio selection, menu navigation, and server-disabled states. Real devices, real OAuth, live backend, and Owner acceptance are separate gates.
 

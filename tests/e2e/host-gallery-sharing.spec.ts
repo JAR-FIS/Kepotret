@@ -105,7 +105,7 @@ test('H40 guest tutorial is distinct and preserves camera-only access rules', as
   await expect(page.getByText(/Tamu tidak memerlukan akun/)).toBeVisible();
   await expect(page.getByText(/Pindai QR acara/)).toBeVisible();
   await expect(page.getByText(/Unggah foto dari galeri atau penyimpanan perangkat tidak tersedia/)).toBeVisible();
-  await expect(page.getByText(/D\+1, D\+3, D\+5, dan D\+7/)).toBeVisible();
+  await expect(page.getByText(/D\+1, D\+3, D\+5, atau D\+7/)).toBeVisible();
   await expect(page.getByRole('link', { name: 'Kembali ke berbagi album' })).toHaveAttribute('href', `/album/${albumId}/berbagi`);
   for (const width of [360, 390, 768, 1024, 1280]) {
     await page.setViewportSize({ width, height: 850 });
