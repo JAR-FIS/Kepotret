@@ -174,7 +174,11 @@ describe('guest gallery', () => {
     api.readiness.mockResolvedValue({ status: 200, data: { data: { album_id: 'album-1', state: 'CLOSED', can_capture: false, album_remaining_count: 76 } } });
     renderGallery({ linkId: 'link-1' });
     expect(await screen.findByText('22 photos displayed')).toBeInTheDocument();
-    expect(await screen.findByText('Album photo slots remaining: 76')).toBeInTheDocument();
+    expect(await screen.findByText('Photo quota remaining: 76')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Select photo by Guest 0' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Download ZIP' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Select photos' }));
+    expect(screen.getByText('Selected: 0 of 20')).toBeInTheDocument();
     const zip = screen.getByRole('button', { name: 'Download ZIP' });
     expect(zip).toBeDisabled();
     for (let index = 0; index < 20; index += 1) fireEvent.click(screen.getByRole('checkbox', { name: `Select photo by Guest ${index}` }));
@@ -184,12 +188,31 @@ describe('guest gallery', () => {
     expect(zip).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
     expect(screen.getByText('Selected: 0 of 20')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Done selecting' }));
+    expect(screen.queryByRole('checkbox', { name: 'Select photo by Guest 0' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Download ZIP' })).not.toBeInTheDocument();
   }, 15_000);
+
+  it('shows authoritative zero and one remaining, and omits the quota when readiness has no count', async () => {
+    api.readiness.mockResolvedValueOnce({ status: 200, data: { data: { album_id: 'album-1', state: 'CLOSED', can_capture: false, album_remaining_count: 0 } } });
+    const first = renderGallery({ linkId: 'link-1' });
+    expect(await screen.findByText('Photo quota remaining: 0')).toBeInTheDocument();
+    first.unmount();
+    api.readiness.mockResolvedValueOnce({ status: 200, data: { data: { album_id: 'album-1', state: 'CLOSED', can_capture: false, album_remaining_count: 1 } } });
+    const second = renderGallery({ linkId: 'link-1' });
+    expect(await screen.findByText('Photo quota remaining: 1')).toBeInTheDocument();
+    second.unmount();
+    api.readiness.mockResolvedValue({ status: 200, data: { data: { album_id: 'album-1', state: 'CLOSED', can_capture: false } } });
+    renderGallery({ linkId: 'link-1' });
+    expect(await screen.findByText('1 photos displayed')).toBeInTheDocument();
+    expect(screen.queryByText(/Photo quota remaining:/)).not.toBeInTheDocument();
+  });
 
   it('drops a selected photo when a later page removes its download permission', async () => {
     api.list.mockResolvedValueOnce(page([photo], 'next-1')).mockResolvedValueOnce(page([{ ...photo, actions: { ...photo.actions, can_download: false } }, { ...photo, photo_id: 'photo-2', photographer_display_name: 'Bima' }]));
     renderGallery({ linkId: 'link-1' });
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select photo by Ari' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Select photos' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select photo by Ari' }));
     expect(screen.getByText('Selected: 1 of 20')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Load more photos' }));
     await waitFor(() => expect(screen.getByText('Selected: 0 of 20')).toBeInTheDocument());
@@ -197,6 +220,18 @@ describe('guest gallery', () => {
     fireEvent.click(screen.getByRole('combobox', { name: 'Sort' }));
     fireEvent.click(screen.getByRole('option', { name: 'Oldest' }));
     await waitFor(() => expect(api.list).toHaveBeenLastCalledWith({ sort: 'OLDEST', limit: 24 }));
+    await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Select photo by Ari' })).not.toBeInTheDocument());
+  });
+
+  it('drops a selected photo when an action response revokes its download permission', async () => {
+    api.like.mockResolvedValue({ status: 200, data: { data: { ...photo, actions: { ...photo.actions, can_download: false, liked_by_me: true } } } });
+    renderGallery({ linkId: 'link-1' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Select photos' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select photo by Ari' }));
+    expect(screen.getByText('Selected: 1 of 20')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Like photo' }));
+    await waitFor(() => expect(screen.getByText('Selected: 0 of 20')).toBeInTheDocument());
+    expect(screen.getByRole('checkbox', { name: 'Select photo by Ari' })).toBeDisabled();
   });
 
   it('keeps denied detail media and actions out of the accessible dialog', async () => {

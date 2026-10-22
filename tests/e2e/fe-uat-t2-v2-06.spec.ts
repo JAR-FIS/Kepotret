@@ -69,8 +69,9 @@ test('H73 evidence shows selection, server counts, styled sort and the public Gu
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/j/${uatIds.link}/galeri?uat=revealed#synthetic-owner-uat-secret`);
   await expect(page.getByText('1 foto yang ditampilkan')).toBeVisible();
-  await expect(page.getByText('Sisa tempat foto album: 76')).toBeVisible();
+  await expect(page.getByText('Sisa kuota foto: 76')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ambil foto' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Pilih foto' }).click();
   await page.getByRole('checkbox', { name: 'Pilih foto oleh Ari UAT' }).check();
   await expect(page.getByText('Dipilih: 1 dari 20')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Unduh ZIP' })).toBeDisabled();
@@ -79,7 +80,8 @@ test('H73 evidence shows selection, server counts, styled sort and the public Gu
   await expect(page.getByRole('option', { name: 'Paling disukai' })).toBeVisible();
   await capture(page, 'synthetic-h73-sort-open-desktop-1440-id-light');
   await page.getByRole('option', { name: 'Paling disukai' }).click();
-  await expect(page.getByText('Dipilih: 0 dari 20')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pilih foto' })).toBeVisible();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
   await page.getByRole('link', { name: 'Panduan' }).click();
   await expect(page).toHaveURL(/\/help\/guest$/);
   await expect(page.getByRole('heading', { name: 'Ikut memotret dan menikmati momen.' })).toBeVisible();

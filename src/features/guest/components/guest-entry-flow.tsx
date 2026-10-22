@@ -663,16 +663,11 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
     <CaptureReview photoUrl={photoUrl} isBusy={busy} onRetake={() => void retake()} onUse={() => void upload()} />
   </AuthPageFrame>;
 
-  return <main className="min-h-screen bg-[var(--color-background)] px-4 py-7 text-[var(--color-foreground)] sm:py-12">
-    <div className="mx-auto flex min-h-[78vh] w-full max-w-lg flex-col justify-center">
-      <header className="mb-6">
-        <div className="mb-5 flex items-center justify-end gap-2"><LocaleControl label={preferences('language')} indonesianLabel={preferences('indonesian')} englishLabel={preferences('english')} /><ThemeToggle lightLabel={preferences('light')} darkLabel={preferences('dark')} /></div>
-        <div className="text-center"><p className="font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</p><p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{t('subtitle')}</p></div>
-      </header>
+  return <AuthPageFrame homeLabel={t('home')} headerControls={<div className="flex items-center gap-2"><LocaleControl label={preferences('language')} indonesianLabel={preferences('indonesian')} englishLabel={preferences('english')} /><ThemeToggle lightLabel={preferences('light')} darkLabel={preferences('dark')} /></div>}>
       {!isOnline && <OfflineNotice />}
-      <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm sm:p-7">
-        {stage === 'loading' && <p role="status">{t('checkingInvitation')}</p>}
+        {stage === 'loading' && <><h1 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</h1><p role="status">{t('checkingInvitation')}</p></>}
         {stage === 'error' && <>
+          <h1 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold">{t('title')}</h1>
           <p role="alert">{message || t('unavailable')}</p>
           {recoveryRetry && <Button className="mt-4 w-full" loading={busy} onClick={() => void retryEntry()}>{t('retry')}</Button>}
         </>}
@@ -696,8 +691,6 @@ export function GuestEntryFlow({ linkId }: { linkId: string }) {
           {stage === 'saved' && <CaptureSuccess photoUrl={committedPhoto?.url ?? null} canCapture={Boolean(readiness?.state === 'READY' && readiness.can_capture && readinessFresh && isOnline)} onSave={saveToDevice} onNext={() => void openCamera()} />}
           {message && stage !== 'uploading' && <p role="alert" className="mt-4 text-sm text-[var(--color-destructive)]">{message}</p>}
         </>}
-      </section>
       <p className="mt-5 text-center text-xs text-[var(--color-muted-foreground)]">{t('cameraOnly')}</p>
-    </div>
-  </main>;
+  </AuthPageFrame>;
 }
