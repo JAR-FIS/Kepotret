@@ -37,7 +37,7 @@ describe('FE-7 server-projected workspace capabilities', () => {
   it('separates Owner rights from all collaborator capabilities', async () => {
     const owner = renderShell({ relationship: 'OWNER', permission_version: null, collaborator_permissions: null });
     await screen.findByText('workspace child');
-    expect(document.querySelector(`a[href="/album/${albumId}/galeri"]`)).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector(`a[href="/album/${albumId}/galeri"]`)).toBeInTheDocument());
     clickMenu('Lainnya');
     const ownerMenu = screen.getAllByRole('menu')[0]!;
     expect(ownerMenu.querySelector(`a[href="/album/${albumId}/pembayaran"]`)).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe('FE-7 server-projected workspace capabilities', () => {
 
     renderShell({ relationship: 'COLLABORATOR', permission_version: 1, collaborator_permissions: { can_setup: true, can_moderate: true, can_export_zip: true } });
     await screen.findByText('workspace child');
-    expect(document.querySelector(`a[href="/album/${albumId}/galeri"]`)).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector(`a[href="/album/${albumId}/galeri"]`)).toBeInTheDocument());
     clickMenu('Lainnya');
     const menu = screen.getAllByRole('menu')[0]!;
     expect(menu.querySelector(`a[href="/album/${albumId}/ekspor"]`)).toBeInTheDocument();

@@ -6,6 +6,7 @@ import { PublicPageFrame } from '@/features/marketing/components/public-page-fra
 import { PricingSelector } from '@/features/marketing/components/pricing-selector';
 import { getContent, type Locale } from '@/features/marketing/content';
 import { HowGuideVisual } from '@/features/marketing/components/how-guide-visual';
+import { LegalDraftPage } from '@/features/marketing/components/legal-draft-page';
 
 type PublicPageKind = 'how' | 'pricing' | 'faq' | 'help' | 'privacy' | 'terms' | 'security';
 
@@ -55,7 +56,7 @@ export function PublicInfoPage({ locale, kind }: { locale: Locale; kind: PublicP
     </div></>;
   } else if (kind === 'privacy' || kind === 'terms') {
     const title = kind === 'privacy' ? page.privacyTitle : page.termsTitle;
-    content = <><PageHeading centered eyebrow={copy.footer.legal} title={title} /><div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-5"><p className="text-sm leading-6 text-[var(--color-muted-foreground)]">{page.legalUnavailable}</p></div></>;
+    content = <LegalDraftPage locale={locale} kind={kind} title={title} />;
   } else {
     const icons = [ShieldCheck, Eye, Clock3];
     content = <><PageHeading centered eyebrow={copy.trust.eyebrow} title={page.securityTitle} description={page.securityDescription} /><ul className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">{copy.trust.items.map((item, index) => { const Icon = icons[index]; return <li key={item.title} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center"><span className="mx-auto inline-flex size-12 items-center justify-center rounded-full bg-[var(--color-primary)]"><Icon size={22} aria-hidden="true" /></span><h2 className="mt-4 font-[family-name:var(--font-display)] font-bold">{item.title}</h2><p className="mt-2 text-sm leading-6 text-[var(--color-muted-foreground)]">{item.description}</p></li>; })}</ul></>;

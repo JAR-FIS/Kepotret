@@ -7,8 +7,26 @@ vi.mock('next/image', () => ({ default: ({ src, alt, className }: { src: string;
 vi.mock('@/features/marketing/components/public-page-frame', () => ({ PublicPageFrame: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 
 import { PublicInfoPage } from '@/features/marketing/components/public-info-page';
+import { legalDrafts } from '@/features/marketing/legal-draft-content';
 
 describe('FE-UAT-03 public marketing pages', () => {
+  it.each(['privacy', 'terms'] as const)('renders complete bilingual %s drafts without an effective date or placeholder', (kind) => {
+    for (const locale of ['id', 'en'] as const) {
+      const { unmount } = render(<PublicInfoPage locale={locale} kind={kind} />);
+      const draft = legalDrafts[locale][kind];
+      expect(screen.getByRole('status')).toHaveTextContent(draft.notice);
+      expect(screen.getByRole('navigation', { name: draft.toc })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(draft.sections.length + 2);
+      for (const [index, section] of draft.sections.entries()) {
+        expect(screen.getByRole('heading', { name: `${index + 1}. ${section.title}` })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: `${index + 1}. ${section.title}` })).toHaveAttribute('href', `#bagian-${index + 1}`);
+      }
+      expect(screen.queryByText(/\[NAMA|\[ALAMAT|\[TANGGAL|Dokumen resmi belum tersedia|official document is not yet available/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: draft.help })).toHaveAttribute('href', '/bantuan');
+      expect(screen.getByRole('link', { name: draft.security })).toHaveAttribute('href', '/keamanan');
+      unmount();
+    }
+  });
   it('renders separate Host and no-account participant guides with accessible product illustrations and guide FAQs', () => {
     render(<PublicInfoPage locale="id" kind="how" />);
 
