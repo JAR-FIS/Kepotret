@@ -83,6 +83,30 @@ test('H42 browse and authorized selected export creates one server job @release-
   await capture(page, 'h42-export-job-ready-desktop-1440-id-light');
 });
 
+test('H42 large album submits selected endpoint IDs without a cursor rescan', async ({ page }) => {
+  const exportRequest = await mockGalleryExport(page);
+  let capabilityReads = 0;
+  let candidateReads = 0;
+  await page.route(`**/api/v1/albums/${uatIds.album}/export-capabilities`, (route) => {
+    capabilityReads += 1;
+    return route.fulfill({ status: 200, json: { data: { max_photos_per_job: 2, eligible_photo_count: 10000, allow_all: true, allow_selected: true } } });
+  });
+  await page.route(`**/api/v1/albums/${uatIds.album}/export-selection/photos**`, (route) => {
+    candidateReads += 1;
+    return route.fulfill({ status: 200, json: { data: candidates, meta: { has_more: true, next_cursor: 'page-2' } } });
+  });
+  await page.goto(`${album}/galeri`);
+  await page.getByRole('button', { name: 'Pilih foto' }).click();
+  await page.getByRole('checkbox', { name: 'Pilih foto dari Guest 1' }).click();
+  await page.getByRole('button', { name: 'Unduh ZIP' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Buat pekerjaan ZIP' }).click();
+  await expect(page).toHaveURL(`${album}/ekspor/${jobId}`);
+  expect(capabilityReads).toBeGreaterThanOrEqual(2);
+  expect(candidateReads).toBe(1);
+  expect(exportRequest.count()).toBe(1);
+  expect(exportRequest.body()).toEqual({ mode: 'SELECTED', photo_ids: [candidates[0]!.photo_id] });
+});
+
 test('H42 mobile English dark grid/list/selection and 320px overflow', async ({ page }) => {
   await mockGalleryExport(page);
   await page.context().addCookies([{ name: 'kepotret-locale', value: 'en', url: 'http://localhost:3000' }]);

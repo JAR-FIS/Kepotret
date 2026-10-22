@@ -49,7 +49,9 @@ describe('H42 Host selected export', () => {
     expect(onModeChange).toHaveBeenLastCalledWith(false);
   });
 
-  it('revalidates candidates and creates one authorized selected ZIP job', async () => {
+  it('rechecks capabilities but does not rescan a large candidate set before one selected ZIP job', async () => {
+    api.capabilities.mockResolvedValue({ status: 200, data: { data: { max_photos_per_job: 2, eligible_photo_count: 10000, allow_all: true, allow_selected: true } } });
+    api.candidates.mockResolvedValue({ status: 200, data: { data: photos, meta: { next_cursor: 'page-2', has_more: true } } });
     renderSelection();
     fireEvent.click(screen.getByRole('button', { name: 'Select photos' }));
     await screen.findByText('0 selected / maximum 2');
@@ -60,7 +62,7 @@ describe('H42 Host selected export', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create ZIP job' }));
     await waitFor(() => expect(api.create).toHaveBeenCalledTimes(1));
     expect(api.capabilities).toHaveBeenCalledTimes(2);
-    expect(api.candidates).toHaveBeenCalledTimes(2);
+    expect(api.candidates).toHaveBeenCalledTimes(1);
     expect(api.create).toHaveBeenCalledWith(albumId, { mode: 'SELECTED', photo_ids: ['photo-1'] }, { headers: { 'X-CSRF-Token': 'csrf-test', 'Idempotency-Key': expect.any(String) } });
     expect(api.push).toHaveBeenCalledWith(`/album/${albumId}/ekspor/job-1`);
   });
@@ -88,5 +90,27 @@ describe('H42 Host selected export', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load more candidates' }));
     expect(await screen.findByRole('checkbox', { name: 'Select photo by Guest 2' })).toBeInTheDocument();
     expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select photo by Guest 1' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select photo by Guest 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Download ZIP' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Create ZIP job' }));
+    await waitFor(() => expect(api.create).toHaveBeenCalledTimes(1));
+    expect(api.candidates).toHaveBeenCalledTimes(2);
+    expect(api.create).toHaveBeenCalledWith(albumId, { mode: 'SELECTED', photo_ids: ['photo-1', 'photo-2'] }, expect.anything());
+  });
+
+  it('stops before POST when the capability recheck revokes permission', async () => {
+    api.capabilities.mockResolvedValueOnce({ status: 200, data: { data: { max_photos_per_job: 2, eligible_photo_count: 3, allow_all: true, allow_selected: true } } });
+    api.capabilities.mockResolvedValueOnce({ status: 403 });
+    renderSelection();
+    fireEvent.click(screen.getByRole('button', { name: 'Select photos' }));
+    await screen.findByRole('checkbox', { name: 'Select photo by Guest 1' });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select photo by Guest 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Download ZIP' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Create ZIP job' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Export permission is no longer available.');
+    expect(api.capabilities).toHaveBeenCalledTimes(2);
+    expect(api.candidates).toHaveBeenCalledTimes(1);
+    expect(api.create).not.toHaveBeenCalled();
   });
 });

@@ -92,25 +92,14 @@ export function GalleryExportSelection({ albumId, allowed, onModeChange }: { alb
     finally { if (version === requestVersion.current) setBusy(false); }
   }
 
-  // Refresh both server authority and candidate membership immediately before each write.
+  // Recheck server authority and the current cap. The export POST validates photo eligibility.
   async function validateSelection(ids: string[]) {
     const capability = await getApiV1AlbumsAlbumIdExportCapabilities(albumId);
     if (capability.status !== 200) return { status: capability.status, valid: false };
     const current = capability.data.data;
     setCaps(current);
     if (!current.allow_selected || ids.length === 0 || ids.length > current.max_photos_per_job) return { status: 409, valid: false };
-    const remaining = new Set(ids);
-    const seenCursors = new Set<string>();
-    let cursor: string | undefined;
-    do {
-      const page = await getApiV1AlbumsAlbumIdExportSelectionPhotos(albumId, { limit: 100, ...(cursor ? { cursor } : {}) });
-      if (page.status !== 200) return { status: page.status, valid: false };
-      for (const photo of page.data.data) remaining.delete(photo.photo_id);
-      cursor = page.data.meta.next_cursor ?? undefined;
-      if (cursor && seenCursors.has(cursor)) return { status: 409, valid: false };
-      if (cursor) seenCursors.add(cursor);
-    } while (remaining.size > 0 && cursor);
-    return { status: remaining.size ? 422 : 200, valid: remaining.size === 0 };
+    return { status: 200, valid: true };
   }
 
   function validationError(status: number) {
@@ -122,7 +111,7 @@ export function GalleryExportSelection({ albumId, allowed, onModeChange }: { alb
   }
 
   async function startExport() {
-    if (busy || !online || !navigator.onLine || state !== 'ready' || selected.length === 0) return;
+    if (!allowed || busy || !online || !navigator.onLine || state !== 'ready' || selected.length === 0) return;
     setBusy(true);
     setNotice('');
     try {
@@ -154,7 +143,7 @@ export function GalleryExportSelection({ albumId, allowed, onModeChange }: { alb
     {!allowed && <p className="text-sm text-[var(--color-muted-foreground)]">{t('noPermission')} <Link className="underline underline-offset-4" href={hostRoutes.exports(albumId)}>{t('exportCenter')}</Link></p>}
     {active && <section aria-label={t('summary')} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
       <p role="status" className="font-semibold">{caps ? t('selectedCount', { count: selected.length, maximum: caps.max_photos_per_job }) : t('selectedUnknown', { count: selected.length })}</p>
-      <div className="mt-3 flex flex-wrap items-center gap-3"><Button variant="ghost" disabled={selected.length === 0 || busy} onClick={() => { setSelected([]); setNotice(''); }}>{t('clear')}</Button><Button disabled={state !== 'ready' || selected.length === 0 || !online || busy} loading={busy} onClick={() => setConfirm(true)}><Download size={17} aria-hidden="true" />{t('downloadZip')}</Button></div>
+      <div className="mt-3 flex flex-wrap items-center gap-3"><Button variant="ghost" disabled={selected.length === 0 || busy} onClick={() => { setSelected([]); setNotice(''); }}>{t('clear')}</Button><Button disabled={!allowed || state !== 'ready' || selected.length === 0 || !online || busy} loading={busy} onClick={() => setConfirm(true)}><Download size={17} aria-hidden="true" />{t('downloadZip')}</Button></div>
       <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{state === 'loading' ? t('loading') : state === 'blocked' ? t('unavailable') : state === 'error' ? t('loadError') : t('jobExplanation')}</p>
       {state === 'error' && <Button className="mt-3" variant="secondary" disabled={!online} onClick={() => void refresh()}>{t('retry')}</Button>}
       {notice && <p role="alert" className="mt-2 text-sm">{notice}</p>}

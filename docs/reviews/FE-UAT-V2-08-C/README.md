@@ -8,6 +8,8 @@
 
 **Pull request:** [#42 against `main`](https://github.com/JAR-FIS/Kepotret/pull/42)
 
+**M1 review HEAD:** [current PR branch HEAD](https://github.com/JAR-FIS/Kepotret/commits/feat/fe-uat-v2-08c-host-gallery-legal) (the immutable SHA is recorded in PR #42 and its CI run after push).
+
 **Status:** frontend implementation and synthetic verification; independent code review and Owner/legal approval pending. Backend remains **ON HOLD**. Do not merge before independent review.
 
 ## Ticket traceability
@@ -21,8 +23,8 @@
 ## H42 behavior and boundaries
 
 - Browsing initially shows no selection checkboxes or selected-photo summary. Grid/list and `NEWEST`/`OLDEST` remain visual and server-backed respectively. The moderation filter, 25-photo cursor pages, 240-photo local display cap, H43 photo detail, H44 Trash, and authorized moderation/share/individual download remain in place. The candidate checklist appears only in selection mode; moderation actions are hidden while selecting to avoid accidental changes.
-- `can_export_zip` is independent of `can_moderate` and individual photo download. The actor must have Owner rights or the collaborator ZIP permission to enter selection mode. `ExportCapabilities.allow_selected` and current eligible candidate pages are rechecked by the backend; frontend guards are only presentation. Collaborators with moderation but no ZIP permission see a blocked control. The selected-photo cap comes from `max_photos_per_job`; Guest's separate 20-photo cap is untouched.
-- The candidate projection contains ID, display name, and date, with no media URL. The checklist deliberately shows no borrowed thumbnail and never infers eligibility from management photo actions. Duplicate paged IDs are removed. A server capability and candidate-membership check runs again immediately before POST. Sort/filter/refresh/mode exit clears selection; an album change remounts the selection state. Stale `409`/`422` and cap changes clear and reload selection. `401`/`403` stop the action; `429`/`5xx` show safe feedback without automatic POST retry.
+- `can_export_zip` is independent of `can_moderate` and individual photo download. The actor must have Owner rights or the collaborator ZIP permission to enter selection mode. `ExportCapabilities.allow_selected` and the per-job cap are rechecked immediately before POST; the export POST is authoritative for current photo eligibility and selection size. Collaborators with moderation but no ZIP permission see a blocked control. The selected-photo cap comes from `max_photos_per_job`; Guest's separate 20-photo cap is untouched.
+- The candidate projection contains ID, display name, and date, with no media URL. The checklist deliberately shows no borrowed thumbnail and never infers eligibility from management photo actions. Duplicate paged IDs are removed. Selected IDs originate from the authorized candidate endpoint; M1 removed the unbounded cursor rescan before POST. Sort/filter/refresh/mode exit clears selection; an album change remounts the selection state. Stale `409`/`422` and cap changes clear and reload selection. `401`/`403` stop the action; `429`/`5xx` show safe feedback without automatic POST retry.
 - The request uses the generated typed client with CSRF and an intent-bound idempotency key. HTTP 201 routes to the returned job ID. H50/H51 continue to own job polling and authorized download. No client ZIP generation, raw-media fetching, or Guest ZIP claim was added. A live backend/Gateway entitlement and storage flow is still required for real-world verification.
 
 ## Legal approval gate
@@ -59,6 +61,14 @@ All screenshots have an **OWNER VISUAL UAT · SYNTHETIC FIXTURES** badge. They u
 | H07 Terms | [1440 ID/light](evidence/h07-desktop-1440-id-light.png), [390 EN/dark](evidence/h07-mobile-390-en-dark.png) |
 
 Browser assertions also cover 320px horizontal overflow, keyboard accessible controls, legal anchors, SSR text visibility, and reduced-motion animation behavior. The H06/H07 pages reuse the existing `public-page-enter` CSS and `PublicPageFrame`.
+
+## PR #42 independent review remediation M1
+
+- Removed sequential candidate-page reads from `GalleryExportSelection.validateSelection()`. Export still rechecks server capabilities and cap, canonicalizes the selected endpoint IDs, obtains CSRF, and sends one idempotent `SELECTED` POST. The server rejects stale or invalid selections; the UI handles `401`, `403`, `409`, `422`, `429`, and server failures without an automatic second POST.
+- Unit regression uses an album reporting 10,000 eligible photos with another candidate cursor and asserts one candidate GET, two capabilities GETs, and one POST. Another test checks duplicate IDs across loaded pages. A revoked permission test stops before POST.
+- Focused Chromium Playwright with `--retries=0`: **34 passed** across H42/H43/H44/H50/H51. The large-album browser test confirms one candidate GET before POST despite a next cursor. Existing browser tests cover stale `409`/`422`, revoked `401`/`403`, changed cap, `429`/`503`, offline behavior, and no automatic POST retry.
+- M1 local gates: `pnpm lint`, `pnpm typecheck`, `pnpm test` (**43 files / 301 tests**), `pnpm api:check`, and `pnpm build` all passed. The [PR #42 checks](https://github.com/JAR-FIS/Kepotret/pull/42/checks) identify the hosted CI run for the review HEAD.
+- No visual change; the synthetic screenshots above remain the visual evidence. Backend, database, and OpenAPI remain unchanged.
 
 ## Validation
 
