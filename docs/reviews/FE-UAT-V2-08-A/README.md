@@ -33,7 +33,8 @@ Evidence: [desktop Manage](evidence/workspace-manage-1440-id-light.png), [deskto
 - `pnpm api:check` — passed; generated API client is fresh.
 - `pnpm build` — passed.
 - Focused Playwright PR A navigation and H71 regressions — 6 passed in Chromium with `--retries=0` and synthetic evidence capture. Desktop 1440 px, mobile 390/320 px, keyboard, outside click, English dark, Owner/Collaborator routing, existing click paths, and post-commit hidden-gallery gating were exercised.
-- Hosted CI matrix — pending PR.
+- Related legacy Playwright regressions for V2-04 album operations, H39 Host sharing, and FE6 commerce — 18 passed in Chromium with `--retries=0` after their assertions were aligned with the new navigation and guide labels.
+- [First hosted CI run](https://github.com/JAR-FIS/Kepotret/actions/runs/39770654061) on PR #40 — quality passed. The full Chromium sweep failed two outdated H41/H39 link assertions; an H47→H48 route wait passed on retry. The assertions and wait were updated and all 18 affected local tests passed without retries. The complete hosted matrix for the final HEAD is reported in [PR #40 checks](https://github.com/JAR-FIS/Kepotret/pull/40/checks).
 
 Screenshots use `tests/uat/mock-api.ts` synthetic data, a visible **OWNER VISUAL UAT · SYNTHETIC FIXTURES** badge, and a fake browser camera for H71. They demonstrate interface layout and click flow under controlled data. Real backend, real iPhone/Android camera, and Owner recheck are separate.
 

@@ -65,8 +65,8 @@ test('FE-UAT-V2-04 album operations evidence and server-driven controls', async 
         await expect(refresh.locator('svg.lucide-refresh-cw')).toBeVisible();
       }
       if (key === 'h41') {
-        for (const [label, icon] of [[id ? 'Buka galeri' : 'Open gallery', 'images'], [id ? 'Berbagi acara' : 'Event sharing', 'share-2'], [id ? 'Ekspor ZIP' : 'ZIP export', 'file-archive']] as const) {
-          await expect(page.getByRole('link', { name: label }).locator(`svg.lucide-${icon}`)).toBeVisible();
+        for (const label of [id ? 'Galeri album' : 'Album gallery', id ? 'Berbagi & QR' : 'Sharing & QR', id ? 'Ekspor album' : 'Album export']) {
+          await expect(page.getByRole('navigation', { name: id ? 'Jelajahi album' : 'Explore album' }).getByRole('link', { name: label }).locator('svg.lucide-arrow-right')).toBeVisible();
         }
       }
       if (key === 'h43') {
@@ -109,7 +109,7 @@ test('FE-UAT-V2-04 album operations evidence and server-driven controls', async 
       if (key === 'h62') {
         await expect(page.getByText(id ? 'Kapasitas foto saat ini: 100 foto' : 'Current photo capacity: 100 photos')).toBeVisible();
         await expect(page.getByText(id ? 'Detail paket belum tersedia untuk kolaborator.' : 'Package details are not available to collaborators.')).toBeVisible();
-        await expect(page.getByRole('link', { name: id ? 'Ekspor ZIP' : 'ZIP export' })).toHaveCount(0);
+        await expect(page.getByRole('link', { name: id ? 'Ekspor album' : 'Album export' })).toHaveCount(0);
       }
       const width = await page.evaluate(() => ({ document: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth }));
       expect(width.document, `${key} ${view.name}`).toBeLessThanOrEqual(width.viewport + 1);
