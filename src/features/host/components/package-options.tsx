@@ -36,7 +36,7 @@ export function PackageOptions({ albumId }: { albumId: string }) {
     const { option } = choice;
     return <label key={option.package_version_id} className={`flex cursor-pointer gap-3 rounded-[var(--radius-md)] border p-4 ${selectedPackage === option.package_version_id ? 'border-[var(--color-primary)] bg-[var(--color-muted)]' : 'border-[var(--color-border)]'}`}>
       <input type="radio" name="setup-package" value={option.package_version_id} checked={selectedPackage === option.package_version_id} onChange={() => setSelectedPackage(option.package_version_id)} />
-      <span className="min-w-0"><span className="block font-semibold">{option.name}</span><span className="mt-1 block text-sm">{new Intl.NumberFormat(locale, { style: 'currency', currency: option.currency }).format(option.price_amount)} · {t('quota', { count: new Intl.NumberFormat(locale).format(option.quota_total) })}</span></span>
+      <span className="min-w-0"><span className="block font-semibold">{option.name}</span><span className="mt-1 block text-sm">{new Intl.NumberFormat(locale, { style: 'currency', currency: option.currency }).format(option.price_amount)}</span></span>
     </label>;
   }
 

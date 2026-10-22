@@ -129,10 +129,10 @@ describe('FE-3 setup flow contract surfaces', () => {
     expect(screen.getByLabelText('Jam mulai memotret')).toHaveValue('07:00');
     expect(screen.getByLabelText('Tanggal berhenti memotret')).toHaveValue('2026-10-02');
     expect(screen.getByLabelText('Jam berhenti memotret')).toHaveValue('07:00');
-    expect(screen.getByRole('combobox', { name: 'Jeda reveal' })).toHaveTextContent('D+3');
+    expect(screen.getByRole('group', { name: 'Jeda reveal' }).querySelector('input[value="3"]')).toBeChecked();
   });
 
-  it('defaults to D+1, exposes LIVE only as a preview, and never submits a false delay', async () => {
+  it('defaults to D+1 and offers only the four approved radio choices', async () => {
     api.getSchedule.mockResolvedValue({ status: 404, data: {} });
     renderHost(<ScheduleSetup albumId={albumId} />);
     await screen.findByLabelText('Tanggal mulai memotret');
@@ -140,8 +140,10 @@ describe('FE-3 setup flow contract surfaces', () => {
     const startTime = screen.getByLabelText('Jam mulai memotret');
     const endDate = screen.getByLabelText('Tanggal berhenti memotret');
     const endTime = screen.getByLabelText('Jam berhenti memotret');
-    const reveal = screen.getByRole('combobox', { name: 'Jeda reveal' });
-    expect(reveal).toHaveTextContent('D+1');
+    const reveal = screen.getByRole('group', { name: 'Jeda reveal' });
+    expect(screen.getByRole('radio', { name: 'D+1' })).toBeChecked();
+    expect(screen.getAllByRole('radio').map((radio) => radio.closest('label')?.textContent)).toEqual(['D+1', 'D+3', 'D+5', 'D+7']);
+    expect(reveal).not.toHaveTextContent('LIVE');
     fireEvent.click(screen.getByRole('button', { name: 'Buka kalender untuk Tanggal mulai memotret' }));
     expect(screen.getByRole('button', { name: 'Bulan sebelumnya' })).toBeDisabled();
     expect(document.querySelector('[data-date="2026-09-26"]')).toBeDisabled();
@@ -150,10 +152,8 @@ describe('FE-3 setup flow contract surfaces', () => {
     fireEvent.change(startTime, { target: { value: '10:00' } });
     fireEvent.change(endDate, { target: { value: '2026-10-02' } });
     fireEvent.change(endTime, { target: { value: '10:00' } });
-    fireEvent.click(reveal);
-    fireEvent.click(screen.getByRole('option', { name: /Mulai saat acara \(pratinjau\)/ }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Pratinjau LIVE saja');
-    expect(screen.getByRole('button', { name: 'Simpan jadwal' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('radio', { name: 'D+7' }));
+    expect(screen.getByRole('radio', { name: 'D+7' })).toBeChecked();
     expect(api.putSchedule).not.toHaveBeenCalled();
   });
 
@@ -166,9 +166,7 @@ describe('FE-3 setup flow contract surfaces', () => {
     fireEvent.change(screen.getByLabelText('Jam mulai memotret'), { target: { value: '10:00' } });
     fireEvent.change(screen.getByLabelText('Tanggal berhenti memotret'), { target: { value: '2026-10-02' } });
     fireEvent.change(screen.getByLabelText('Jam berhenti memotret'), { target: { value: '10:00' } });
-    const reveal = screen.getByRole('combobox', { name: 'Jeda reveal' });
-    fireEvent.click(reveal);
-    fireEvent.click(screen.getByRole('option', { name: 'D+5' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'D+5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Simpan jadwal' }));
     await waitFor(() => expect(api.putSchedule).toHaveBeenCalledWith(albumId, {
       expected_revision: 4, capture_start: '2026-10-01T14:00:00Z', capture_end: '2026-10-02T14:00:00Z', reveal_delay_days: 5,
@@ -190,15 +188,13 @@ describe('FE-3 setup flow contract surfaces', () => {
     const startTime = screen.getByLabelText('Jam mulai memotret');
     const endDate = screen.getByLabelText('Tanggal berhenti memotret');
     const endTime = screen.getByLabelText('Jam berhenti memotret');
-    const reveal = screen.getByRole('combobox', { name: 'Jeda reveal' });
     const save = screen.getByRole('button', { name: 'Simpan jadwal' });
 
     fireEvent.change(startDate, { target: { value: '2026-10-01' } });
     fireEvent.change(startTime, { target: { value: '10:00' } });
     fireEvent.change(endDate, { target: { value: '2026-10-02' } });
     fireEvent.change(endTime, { target: { value: '10:00' } });
-    fireEvent.click(reveal);
-    fireEvent.click(screen.getByRole('option', { name: 'D+3' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'D+3' }));
     fireEvent.click(save);
     await waitFor(() => expect(api.putSchedule).toHaveBeenCalledTimes(1));
     await screen.findByText('Jadwal berhasil disimpan.');
@@ -260,9 +256,20 @@ describe('FE-3 setup flow contract surfaces', () => {
     api.putPackage.mockResolvedValue({ status: 200, data: { data: album } });
     renderHost(<PackageOptions albumId={albumId} />);
     expect(await screen.findByText(/Rp\s?75\.000/)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Plus/ }).closest('label')).not.toHaveTextContent('300 foto');
     fireEvent.click(screen.getByRole('radio', { name: /Plus/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Simpan pilihan paket' }));
     await waitFor(() => expect(api.putPackage).toHaveBeenCalledWith(albumId, { expected_revision: 4, package_version_id: packageOption.package_version_id }, { headers: { 'X-CSRF-Token': 'csrf' } }));
+  });
+
+  it('shows the selected paid catalog price on review without repeating quota', async () => {
+    api.getReview.mockResolvedValue({ status: 200, data: { data: { ...completeReview, snapshot: { ...completeReview.snapshot, selected_package_version_id: packageOption.package_version_id } } } });
+    renderHost(<SetupReview albumId={albumId} />);
+    const packageLabel = await screen.findByText('Paket draft');
+    const row = packageLabel.parentElement;
+    expect(row).toHaveTextContent('Plus');
+    expect(row).toHaveTextContent(/Rp\s?75\.000/);
+    expect(row).not.toHaveTextContent('300 foto');
   });
 
   it('routes authoritative blocking review issues to their setup section', async () => {

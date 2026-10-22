@@ -74,7 +74,7 @@ test('H02-H05 and H08 public pages keep the Host/Guest guide, pricing, FAQ, cont
   const accountQuestion = page.getByRole('button', { name: 'Apakah peserta harus membuat akun?' });
   await liveQuestion.click();
   await expect(liveQuestion).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByText(/LIVE, D\+3, D\+5, atau D\+7/)).toBeVisible();
+  await expect(page.getByText(/D\+1, D\+3, D\+5, atau D\+7/)).toBeVisible();
   await accountQuestion.click();
   await expect(liveQuestion).toHaveAttribute('aria-expanded', 'false');
   await expect(accountQuestion).toHaveAttribute('aria-expanded', 'true');

@@ -34,7 +34,7 @@ describe('FE-UAT-03 public marketing pages', () => {
     expect(screen.getByRole('link', { name: /Pilih 10K Foto/ })).toHaveAttribute('href', '/masuk');
   });
 
-  it('localizes pricing and Live Gallery FAQ guidance into English without changing the selected package', () => {
+  it('localizes pricing and approved delayed-reveal FAQ guidance into English without changing the selected package', () => {
     const { unmount } = render(<PublicInfoPage locale="en" kind="pricing" />);
 
     expect(screen.getByText('Start free with 30 photos. Choose the photo capacity that best fits your event. Participant count is not limited by the package!')).toBeInTheDocument();
@@ -46,8 +46,8 @@ describe('FE-UAT-03 public marketing pages', () => {
 
     render(<PublicInfoPage locale="en" kind="faq" />);
     fireEvent.click(screen.getByRole('button', { name: 'When can participants view photos?' }));
-    expect(screen.getByText(/default is D\+1 after the event ends.*LIVE, D\+3, D\+5, or D\+7/i)).toBeInTheDocument();
-    expect(screen.getByText(/successfully saved on the server during the event/i)).toBeInTheDocument();
+    expect(screen.getByText(/D\+1, D\+3, D\+5, or D\+7 after the event ends/i)).toBeInTheDocument();
+    expect(screen.getByText(/server-authorized reveal time/i)).toBeInTheDocument();
   });
 
   it('exposes only the Owner-provided public help contacts as actionable links', () => {

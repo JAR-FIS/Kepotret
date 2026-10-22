@@ -79,8 +79,8 @@ const useCasePhotos: MarketingImage[] = [
 
 function Hero({ locale, copy }: { locale: Locale; copy: Copy }) {
   const proofIcons = [ImageIcon, UsersRound];
-  return <section className="mx-auto grid max-w-[1240px] items-center gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[0.94fr_1.06fr] lg:gap-8 lg:py-24">
-    <div className="h01-reveal relative z-10">
+  return <section className="public-page-enter mx-auto grid max-w-[1240px] items-center gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[0.94fr_1.06fr] lg:gap-8 lg:py-24">
+    <div className="relative z-10">
       <p className="mb-5 inline-flex rounded-full border border-[var(--color-border)] px-3 py-2 text-[11px] font-bold tracking-[0.08em]">{copy.hero.eyebrow}</p>
       <H01HeroHeadline title={copy.hero.title} firstLine={copy.hero.titleFirstLine} secondLine={copy.hero.titleSecondLine} />
       <p className="mt-5 max-w-xl text-base leading-7 text-[var(--color-muted-foreground)] sm:text-lg sm:leading-8">{copy.hero.description}</p>
@@ -97,7 +97,7 @@ function Hero({ locale, copy }: { locale: Locale; copy: Copy }) {
 }
 
 function HeroVisual({ locale, copy }: { locale: Locale; copy: Copy }) {
-  return <div className="hero-visual h01-reveal relative mx-auto aspect-[0.58/1] w-full max-w-[620px] sm:aspect-[1.16/1]">
+  return <div className="hero-visual relative mx-auto aspect-[0.58/1] w-full max-w-[620px] sm:aspect-[1.16/1]">
     {heroPhotos.map((photo) => <div key={photo.src} className={`absolute overflow-hidden rounded-[18px] border-4 border-white bg-[var(--color-surface-muted)] shadow-[0_8px_24px_rgb(10_10_10_/_12%)] sm:rounded-[22px] ${photo.frameClass}`}>
       <Image src={photo.src} alt={photo.alt[locale]} fill sizes={photo.sizes} className="object-cover" style={photo.objectPosition ? { objectPosition: photo.objectPosition } : undefined} preload={photo.preload ?? false} />
     </div>)}
