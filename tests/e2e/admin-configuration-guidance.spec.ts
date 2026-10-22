@@ -144,11 +144,17 @@ test('H86 keeps locked values read only and saves an editable typed value with v
   await expect(locked.getByRole('button')).toHaveCount(0);
   await expect(locked.getByText(/hanya dapat dibaca/i)).toBeVisible();
   const editable = page.getByRole('heading', { name: 'Synthetic maintenance notice' }).locator('..');
-  await expect(editable.getByRole('combobox')).toHaveCSS('appearance', 'none');
-  await expect(editable.getByRole('option', { name: 'Ya' })).toHaveAttribute('value', 'true');
-  await expect(editable.getByRole('option', { name: 'Tidak' })).toHaveAttribute('value', 'false');
+  const setting = editable.getByRole('combobox', { name: 'Pilihan pengaturan' });
+  await expect(setting).toHaveCSS('min-height', '44px');
+  const detailsBox = await editable.locator('details').boundingBox();
+  const editorBox = await setting.locator('../..').boundingBox();
+  expect(Math.abs(detailsBox!.y - editorBox!.y)).toBeLessThan(2);
+  expect(Math.abs(detailsBox!.height - editorBox!.height)).toBeLessThan(2);
+  await setting.click();
+  await expect(editable.getByRole('option', { name: 'Ya' })).toBeVisible();
+  await expect(editable.getByRole('option', { name: 'Tidak' })).toBeVisible();
   await expect(editable.getByText('BOOLEAN', { exact: true })).toBeHidden();
-  await editable.getByRole('combobox').selectOption('true');
+  await editable.getByRole('option', { name: 'Ya' }).click();
   await editable.getByRole('button', { name: /Simpan perubahan/i }).click();
   await expect.poll(() => patches.length).toBe(1);
   expect(patches[0]).toEqual({ body: { expected_version: 1, typed_value: true }, csrf: 'owner-uat-csrf' });
@@ -223,7 +229,8 @@ test('H86 preserves integer, number and string payload types and rejects out-of-
   await numeric.getByRole('button', { name: 'Simpan perubahan' }).click();
   await expect.poll(() => patches.length).toBe(2);
   const selected = page.getByRole('heading', { name: 'Selected mode' }).locator('..');
-  await selected.getByRole('combobox').selectOption('B');
+  await selected.getByRole('combobox').click();
+  await selected.getByRole('option', { name: 'B' }).click();
   await selected.getByRole('button', { name: 'Simpan perubahan' }).click();
   await expect.poll(() => patches.length).toBe(3);
   expect(patches.map(patch => patch.body)).toEqual([
@@ -235,7 +242,7 @@ test('H86 preserves integer, number and string payload types and rejects out-of-
   expect(patches.map(patch => patch.path.split('/').at(-1))).toEqual(['integer_limit', 'numeric_rate', 'selected_mode']);
 });
 
-test('H87 native status filter keeps the applied server filter across pagination', async ({ page }) => {
+test('H87 branded status filter keeps the applied server filter across pagination', async ({ page }) => {
   const seen: URL[] = [];
   await page.route('**/api/v1/admin/issues?*', async (route) => {
     const url = new URL(route.request().url()); seen.push(url);
@@ -243,13 +250,17 @@ test('H87 native status filter keeps the applied server filter across pagination
   });
   await page.goto('/admin/issues');
   const status = page.getByRole('combobox', { name: 'Status' });
-  await expect(status).toHaveCSS('appearance', 'none');
+  await expect(status).toHaveCSS('min-height', '44px');
   await status.focus();
   await status.press('ArrowDown');
-  await expect(status).toHaveValue('OPEN');
+  await expect(page.getByRole('listbox', { name: 'Status' })).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(status).toContainText('Belum ditangani');
   await page.getByRole('button', { name: 'Terapkan' }).click();
   await expect.poll(() => seen.at(-1)?.searchParams.get('status')).toBe('OPEN');
-  await status.selectOption('RESOLVED');
+  await status.click();
+  await page.getByRole('option', { name: 'Selesai' }).click();
   await page.getByRole('button', { name: /Muat halaman berikutnya/i }).click();
   expect(seen.at(-1)?.searchParams.get('status')).toBe('OPEN');
   expect(seen.at(-1)?.searchParams.get('cursor')).toBe('next-page');

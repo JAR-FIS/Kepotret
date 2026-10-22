@@ -143,7 +143,7 @@ export function Select({
         data-active={activeIndex === index || undefined}
         onPointerMove={() => setActiveIndex(index)}
         onClick={() => choose(index)}
-        className={`flex min-h-10 cursor-pointer items-center rounded-xl px-3 text-sm outline-none transition-colors hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] ${selectedIndex === index ? 'bg-[var(--color-primary)] font-semibold text-[var(--color-primary-foreground)]' : 'text-[var(--color-foreground)]'} ${activeIndex === index ? 'ring-1 ring-inset ring-[var(--color-border)]' : ''}`}
+        className={`flex min-h-11 cursor-pointer items-center rounded-xl px-3 text-sm outline-none transition-colors hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] ${selectedIndex === index ? 'bg-[var(--color-primary)] font-semibold text-[var(--color-primary-foreground)]' : 'text-[var(--color-foreground)]'} ${activeIndex === index ? 'ring-1 ring-inset ring-[var(--color-border)]' : ''}`}
       >{option.label}</div>)}
     </div>
   </div>;

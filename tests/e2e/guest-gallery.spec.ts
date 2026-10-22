@@ -46,8 +46,9 @@ test('guest gallery paginates, sorts, opens detail, likes once, downloads, copie
   await expect(page.getByRole('link', { name: /Ari/ })).toBeVisible();
   await page.getByRole('button', { name: 'Muat foto berikutnya' }).click();
   await expect(page.getByText('Bima')).toBeVisible();
-  await page.getByLabel('Urutkan').selectOption('MOST_LIKED');
-  await expect(page.getByLabel('Urutkan')).toHaveValue('MOST_LIKED');
+  await page.getByRole('combobox', { name: 'Urutkan' }).click();
+  await page.getByRole('option', { name: 'Paling disukai' }).click();
+  await expect(page.getByRole('combobox', { name: 'Urutkan' })).toContainText('Paling disukai');
   await page.getByRole('link', { name: /Ari/ }).click();
   await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri/${photoId}$`));
   await page.getByRole('button', { name: 'Sukai foto' }).click();
@@ -65,6 +66,26 @@ test('guest gallery paginates, sorts, opens detail, likes once, downloads, copie
   const expectedComposerUrl = `https://wa.me/?text=${encodeURIComponent(`http://localhost:3000/j/${linkId}/galeri/${photoId}`)}`;
   await expect(popup).toHaveURL(expectedComposerUrl);
   expect(composerUrl).toBe(expectedComposerUrl);
+});
+
+test('Gallery shows fresh server capacity and caps selectable photos at 20 without ZIP download', async ({ page }) => {
+  await mockGuest(page);
+  await page.unroute('**/api/v1/albums/album-1/capture-readiness');
+  await page.route('**/api/v1/albums/album-1/capture-readiness', (route) => route.fulfill({ status: 200, json: { data: { album_id: 'album-1', state: 'CLOSED', can_capture: false, server_time: '2026-09-27T01:00:00Z', reveal_state: 'REVEALED', album_remaining_count: 76 } } }));
+  await page.unroute('**/api/v1/guest/gallery/photos**');
+  const photos = Array.from({ length: 21 }, (_, index) => ({ ...photo, photo_id: `photo-${index}`, photographer_display_name: `Guest ${index}` }));
+  await page.route('**/api/v1/guest/gallery/photos**', (route) => route.fulfill({ status: 200, json: { data: photos, meta: { has_more: false, next_cursor: null } } }));
+  await page.goto(`/j/${linkId}/galeri`);
+  await expect(page.getByText('21 foto yang ditampilkan')).toBeVisible();
+  await expect(page.getByText('Sisa tempat foto album: 76')).toBeVisible();
+  const zip = page.getByRole('button', { name: 'Unduh ZIP' });
+  await expect(zip).toBeDisabled();
+  for (let index = 0; index < 20; index += 1) await page.getByRole('checkbox', { name: `Pilih foto oleh Guest ${index}`, exact: true }).check();
+  await expect(page.getByText('Dipilih: 20 dari 20')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Pilih foto oleh Guest 20' })).toBeDisabled();
+  await expect(zip).toBeDisabled();
+  await page.getByRole('button', { name: 'Batalkan pilihan' }).click();
+  await expect(page.getByText('Dipilih: 0 dari 20')).toBeVisible();
 });
 
 test('guest remains waiting before reveal and routes expired access to the terminal state', async ({ page }) => {
@@ -187,16 +208,16 @@ test('mobile drawer exposes only Gallery and Guest guidance', async ({ page }) =
   await page.getByRole('button', { name: 'Buka navigasi galeri' }).click();
   const drawer = page.getByRole('dialog', { name: 'Navigasi galeri tamu' });
   await expect(drawer.getByRole('link', { name: 'Galeri' })).toBeVisible();
-  await expect(drawer.getByRole('button', { name: 'Panduan' })).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Panduan' })).toBeVisible();
   await expect(drawer.getByText(/Menu Tamu|Host/i)).toHaveCount(0);
-  await drawer.getByRole('button', { name: 'Panduan' }).click();
-  await expect(drawer).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Cara menikmati galeri' })).toBeVisible();
-  await page.getByRole('button', { name: 'Tutup panduan' }).click();
-  await expect(page.getByRole('heading', { name: 'Cara menikmati galeri' })).toHaveCount(0);
+  await drawer.getByRole('link', { name: 'Panduan' }).click();
+  await expect(page).toHaveURL(/\/help\/guest$/);
+  await expect(page.getByRole('heading', { name: 'Ikut memotret dan menikmati momen.' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
 });
 
-test('synthetic inconsistent reveal/readiness projection rechecks before camera entry', async ({ page }) => {
+test('synthetic inconsistent reveal/readiness projection never exposes camera entry', async ({ page }) => {
   await mockGuest(page);
   await page.unroute('**/api/v1/albums/album-1/capture-readiness');
   let requests = 0;
@@ -205,10 +226,9 @@ test('synthetic inconsistent reveal/readiness projection rechecks before camera 
     return route.fulfill({ status: 200, json: { data: { album_id: 'album-1', state: requests === 1 ? 'READY' : 'QUOTA_FULL', can_capture: requests === 1, server_time: '2026-09-27T01:00:00Z', reveal_state: 'REVEALED' } } });
   });
   await page.goto(`/j/${linkId}/galeri`);
-  await page.getByRole('button', { name: 'Ambil foto' }).click();
-  await expect(page.getByText(/Kamera belum tersedia saat ini/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ambil foto' })).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/j/${linkId}/galeri$`));
-  expect(requests).toBe(2);
+  await expect.poll(() => requests).toBe(1);
 });
 
 for (const width of [320, 375, 390, 430]) {

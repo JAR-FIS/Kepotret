@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { ArrowDownUp, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { getApiV1AdminAlbums, getApiV1AdminAlbumsAlbumId } from '@/lib/api/admin-browser';
 import type { AdminAlbumDetail, AdminAlbumSummary } from '@/lib/api/generated/index.schemas';
-import { AdminCard, AdminEmpty, AdminError, AdminField, AdminPage, AdminPagination, AdminStatus, adminInputClass, formatAdminDate, formatAdminNumber, type AdminLocale, useAdminOnline } from './common';
+import { AdminCard, AdminEmpty, AdminError, AdminPage, AdminPagination, AdminStatus, adminInputClass, formatAdminDate, formatAdminNumber, type AdminLocale, useAdminOnline } from './common';
 
 function useAdminCopy() {
   const locale = (useLocale() === 'en' ? 'en' : 'id') as AdminLocale;
@@ -49,17 +49,26 @@ export function AdminAlbums() {
     void load(undefined, '');
   }
   return <AdminPage title={t('albums_albums')} description={t('albums_operational_metadata_only_opening')}>
-    <AdminCard title={t('albums_all_albums')}>
-      <form onSubmit={search} role="search" className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[min(100%,18rem)] flex-1"><AdminField label={info('albumSearchLabel')}><input type="search" className={adminInputClass} maxLength={120} value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} /></AdminField></div>
-        <Button type="submit" variant="secondary" disabled={!online}>{info('search')}</Button>
-        <Button type="button" variant="ghost" disabled={!online || (!draftQuery && !appliedQuery)} onClick={clearSearch}>{info('clear')}</Button>
-      </form>
-      <p className="mt-2 border-b border-[var(--color-border)] pb-4 text-xs text-[var(--color-muted-foreground)]">{info('albumSearchHint')}</p>
+    <AdminCard>
+      <div className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+        <div className="min-w-0">
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">{t('albums_all_albums')}</h2>
+          <p className="mt-1 text-xs leading-5 text-[var(--color-muted-foreground)]">{info('albumSearchHint')}</p>
+        </div>
+        <form onSubmit={search} role="search" className="w-full shrink-0 lg:w-80 xl:w-96">
+          <label className="sr-only" htmlFor="admin-album-search">{info('albumSearchLabel')}</label>
+          <div className="relative">
+            <input id="admin-album-search" type="search" className={`${adminInputClass} pr-12 [&::-webkit-search-cancel-button]:hidden`} maxLength={120} placeholder={info('albumSearchPlaceholder')} value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} aria-describedby="admin-album-search-help" />
+            <button type="button" disabled={!online || (!draftQuery && !appliedQuery)} onClick={clearSearch} aria-label={info('clear')} title={info('clear')} className="absolute inset-y-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-r-[var(--radius-md)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"><X size={16} aria-hidden="true" /></button>
+          </div>
+          <span id="admin-album-search-help" className="sr-only">{info('albumSearchSubmitHint')}</span>
+        </form>
+      </div>
       {error === undefined && <div className="pt-4">
       {busy && <p role="status">{t('albums_loading_albums')}</p>}
       {!busy && rows.length === 0 ? <AdminEmpty>{t('albums_no_albums_to_display')}</AdminEmpty> : <>
-        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[56rem] text-left text-sm"><thead><tr className="border-b border-[var(--color-border)] text-xs uppercase text-[var(--color-muted-foreground)]"><th className="p-3">{t('albums_event_owner')}</th><th className="p-3">{t('albums_readiness')}</th><th className="p-3">{t('albums_capture_window')}</th><th className="p-3">{t('albums_quota')}</th><th className="p-3">{commonT('hold')}</th><th className="p-3" /></tr></thead><tbody>{rows.map(a => <tr key={a.album_id} className="border-b border-[var(--color-border)]"><td className="max-w-80 break-words p-3"><b>{a.event_name || (t('albums_untitled_event'))}</b><span className="block break-all text-xs text-[var(--color-muted-foreground)]">{a.owner_email} · {a.album_id}</span></td><td className="p-3"><AdminStatus value={a.readiness} /></td><td className="whitespace-nowrap p-3">{formatAdminDate(a.capture_start, locale)}<br />{formatAdminDate(a.capture_end, locale)}</td><td className="p-3 tabular-nums">{formatAdminNumber(a.committed_count, locale)} / {a.quota_total == null ? '—' : formatAdminNumber(a.quota_total, locale)}<span className="block text-xs text-[var(--color-muted-foreground)]">{formatAdminNumber(a.reserved_count, locale)} {t('albums_reserved')}</span></td><td className="p-3"><AdminStatus value={a.hold_active ? 'ACTIVE HOLD' : 'NONE'} /></td><td className="p-3"><Link className="font-semibold underline underline-offset-4" href={`/admin/albums/${encodeURIComponent(a.album_id)}`}>{t('albums_details')}</Link></td></tr>)}</tbody></table></div>
+        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[56rem] text-left text-sm"><thead><tr className="border-b border-[var(--color-border)] text-xs uppercase text-[var(--color-muted-foreground)]"><th className="p-3">{t('albums_event_owner')} <span className="inline-flex align-middle opacity-50" title={info('albumSortUnavailable')}><ArrowDownUp size={15} aria-hidden="true" /><span className="sr-only">{info('albumSortUnavailable')}</span></span></th><th className="p-3">{t('albums_readiness')}</th><th className="p-3">{t('albums_capture_window')} <span className="inline-flex align-middle opacity-50" title={info('albumSortUnavailable')}><ArrowDownUp size={15} aria-hidden="true" /><span className="sr-only">{info('albumSortUnavailable')}</span></span></th><th className="p-3">{t('albums_quota')}</th><th className="p-3">{commonT('hold')}</th><th className="p-3" /></tr></thead><tbody>{rows.map(a => <tr key={a.album_id} className="border-b border-[var(--color-border)]"><td className="max-w-80 break-words p-3"><b>{a.event_name || (t('albums_untitled_event'))}</b><span className="block break-all text-xs text-[var(--color-muted-foreground)]">{a.owner_email} · {a.album_id}</span></td><td className="p-3"><AdminStatus value={a.readiness} /></td><td className="whitespace-nowrap p-3">{formatAdminDate(a.capture_start, locale)}<br />{formatAdminDate(a.capture_end, locale)}</td><td className="p-3 tabular-nums">{formatAdminNumber(a.committed_count, locale)} / {a.quota_total == null ? '—' : formatAdminNumber(a.quota_total, locale)}<span className="block text-xs text-[var(--color-muted-foreground)]">{formatAdminNumber(a.reserved_count, locale)} {t('albums_reserved')}</span></td><td className="p-3"><AdminStatus value={a.hold_active ? 'ACTIVE HOLD' : 'NONE'} /></td><td className="p-3"><Link className="font-semibold underline underline-offset-4" href={`/admin/albums/${encodeURIComponent(a.album_id)}`}>{t('albums_details')}</Link></td></tr>)}</tbody></table></div>
+        <p className="mt-2 hidden text-xs text-[var(--color-muted-foreground)] md:block">{info('albumSortUnavailable')}</p>
         <ul className="space-y-3 md:hidden">{rows.map(a => <li key={a.album_id} className="rounded-[var(--radius-md)] border border-[var(--color-border)] p-3"><div className="flex flex-wrap justify-between gap-2"><strong className="min-w-0 break-words">{a.event_name || (t('albums_untitled_event'))}</strong><AdminStatus value={a.readiness} /></div><p className="mt-1 break-all text-xs text-[var(--color-muted-foreground)]">{a.owner_email} · {a.album_id}</p><dl className="mt-3 grid grid-cols-2 gap-2 text-xs"><div><dt>{t('albums_photos')}</dt><dd>{formatAdminNumber(a.committed_count, locale)} / {a.quota_total ?? '—'}</dd></div><div><dt>{commonT('hold')}</dt><dd>{a.hold_active ? 'ACTIVE' : 'NONE'}</dd></div></dl><Link className="mt-2 inline-flex min-h-11 items-center font-semibold underline" href={`/admin/albums/${encodeURIComponent(a.album_id)}`}>{t('albums_open_diagnostics')}</Link></li>)}</ul>
       </>}
       <AdminPagination hasMore={more} cursor={cursor} busy={busy || !online} locale={locale} onNext={() => cursor && void load(cursor, appliedQuery)} />

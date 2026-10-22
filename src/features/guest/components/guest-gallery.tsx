@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { BookOpen, Camera, Download, Grid2X2, Heart, Images, Link2, List, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, RefreshCw, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { LocaleControl } from '@/components/ui/locale-control';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useConnectivity } from '@/hooks/use-connectivity';
@@ -30,6 +31,7 @@ type DetailState = 'loading' | 'ready' | 'unavailable' | 'error';
 type ViewMode = 'grid' | 'list';
 const PAGE_SIZE = 24;
 const MAX_LOADED_PHOTOS = 240;
+const MAX_SELECTED_PHOTOS = 20;
 
 function trapTab(event: KeyboardEvent, container: HTMLElement) {
   if (event.key !== 'Tab') return;
@@ -56,7 +58,9 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   const [detail, setDetail] = useState<GuestGalleryPhoto | null>(null);
   const [detailState, setDetailState] = useState<DetailState>('loading');
   const [readiness, setReadiness] = useState<CaptureReadiness | null>(null);
+  const [readinessFresh, setReadinessFresh] = useState(false);
   const [sort, setSort] = useState<GetApiV1GuestGalleryPhotosSort>('NEWEST');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -66,7 +70,6 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   const [actionMessage, setActionMessage] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [guideOpen, setGuideOpen] = useState(false);
   const loadVersion = useRef(0);
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -85,7 +88,9 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
     setState('loading');
     setContext(null);
     setReadiness(null);
+    setReadinessFresh(false);
     setPhotos([]);
+    setSelectedIds(new Set());
     setCursor(null);
     setHasMore(false);
     setDetail(null);
@@ -130,15 +135,21 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   useEffect(() => {
     if (!context || state !== 'ready' || !isOnline) return;
     let cancelled = false;
+    let freshnessTimer: number | undefined;
     const check = async () => {
       try {
         const result = await getApiV1AlbumsAlbumIdCaptureReadiness(context.guest_session.album_id);
-        if (!cancelled) setReadiness(result.status === 200 && result.data.data.album_id === context.guest_session.album_id ? result.data.data : null);
-      } catch { if (!cancelled) setReadiness(null); }
+        if (cancelled) return;
+        const fresh = result.status === 200 && result.data.data.album_id === context.guest_session.album_id ? result.data.data : null;
+        window.clearTimeout(freshnessTimer);
+        setReadiness(fresh);
+        setReadinessFresh(Boolean(fresh));
+        if (fresh) freshnessTimer = window.setTimeout(() => setReadinessFresh(false), 45_000);
+      } catch { if (!cancelled) { window.clearTimeout(freshnessTimer); setReadiness(null); setReadinessFresh(false); } }
     };
     void check();
     const timer = window.setInterval(() => void check(), 30_000);
-    return () => { cancelled = true; window.clearInterval(timer); };
+    return () => { cancelled = true; window.clearInterval(timer); window.clearTimeout(freshnessTimer); };
   }, [context, state, isOnline]);
 
   useEffect(() => {
@@ -220,11 +231,11 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
       if (result.status === 401 || result.status === 403) { setState('ended'); return; }
       if (result.status !== 200) { setMessage(t('error')); return; }
       const page = result.data;
-      setPhotos((previous) => {
-        const byId = new Map(previous.map((photo) => [photo.photo_id, photo]));
-        for (const photo of page.data) byId.set(photo.photo_id, photo);
-        return [...byId.values()].slice(-MAX_LOADED_PHOTOS);
-      });
+      const byId = new Map(photos.map((photo) => [photo.photo_id, photo]));
+      for (const photo of page.data) byId.set(photo.photo_id, photo);
+      const nextPhotos = [...byId.values()].slice(-MAX_LOADED_PHOTOS);
+      setPhotos(nextPhotos);
+      setSelectedIds((current) => new Set([...current].filter((id) => nextPhotos.some((photo) => photo.photo_id === id && photo.actions.can_download))));
       setCursor(page.meta.next_cursor ?? null);
       setHasMore(page.meta.has_more);
     } catch { if (version === loadVersion.current) setMessage(t('error')); }
@@ -288,13 +299,13 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
   }
 
   async function openCapture() {
-    if (!context || !readiness?.can_capture || readiness.state !== 'READY' || !isOnline || captureBusy) return;
+    if (!context || !readinessFresh || !readiness?.can_capture || readiness.state !== 'READY' || context.event.capture_state !== 'OPEN' || context.event.reveal_state === 'REVEALED' || !isOnline || captureBusy) return;
     setCaptureBusy(true);
     try {
       const result = await getApiV1AlbumsAlbumIdCaptureReadiness(context.guest_session.album_id);
       const fresh = result.status === 200 && result.data.data.album_id === context.guest_session.album_id ? result.data.data : null;
       setReadiness(fresh);
-      if (fresh?.state === 'READY' && fresh.can_capture && navigator.onLine) router.push(guestRoutes.entry(linkId));
+      if (fresh?.state === 'READY' && fresh.can_capture && fresh.reveal_state !== 'REVEALED' && navigator.onLine) router.push(guestRoutes.entry(linkId));
       else setMessage(t('captureUnavailable'));
     } catch { setReadiness(null); setMessage(t('captureUnavailable')); }
     finally { setCaptureBusy(false); }
@@ -302,11 +313,22 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
 
   const dateTime = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
   const activePhoto = photoId && detail?.photo_id === photoId && detailState === 'ready' ? detail : null;
-  const showCapture = state === 'ready' && isOnline && readiness?.state === 'READY' && readiness.can_capture;
+  const selectedPhotos = photos.filter((photo) => selectedIds.has(photo.photo_id) && photo.actions.can_download);
+  const showRemaining = state === 'ready' && isOnline && readinessFresh && readiness?.album_remaining_count != null;
+  const showCapture = state === 'ready' && isOnline && readinessFresh && readiness?.state === 'READY' && readiness.can_capture && readiness.reveal_state !== 'REVEALED' && context?.event.capture_state === 'OPEN' && context.event.reveal_state !== 'REVEALED';
+  function toggleSelected(photo: GuestGalleryPhoto) {
+    if (!isOnline || !photo.actions.can_download || busy) return;
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(photo.photo_id)) next.delete(photo.photo_id);
+      else if (selectedPhotos.length < MAX_SELECTED_PHOTOS) next.add(photo.photo_id);
+      return next;
+    });
+  }
   const navItem = 'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]';
   const navigation = (mobile: boolean) => <nav aria-label={t('navigation')} className="space-y-1">
-    <Link href={guestRoutes.gallery(linkId)} aria-current="page" onClick={() => { if (mobile) setMobileNavOpen(false); setGuideOpen(false); }} className={`${navItem} bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:brightness-95`}><Images size={19} aria-hidden="true" />{t('navGallery')}</Link>
-    <button type="button" aria-expanded={guideOpen} onClick={() => { setGuideOpen(true); if (mobile) setMobileNavOpen(false); }} className={navItem}><BookOpen size={19} aria-hidden="true" />{t('navGuide')}</button>
+    <Link href={guestRoutes.gallery(linkId)} aria-current="page" onClick={() => { if (mobile) setMobileNavOpen(false); }} className={`${navItem} bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:brightness-95`}><Images size={19} aria-hidden="true" />{t('navGallery')}</Link>
+    <Link href="/help/guest" className={navItem}><BookOpen size={19} aria-hidden="true" />{t('navGuide')}</Link>
   </nav>;
 
   if (state === 'loading') return <main className="mx-auto max-w-5xl px-4 py-8" role="status">{t('loading')}</main>;
@@ -339,23 +361,29 @@ export function GuestGallery({ linkId, photoId }: { linkId: string; photoId?: st
               {showCapture && <Button onClick={() => void openCapture()} loading={captureBusy} disabled={busy}><Camera size={17} aria-hidden="true" />{t('capture')}</Button>}
             </div>
 
-            {guideOpen && <section aria-labelledby="guest-guide-title" className="mb-6 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">{t('navGuide')}</p><h2 id="guest-guide-title" className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">{t('guideTitle')}</h2></div><button type="button" onClick={() => setGuideOpen(false)} aria-label={t('closeGuide')} className="grid size-11 shrink-0 place-items-center rounded-full hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)]"><X size={18} aria-hidden="true" /></button></div><ol className="mt-4 grid gap-3 text-sm leading-6 text-[var(--color-muted-foreground)] sm:grid-cols-3"><li>{t('guideReveal')}</li><li>{t('guideBrowse')}</li><li>{t('guideActions')}</li></ol></section>}
-
             {!isOnline && <p role="status" className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm">{t('offline')}</p>}
             {message && <p role="status" className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm">{message}</p>}
 
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
               <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">{t('photosHeading')}</h2>
               <div className="flex flex-wrap items-center gap-2">
-                <label className="flex min-h-11 items-center gap-2 text-sm font-medium">{t('sort')}<select value={sort} onChange={(event) => { loadVersion.current += 1; setSort(event.target.value as GetApiV1GuestGalleryPhotosSort); }} className="min-h-11 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-foreground)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)]"><option value="NEWEST">{t('newest')}</option><option value="OLDEST">{t('oldest')}</option><option value="MOST_LIKED">{t('mostLiked')}</option></select></label>
+                <div className="min-w-[11rem]"><span className="mb-1 block text-sm font-medium">{t('sort')}</span><Select label={t('sort')} value={sort} onValueChange={(value) => { loadVersion.current += 1; setSort(value as GetApiV1GuestGalleryPhotosSort); }} options={[{ value: 'NEWEST', label: t('newest') }, { value: 'OLDEST', label: t('oldest') }, { value: 'MOST_LIKED', label: t('mostLiked') }]} /></div>
                 <div role="group" aria-label={t('viewMode')} className="flex rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5"><button type="button" aria-label={t('gridView')} aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')} className={`grid size-10 place-items-center rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] ${viewMode === 'grid' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : ''}`}><Grid2X2 size={18} aria-hidden="true" /></button><button type="button" aria-label={t('listView')} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')} className={`grid size-10 place-items-center rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] ${viewMode === 'list' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : ''}`}><List size={19} aria-hidden="true" /></button></div>
               </div>
             </div>
 
+            <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--color-muted-foreground)]"><p>{t('displayedCount', { count: photos.length })}</p>{showRemaining && <p>{t('remainingSlots', { count: readiness.album_remaining_count! })}</p>}</div>
+            <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm">
+              <p role="status" className="font-semibold">{t('selectedCount', { count: selectedPhotos.length, maximum: MAX_SELECTED_PHOTOS })}</p>
+              <button type="button" disabled={selectedPhotos.length === 0} onClick={() => setSelectedIds(new Set())} className="min-h-11 rounded-lg px-3 font-semibold underline underline-offset-4 hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] disabled:opacity-50">{t('clearSelection')}</button>
+              <Button disabled aria-describedby="guest-zip-unavailable"><Download size={17} aria-hidden="true" />{t('downloadZip')}</Button>
+              <p id="guest-zip-unavailable" className="w-full text-xs leading-5 text-[var(--color-muted-foreground)]">{t('zipUnavailable')}</p>
+            </div>
+
             {photos.length === 0 ? <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center"><h2 className="text-lg font-semibold">{t('empty')}</h2><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{t('emptyDescription')}</p></section> : <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4 2xl:grid-cols-5' : 'space-y-3'}>
-              {photos.map((photo) => <article key={photo.photo_id} className={`min-w-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm ${viewMode === 'list' ? 'flex items-center gap-3 p-2 sm:gap-4' : ''}`}>
+              {photos.map((photo) => <article key={photo.photo_id} className={`min-w-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm ${selectedPhotos.some((selected) => selected.photo_id === photo.photo_id) ? 'ring-2 ring-[var(--color-primary)]' : ''} ${viewMode === 'list' ? 'flex items-center gap-3 p-2 sm:gap-4' : ''}`}>
                 <Link href={guestRoutes.photo(linkId, photo.photo_id)} prefetch={false} onClick={(event) => { photoOpenerRef.current = { photoId: photo.photo_id, element: event.currentTarget }; }} aria-label={t('openPhotoNamed', { name: photo.photographer_display_name })} className={`block shrink-0 overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] ${viewMode === 'list' ? 'w-24 rounded-lg sm:w-36' : ''}`}><DeliveryImage src={photo.media.url} alt={t('photoAltNamed', { name: photo.photographer_display_name })} unavailableLabel={t('mediaUnavailable')} className={`w-full object-cover ${viewMode === 'list' ? 'aspect-square sm:aspect-[4/3]' : 'aspect-[4/3]'}`} /></Link>
-                <div className={`flex min-w-0 flex-1 items-center justify-between gap-2 ${viewMode === 'list' ? 'pr-2' : 'px-3 py-3'}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{photo.photographer_display_name}</p><time className="mt-1 block text-xs text-[var(--color-muted-foreground)]" dateTime={photo.created_at}>{dateTime(photo.created_at)}</time></div>{photo.actions.can_like && <button type="button" aria-label={photo.actions.liked_by_me ? t('liked') : t('like')} disabled={!isOnline || photo.actions.liked_by_me || busy} onClick={() => void like(photo)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-semibold hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] disabled:cursor-default"><Heart size={17} fill={photo.actions.liked_by_me ? 'currentColor' : 'none'} aria-hidden="true" />{photo.like_count}</button>}</div>
+                <div className={`flex min-w-0 flex-1 items-center justify-between gap-2 ${viewMode === 'list' ? 'pr-2' : 'px-3 py-3'}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{photo.photographer_display_name}</p><time className="mt-1 block text-xs text-[var(--color-muted-foreground)]" dateTime={photo.created_at}>{dateTime(photo.created_at)}</time><label className="mt-1 inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={selectedPhotos.some((selected) => selected.photo_id === photo.photo_id)} disabled={!isOnline || busy || !photo.actions.can_download || (selectedPhotos.length >= MAX_SELECTED_PHOTOS && !selectedIds.has(photo.photo_id))} onChange={() => toggleSelected(photo)} aria-label={t('selectPhotoNamed', { name: photo.photographer_display_name })} className="size-5 accent-[var(--color-primary)]" />{t('selectPhoto')}</label></div>{photo.actions.can_like && <button type="button" aria-label={photo.actions.liked_by_me ? t('liked') : t('like')} disabled={!isOnline || photo.actions.liked_by_me || busy} onClick={() => void like(photo)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-semibold hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] disabled:cursor-default"><Heart size={17} fill={photo.actions.liked_by_me ? 'currentColor' : 'none'} aria-hidden="true" />{photo.like_count}</button>}</div>
               </article>)}
             </div>}
             {hasMore && <div className="mt-7 text-center"><Button variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void loadMore()}>{t('loadMore')}</Button></div>}
