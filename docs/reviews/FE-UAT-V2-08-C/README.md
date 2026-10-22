@@ -6,6 +6,8 @@
 
 **Branch:** `feat/fe-uat-v2-08c-host-gallery-legal`
 
+**Pull request:** [#42 against `main`](https://github.com/JAR-FIS/Kepotret/pull/42)
+
 **Status:** frontend implementation and synthetic verification; independent code review and Owner/legal approval pending. Backend remains **ON HOLD**. Do not merge before independent review.
 
 ## Ticket traceability
@@ -66,7 +68,7 @@ Browser assertions also cover 320px horizontal overflow, keyboard accessible con
 - `pnpm api:check` — passed; generated API client fresh, no contract change.
 - `pnpm build` — passed, including `/kebijakan-privasi` and `/syarat-ketentuan` server routes.
 - Focused Playwright `--project=chromium --retries=0` — **48 passed** across H42/H06/H07, H50/H51 export, Host management/sharing, and Guest Gallery. The expected local backend proxy (`localhost:8080`) was unavailable during some synthetic test requests; mocked browser assertions all passed.
-- Hosted CI — pending PR creation and final HEAD.
+- Hosted CI attempt 1 — [Frontend CI run 39830674119](https://github.com/JAR-FIS/Kepotret/actions/runs/39830674119) on `364edf23ce7ef46ebac4c416f2aac9517f30d83e`: `quality` passed (lint, typecheck, all unit tests, OpenAPI check, build); `e2e` passed (full Playwright matrix, Admin without retries, Guest Owner UAT desktop/mobile). The documentation-only update to record this result creates a subsequent HEAD; use PR #42 checks for that final SHA.
 
 ## Deferred dependencies
 
