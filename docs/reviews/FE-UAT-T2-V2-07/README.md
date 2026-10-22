@@ -34,7 +34,7 @@ The Owner spreadsheet's temporary `UAT-T2-41` on row 15 maps to **T2-46 Guest En
 - Focused Chromium regressions for V2-07, Guest capture/Gallery, H80, and V2-06 — 66 passed, one existing evidence-only test skipped, with `--retries=0`. An initial H80 evidence assertion targeted the Guest locale option name; the Admin selector was corrected and the full focused run passed.
 - Critical cross-browser Guest Entry, Gallery, camera and lightbox regressions — 25 passed without retries across Chromium, Firefox, WebKit, mobile Chromium and mobile WebKit.
 - Existing Guest Owner UAT — 40 passed without retries across desktop and mobile.
-- Hosted CI — pending PR checks at this point in the handoff; record the run and job results below after the PR is opened.
+- [Hosted Frontend CI #120](https://github.com/JAR-FIS/Kepotret/actions/runs/39730310658) for PR #39 at feature HEAD `eda56b2d26cc2fde914144e4ff955dbb4c48eac6` — quality and E2E jobs both passed. Quality ran lint, typecheck, unit tests, OpenAPI drift check, and production build. The full Chromium and focused cross-browser step reported 267 passed, 5 skipped, and 1 flaky: the pre-existing H29/H53 schedule-picker test on mobile WebKit failed its first attempt because hour `03` remained enabled, then passed Playwright's automatic retry. No CI job was manually rerun. The separate privileged Admin step passed 28 tests with 1 skip and `--retries=0`; Guest Owner UAT passed 40 desktop/mobile tests with `--retries=0`. This retry is outside the four V2-07 tickets and does not establish a fix for H29/H53.
 
 Screenshots use the `tests/uat/mock-api.ts` synthetic fixture, browser fake camera stream, and visible **OWNER VISUAL UAT · SYNTHETIC FIXTURES** badge. They establish layout and flow under fixture data. Owner recheck, real iPhone/Android camera validation, and backend integration remain separate.
 
@@ -44,5 +44,5 @@ Screenshots use the `tests/uat/mock-api.ts` synthetic fixture, browser fake came
 - H80 server-wide sorting requires backend/OpenAPI support. Its cues remain inert and unfocusable.
 - Default `downloads_enabled=true` for newly created albums requires backend work.
 - H91 server-side MFA revoke remains a security/backend dependency.
-- Real iPhone/Android camera checks and historical CI/WebKit flakiness remain outside this synthetic run. Any hosted rerun will be recorded explicitly.
+- Real iPhone/Android camera checks remain outside this synthetic run. The historical mobile WebKit schedule-picker flake recurred once in hosted CI #120 and passed on automatic retry, as recorded above.
 - No database, OpenAPI, authentication, authorization, permission, backend, or locked business-rule changes were made. Stop before merge; independent review and Owner recheck are required.
