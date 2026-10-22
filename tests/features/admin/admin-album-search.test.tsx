@@ -51,7 +51,7 @@ describe('Admin album server search', () => {
     expect(await screen.findAllByText('Initial')).toHaveLength(2);
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Album search query' }), { target: { value: '  Wedding  ' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.submit(screen.getByRole('search'));
     expect(await screen.findAllByText('Wedding')).toHaveLength(2);
     expect(api.albums).toHaveBeenLastCalledWith({ limit: 25, query: 'Wedding' });
 
@@ -77,15 +77,15 @@ describe('Admin album server search', () => {
 
     const search = screen.getByRole('searchbox', { name: 'Album search query' });
     fireEvent.change(search, { target: { value: 'slow' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.submit(screen.getByRole('search'));
     fireEvent.change(search, { target: { value: 'empty' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.submit(screen.getByRole('search'));
     expect(await screen.findByText('No albums to display.')).toBeInTheDocument();
     await act(async () => { finishSlow(response(['Stale'])); });
     expect(screen.queryAllByText('Stale')).toHaveLength(0);
 
     fireEvent.change(search, { target: { value: 'error' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.submit(screen.getByRole('search'));
     expect(await screen.findByText(/service is unavailable/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
     await waitFor(() => expect(screen.getAllByText('Recovered')).toHaveLength(2));

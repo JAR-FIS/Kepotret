@@ -76,10 +76,17 @@ test('H80 album search uses the server query and resets to the first page', asyn
   const requests: URL[] = [];
   page.on('request', (request) => { if (new URL(request.url()).pathname === '/api/v1/admin/albums') requests.push(new URL(request.url())); });
   await page.goto('/admin/albums');
-  const albumCard = page.getByRole('heading', { name: /All albums|Semua album/i }).locator('..');
+  const albumCard = page.locator('main section').filter({ has: page.getByRole('heading', { name: /All albums|Semua album/i }) }).first();
   const search = albumCard.getByRole('searchbox', { name: /Album search query|Kata kunci album/i });
-  await expect(albumCard.getByRole('search')).toContainText('Search');
-  await expect(albumCard.getByRole('button', { name: 'Search' })).toBeEnabled();
+  await expect(search).toHaveAttribute('placeholder', 'Search albums...');
+  await expect(albumCard.getByText('Sorting across all albums is not available yet.', { exact: true }).last()).toBeVisible();
+  const sortIcons = albumCard.locator('th span[title="Sorting across all albums is not available yet."]');
+  await expect(sortIcons).toHaveCount(2);
+  expect(await sortIcons.evaluateAll((icons) => icons.every((icon) => (icon as HTMLElement).tabIndex === -1))).toBe(true);
+  const headingBox = await albumCard.getByRole('heading', { name: 'All albums' }).boundingBox();
+  const searchBox = await search.boundingBox();
+  expect(searchBox!.x).toBeGreaterThan(headingBox!.x);
+  expect(Math.abs(searchBox!.y - headingBox!.y)).toBeLessThan(30);
   await search.fill('Wedding');
   await search.press('Enter');
   await expect(page.getByText(/Wedding Demo/).first()).toBeVisible();
@@ -87,13 +94,35 @@ test('H80 album search uses the server query and resets to the first page', asyn
   expect(requests.at(-1)?.searchParams.has('cursor')).toBe(false);
 
   await search.fill('no-match');
-  await page.getByRole('button', { name: /^Search$|^Cari$/i }).click();
+  await search.press('Enter');
   await expect(page.getByText(/No albums to display|Belum ada album/i)).toBeVisible();
   await page.getByRole('button', { name: /^Clear$|^Hapus$/i }).click();
   await expect(page.getByText(/Wedding Demo/).first()).toBeVisible();
   expect(requests.at(-1)?.searchParams.has('query')).toBe(false);
   expect(requests.every((request) => !request.searchParams.has('sort'))).toBe(true);
   expect(await page.getByRole('button', { name: /sort|urutkan/i }).count()).toBe(0);
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 844 });
+    const narrowHeading = await albumCard.getByRole('heading', { name: 'All albums' }).boundingBox();
+    const narrowSearch = await search.boundingBox();
+    expect(narrowSearch!.y).toBeGreaterThan(narrowHeading!.y);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  }
+  if (process.env.UAT_CAPTURE_EVIDENCE === '1') {
+    const directory = resolve(process.cwd(), 'docs/reviews/FE-UAT-T2-V2-06/evidence');
+    mkdirSync(directory, { recursive: true });
+    await page.context().addCookies([{ name: 'kepotret-locale', value: 'id', domain: 'localhost', path: '/' }]);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/admin/albums?uat=normal');
+    await expect(page.getByRole('heading', { name: 'Semua album' })).toBeVisible();
+    await page.screenshot({ path: resolve(directory, 'synthetic-h80-desktop-1440-id-light.png'), fullPage: true, animations: 'disabled' });
+    await page.context().addCookies([{ name: 'kepotret-locale', value: 'en', domain: 'localhost', path: '/' }]);
+    await page.evaluate(() => localStorage.setItem('kepotret-theme', 'dark'));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/admin/albums?uat=normal');
+    await expect(page.getByRole('heading', { name: 'All albums' })).toBeVisible();
+    await page.screenshot({ path: resolve(directory, 'synthetic-h80-mobile-390-en-dark.png'), fullPage: true, animations: 'disabled' });
+  }
 });
 
 test('H80 reports denied and offline states without showing stale album data', async ({ page }) => {
@@ -143,6 +172,12 @@ test('H84 catalog keeps six packages in two columns, hides codes, and confirms s
   const newDesktop = await newVersion.boundingBox();
   expect(Math.abs(retireDesktop!.y - newDesktop!.y)).toBeLessThan(2);
   expect(Math.abs(retireDesktop!.width - newDesktop!.width)).toBeLessThan(2);
+  expect(retireDesktop!.height).toBeGreaterThanOrEqual(44);
+  expect(newDesktop!.height).toBeGreaterThanOrEqual(44);
+  await expect(retire).toHaveCSS('background-color', 'rgb(255, 130, 130)');
+  const buttonColors = await newVersion.evaluate((link) => ({ text: getComputedStyle(link).color, body: getComputedStyle(link.closest('section')!).color, size: parseFloat(getComputedStyle(link).fontSize) }));
+  expect(buttonColors.text).toBe(buttonColors.body);
+  expect(buttonColors.size).toBeLessThanOrEqual(14);
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileFirst = await cards.nth(0).boundingBox();
   const mobileSecond = await cards.nth(1).boundingBox();

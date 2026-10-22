@@ -165,7 +165,8 @@ test('H73 gallery requires revealed Guest context and supports empty and termina
   await expect(page.getByRole('link', { name: /Ari UAT/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ambil foto' })).toHaveCount(0);
   await evidence(page, testInfo, 'h73-gallery-revealed');
-  await page.getByLabel('Urutkan').selectOption('MOST_LIKED');
+  await page.getByRole('combobox', { name: 'Urutkan' }).click();
+  await page.getByRole('option', { name: 'Paling disukai' }).click();
   await expect(page.getByRole('img', { name: /Ari UAT/ })).toBeVisible();
   await page.goto(`/j/${uatIds.link}/galeri?uat=hidden#synthetic-owner-uat-secret`);
   await expect(page.getByText(/Galeri akan tersedia setelah waktu reveal/)).toBeVisible();

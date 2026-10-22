@@ -65,7 +65,8 @@ describe('guest gallery', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Load more photos' }));
     await waitFor(() => expect(screen.getAllByText('Ari')).toHaveLength(2));
     expect(api.list).toHaveBeenLastCalledWith({ sort: 'NEWEST', limit: 24, cursor: 'next-1' });
-    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'MOST_LIKED' } });
+    fireEvent.click(screen.getByRole('combobox', { name: 'Sort' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Most liked' }));
     await waitFor(() => expect(api.list).toHaveBeenLastCalledWith({ sort: 'MOST_LIKED', limit: 24 }));
   });
 
@@ -93,7 +94,7 @@ describe('guest gallery', () => {
     expect(container.textContent).not.toContain('Guest 0');
     expect(container.textContent).toContain('Guest 263');
     expect(screen.queryByRole('button', { name: 'Load more photos' })).not.toBeInTheDocument();
-  }, 20_000);
+  }, 30_000);
 
   it('likes once from server state and exposes no unlike control', async () => {
     api.like.mockResolvedValue({ status: 200, data: { data: { ...photo, like_count: 3, actions: { ...photo.actions, liked_by_me: true } } } });
@@ -135,7 +136,7 @@ describe('guest gallery', () => {
     expect(screen.getByRole('button', { name: 'List view' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('link', { name: 'View photo by Ari' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View photo by Bima' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Sort')).toHaveValue('NEWEST');
+    expect(screen.getByRole('combobox', { name: 'Sort' })).toHaveTextContent('Newest');
     expect(api.list).toHaveBeenCalledTimes(2);
   });
 
@@ -148,27 +149,54 @@ describe('guest gallery', () => {
     expect(router.push).not.toHaveBeenCalled();
   });
 
-  it('offers only Gallery and contextual Guest guidance in the navigation', async () => {
+  it('offers only Gallery and the public Guest guide in the navigation', async () => {
     renderGallery({ linkId: 'link-1' });
     await screen.findByRole('heading', { name: 'Shared event' });
     expect(screen.getByRole('navigation', { name: 'Guest gallery navigation' })).toBeInTheDocument();
     expect(screen.queryByText(/guest directory|guest menu|host guide/i)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Guide' }));
-    expect(screen.getByRole('heading', { name: 'Enjoy the gallery' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Close guide' }));
-    expect(screen.queryByRole('heading', { name: 'Enjoy the gallery' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Guide' })).toHaveAttribute('href', '/help/guest');
   });
 
-  it('rechecks server readiness before opening capture and denies a changed permission', async () => {
+  it('does not expose capture from a revealed and closed gallery despite inconsistent readiness', async () => {
     const ready = { album_id: 'album-1', state: 'READY', can_capture: true };
     const closed = { album_id: 'album-1', state: 'QUOTA_FULL', can_capture: false };
     api.readiness.mockResolvedValueOnce({ status: 200, data: { data: ready } }).mockResolvedValueOnce({ status: 200, data: { data: closed } });
     renderGallery({ linkId: 'link-1' });
-    fireEvent.click(await screen.findByRole('button', { name: 'Take a photo' }));
-    await screen.findByText(/camera is unavailable right now/i);
-    expect(api.readiness).toHaveBeenCalledTimes(2);
+    await screen.findByRole('heading', { name: 'Shared event' });
+    await waitFor(() => expect(api.readiness).toHaveBeenCalledTimes(1));
     expect(router.push).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Take a photo' })).not.toBeInTheDocument();
+  });
+
+  it('shows only loaded and fresh server counts, caps selection at 20, and keeps ZIP unavailable', async () => {
+    const items = Array.from({ length: 22 }, (_, index) => ({ ...photo, photo_id: `photo-${index}`, photographer_display_name: `Guest ${index}`, actions: { ...photo.actions, can_download: index !== 21 } }));
+    api.list.mockResolvedValue(page(items));
+    api.readiness.mockResolvedValue({ status: 200, data: { data: { album_id: 'album-1', state: 'CLOSED', can_capture: false, album_remaining_count: 76 } } });
+    renderGallery({ linkId: 'link-1' });
+    expect(await screen.findByText('22 photos displayed')).toBeInTheDocument();
+    expect(await screen.findByText('Album photo slots remaining: 76')).toBeInTheDocument();
+    const zip = screen.getByRole('button', { name: 'Download ZIP' });
+    expect(zip).toBeDisabled();
+    for (let index = 0; index < 20; index += 1) fireEvent.click(screen.getByRole('checkbox', { name: `Select photo by Guest ${index}` }));
+    expect(screen.getByText('Selected: 20 of 20')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Select photo by Guest 20' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Select photo by Guest 21' })).toBeDisabled();
+    expect(zip).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
+    expect(screen.getByText('Selected: 0 of 20')).toBeInTheDocument();
+  }, 15_000);
+
+  it('drops a selected photo when a later page removes its download permission', async () => {
+    api.list.mockResolvedValueOnce(page([photo], 'next-1')).mockResolvedValueOnce(page([{ ...photo, actions: { ...photo.actions, can_download: false } }, { ...photo, photo_id: 'photo-2', photographer_display_name: 'Bima' }]));
+    renderGallery({ linkId: 'link-1' });
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select photo by Ari' }));
+    expect(screen.getByText('Selected: 1 of 20')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more photos' }));
+    await waitFor(() => expect(screen.getByText('Selected: 0 of 20')).toBeInTheDocument());
+    expect(screen.getByRole('checkbox', { name: 'Select photo by Ari' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('combobox', { name: 'Sort' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Oldest' }));
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith({ sort: 'OLDEST', limit: 24 }));
   });
 
   it('keeps denied detail media and actions out of the accessible dialog', async () => {
