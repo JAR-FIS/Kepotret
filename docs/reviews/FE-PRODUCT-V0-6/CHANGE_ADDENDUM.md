@@ -1,10 +1,10 @@
 ﻿# Kepotret product and architecture contract v0.6 — integrated change addendum
 
-**Status (23 October 2026):** Phase 1 documentation and audit only. Owner-approved PD-01–13, architecture **design Gates A–G**, and amendments **P-01/P-02** are locked target decisions. The proposed wire format, schema, cookie topology, operations and rollout mechanics still require engineering/security review; none is implemented or authorized for backend release. Backend stays **ON HOLD**. Phase 2 frontend work requires separate Owner approval after this Draft PR is reviewed.
+**Status (24 October 2026):** Phase 1 documentation and audit only. Owner-approved PD-01–13, architecture **design Gates A–G**, and amendments **P-01/P-02/P-03** are locked target decisions. The proposed wire format, schema, cookie topology, operations and rollout mechanics still require engineering/security review; none is implemented or authorized for backend release. Backend stays **ON HOLD**. Phase 2 frontend work requires separate Owner approval after this Draft PR is reviewed.
 
 ## Source baseline and evidence
 
-Current audit baseline: fetched `main` at `bff66de23332f0600acbcdd4bc6895ec4a4c21c2` (PR #43 merged, 23 October 2026). The Owner-approved `Kepotret_v0_6_Consolidated_Frontend_First_Handoff_Approved_2026-10-23.md` was read in full. It supersedes the older Gate G handoff and the prior proposal status of P-01/P-02. The original v0.6 audit package was read in order: `01_OWNER_PRODUCT_DECISION_ADDENDUM.md`, `02_ARCHITECTURE_API_IMPACT_AND_DECISION_GATES.md`, `03_CODEX_CONTRACT_AUDIT_ENGINEERING_BRIEF.md`, then its `README.md`, under `Downloads/Kepotret_Product_Architecture_Contract_v0_6_2026-10-23/Kepotret_Product_Contract_v0_6/`.
+Original Phase 1 audit baseline: fetched `main` at `bff66de23332f0600acbcdd4bc6895ec4a4c21c2` (PR #43 merged, 23 October 2026). This P-03 amendment starts from fetched `main` at `767ec919aea1372ca903daa932205f0b17c52643` (PR #44 merged). The Owner-approved `Kepotret_v0_6_Consolidated_Frontend_First_Handoff_Approved_2026-10-23.md` was read in full for the original audit. It supersedes the older Gate G handoff and the prior proposal status of P-01/P-02. The original v0.6 audit package was read in order: `01_OWNER_PRODUCT_DECISION_ADDENDUM.md`, `02_ARCHITECTURE_API_IMPACT_AND_DECISION_GATES.md`, `03_CODEX_CONTRACT_AUDIT_ENGINEERING_BRIEF.md`, then its `README.md`, under `Downloads/Kepotret_Product_Architecture_Contract_v0_6_2026-10-23/Kepotret_Product_Contract_v0_6/`.
 
 Approved baseline documents inspected under `Downloads/SELF EMPLOYEE/DOKUMEN KEPOTRET/`: PRD v0.5 Final; BPMN & Use Case v0.5 Final; DFD & ERD v0.5 Final; Permission and Authorization Model v0.2 Final; System Architecture v0.3 Final; Physical Database Design v0.3 Final; API Contract v0.1 Final; and Technology and Provider Selection v0.2 Final. Repository evidence: [`contracts/openapi/Kepotret_OpenAPI_v1_Baseline.yaml`](../../../contracts/openapi/Kepotret_OpenAPI_v1_Baseline.yaml), [`contracts/openapi/README.md`](../../../contracts/openapi/README.md), generated client/types (read only), `src/features/guest/{components,capture}`, `src/features/host/{components,schedule-validation.ts}`, route catalog, and prior FE-UAT handoffs. The addendum supersedes older rules **only where it expressly says so**.
 
@@ -19,6 +19,7 @@ The original `1. Kepotret_Final_Frontend_Recheck_Seluruh_Halaman_2026-10-22.xlsx
 | **High** | Current Gallery requires `/guest/me`, which returns a named capture `GuestSession`; the target Viewer must remain separately scoped and can Like/Download/Share when policy permits. | OpenAPI `GuestContext`, `GuestSessionCreateRequest`, Gallery `GuestCookie`; PRD BR-25 and Permission §8. Gates B/E and P-02 supersede the earlier read-only Viewer recommendation, without granting capture rights. |
 | **High** | A browser-composited JPEG plus claimed LUT/frame IDs cannot prove the actual pixels include those effects; the current local success download can bypass publication and Host permissions. | `capture-processor.ts`, `guest-entry-flow.tsx`, direct R2 flow in Architecture v0.3. Gate D approves authoritative server composition; P-01 approves final-media-only download. Transient ingest and scale remain unverified. |
 | **High** | Frame mutations must fail at the server clock boundary, including asset upload/commit and concurrent schedule edits; disabling a UI button is insufficient. | PD-11, current cover-only design API. Versioned design/freeze proposal and race tests, Gate C/G. |
+| **High** | H57 currently offers mode editing and sends `moderation_mode` even on unrelated settings saves; the baseline API has no irreversible freeze projection or P-03 boundary rule. | `gallery-settings.tsx`, `AlbumSettings` and partial `AlbumSettingsPatchRequest`; Owner-approved P-03 requires server-clock atomic enforcement, read-only UI and tests T-37–40. Photo moderation permissions remain separate. |
 | **Medium** | The cover contract permits MIME and a 5 MB maximum while the frontend checks type/size; required intrinsic 1920×1080 and two true-alpha frame variants still need a server contract and byte-level policy. | `DesignAssetAuthorizeRequest` is `COVER` only; `design-setup.tsx` checks type/size. Gate C/F approves both orientations and a separate ≤4 MB cap per frame. |
 | **Medium** | H69 hides camera switch when `enumerateDevices()` does not expose a second ID. | `guest-entry-surfaces.tsx:96`, `guest-entry-flow.tsx:658`; PD-13 overrides this. No backend endpoint required. |
 | **Low** | The original final workbook ends at 102; five later Owner comments appear in the updated recheck with blank result/status cells. | Keep source versions distinct and do not infer approval from the new rows. |
@@ -46,6 +47,7 @@ The original `1. Kepotret_Final_Frontend_Recheck_Seluruh_Halaman_2026-10-22.xlsx
 | PD-13 **OWNER APPROVED** | Camera switch always visible, effective when supported, honest fallback; immersive fullscreen. H69. | Supersedes current conditional switch rendering; preserves camera permission/track cleanup. | Client capability/stream state only, no API change. Physical-device evidence required. |
 | P-01 **OWNER APPROVED 23 Oct 2026** | After authoritative commit show **Foto berhasil tersimpan**; APPROVAL shows **Menunggu persetujuan**. Offer **Ambil Foto Lagi** only if server permits and **Lihat Album** when accessible, otherwise **Lihat Jadwal Publikasi**/waiting. Official download is only via authorized final Gallery/Media Gateway when photo is eligible and Host allows. H70–H74. | Supersedes success-screen `Simpan ke perangkat` from browser-local `committedPhoto`/Blob. Delayed, PENDING, HOST_ONLY, Hold and revoked states cannot be bypassed. Browser screenshots cannot be prevented. | Server commit/processing status, action projections and Gateway enforcement need separate contract/security review. |
 | P-02 **OWNER APPROVED 23 Oct 2026** | One stable anonymous **album-scoped** Gallery identity supports Like-once across Viewer↔Capture in the same recognized browser/session; no Unlike. H64/H65/H73/H74. | Supersedes `(photo_id, guest_session_id)` as the *sole* Like subject for v0.6 and the prior proposal to deny all Viewer actions. Identity does not authorize Gallery, capture or media, does not count as GuestSession and is not proof of a human across devices. | Candidate `gallery_identity_id` and logical unique `(photo_id, gallery_identity_id)`; issuance, retention, schema and abuse limits need technical review. |
+| P-03 **OWNER APPROVED** | Album moderation mode (`INSTANT`/`APPROVAL`) may change only before server `capture_start` with existing role permission. At or after that instant it is permanently frozen for both LIVE and DELAYED, including after rescheduling. This does not freeze authorized photo approval/hide/restore or other Gallery settings. H57/H42/H50/H51. | Resolves the open in-event mode-change question; preserves existing photo-action permissions and lifecycle rules. No broader settings freeze or new collaborator grant. | H57 read-only mode state and partial PATCH; future server must enforce the irreversible boundary atomically. Projection/error details require contract review. |
 
 ### Existing invariants not changed
 
@@ -97,7 +99,7 @@ H07 is the Terms of Service page in the route catalog. PD-01/03 require accurate
 
 ## 2. Flow and state proposal
 
-**OWNER APPROVED / DESIGN APPROVED:** PD-01–13, Gates A–G and P-01/P-02 behavior. **TECHNICAL PROPOSAL:** the state names, wire shapes, credential issuance and sequencing details below. Existing backend and OpenAPI do not implement these flows. Every authorization uses current server time, album/photo state, access version and actor permission.
+**OWNER APPROVED / DESIGN APPROVED:** PD-01–13, Gates A–G and P-01/P-02/P-03 behavior. **TECHNICAL PROPOSAL:** the state names, wire shapes, credential issuance and sequencing details below. Existing backend and OpenAPI do not implement these flows. Every authorization uses current server time, album/photo state, access version and actor permission.
 
 ### Independent clocks and eligibility
 
@@ -118,6 +120,14 @@ flowchart LR
 ```
 
 The two server projections are independent: `capture_end` does **not** close a Live Gallery by itself; a camera quota failure does not remove lawful Gallery access. In Delayed mode, the Gallery becomes available at its own reveal time, possibly after capture closes. Operational Hold, revoked link/PIN/credential, moderation changes and retention can deny access at any point. No scheduled job may publish media without rechecking current state.
+
+### Moderation-mode freeze (P-03)
+
+**OWNER APPROVED:** An actor with the existing settings permission may change `INSTANT` ↔ `APPROVAL` only while server time is strictly before `capture_start`. The mode freezes permanently at server `capture_start`, regardless of LIVE/DELAYED reveal, Gallery visibility, whether any photo exists, or later rescheduling. This decision concerns the album **mode** only: authorized approval, hide and restore of individual photos continue under their existing permissions and lifecycle rules. Visibility, Likes, Downloads, Share and other Gallery settings are not implicitly frozen.
+
+**OBSERVED BASELINE:** H57 `gallery-settings.tsx` renders an editable moderation Select from `GET /api/v1/albums/{album_id}/settings` and submits the whole draft, including `moderation_mode`, even when only another setting changed. The current `AlbumSettingsPatchRequest` instead makes `moderation_mode` optional and requires `expected_revision`; PATCH has CSRF and Owner/`can_setup` authorization **as allowed**. The current GET projection has no explicit mode-freeze capability. H57 navigation grants Owner or draft `can_setup` collaborator entry. Separately, OpenAPI permits Owner/`can_moderate` to approve, hide and unhide photos, while restoring a deleted photo is Owner-only. None of these existing UI/contract behaviors proves P-03 enforcement.
+
+**FUTURE IMPLEMENTATION / TECHNICAL PROPOSAL:** H57 must show the persisted mode as a clearly explained, keyboard/screen-reader accessible read-only value when the server says it is frozen, in localized ID/EN copy. The other permitted controls and save action remain available. A future reviewed server projection must tell the client whether mode editing is permitted; the exact field and error shape remain open contract details. After freeze, a partial settings PATCH should omit `moderation_mode` when saving unrelated settings; it must retain `expected_revision`, CSRF and the actor's existing permission checks. UI time estimates cannot authorize a change. The server must compare current authoritative time, the reached freeze boundary, persisted mode, revision and permission atomically on every mode-changing PATCH, including stale tabs or direct API calls. Once the boundary was reached, later rescheduling must not clear the frozen state; the persistence mechanism is for architecture review. A rejected mode change must leave the mode and unrelated fields unmodified, with a safe conflict/validation response and fresh projection for the UI. An unchanged echoed mode is not a mode change; the reviewed contract should state its handling without forcing other Gallery settings to freeze.
 
 ### Guest entry: two user intents
 
@@ -193,6 +203,7 @@ Retake releases the reservation once and needs a new attempt before another shut
 | Offline after valid reservation or during PUT/commit | Preserve existing retry/expiry semantics and idempotency; do not start another attempt silently. Recover by server status, not local assumption. |
 | `capture_end` races with shutter | Server reservation/readiness is authoritative; no new shutter at/after end. Pre-authorized attempt may finish within five-minute grace. |
 | `capture_start` races with frame upload/selection | Server clock and optimistic revision decide atomically; a late mutation fails without changing active frame. |
+| Mode PATCH races with `capture_start`, another settings save, or reschedule | Server atomically rejects a changed `moderation_mode` at/after the reached boundary, even if a later schedule moves the start forward; no partial write. Existing photo moderation and unrelated authorized settings remain available. |
 | Hold, link rotation, PIN change, session revoke, or D+30 | Deny new viewer/capture actions and subsequent Gallery/Gateway fetches; previously downloaded bytes cannot be recalled. |
 | Photo hide/delete while ticket exists | Next Gateway fetch denies; cached or saved client copies are outside recall. |
 | Reveal job runs late/early, reschedule, old album | Derive from current policy/schedule; supersede stale job. Never infer Live from `delayDays=0`. |
@@ -201,7 +212,7 @@ Retake releases the reservation once and needs a new attempt before another shut
 
 All UI states require localized ID/EN copy and keyboard/screen-reader behavior. Physical iPhone Safari and Android Chrome verification remains **BLOCKED/UNVERIFIED** until real devices and backend implementation are available.
 
-### Cross-functional audit map (CF-01–CF-14)
+### Cross-functional audit map (CF-01–CF-15)
 
 These are **observed baseline gaps versus the approved target**, not claims of deployed v0.6 behavior. The linked source is read-only evidence for Phase 2; authorization belongs to the future server contract.
 
@@ -221,6 +232,7 @@ These are **observed baseline gaps versus the approved target**, not claims of d
 | CF-12 | Host/Admin metrics and guides do not distinguish Viewer from capture participant. | `guest_count_final` remains capture-session-only; no invented Viewer metric; T-07/35. |
 | CF-13 | Guest Gallery ZIP button is disabled while selection caps at 20. | Keep feasibility-blocked, no successful ZIP claim; T-36. |
 | CF-14 | `guest/routes.ts` changes route while QR secret is a fragment; Viewer has no `/guest/me` context. | Server-side same-album link/PIN proof → capture onboarding, no cookie elevation; T-29. |
+| CF-15 | H57 `gallery-settings.tsx` always enables mode selection and includes `moderation_mode` in every settings PATCH; OpenAPI GET has no freeze projection. | P-03: mode read-only after the server boundary, partial PATCH for unrelated settings, atomic irreversible enforcement; existing photo-action permission remains separate. T-37–40. |
 
 ### Page, role and navigation impact
 
@@ -232,10 +244,10 @@ The checked route catalog is authoritative for H-codes: **H02** `/cara-kerja`, *
 | Legal H06 `/kebijakan-privasi`, H07 `/syarat-ketentuan` | Draft copy must eventually address Viewer identity, transient source and action rights; **DRAFT, not effective** until Owner/legal approval. No automatic legal publication. | CF-07, T-28/35 |
 | Help Host/Collaborator/Guest/Admin and H75/H76 | Clarify roles, permissions, independent Gallery/camera clocks, capture return, approval/waiting/retention and plain-language errors. | CF-07/12, T-35 |
 | Host H29 schedule, H32/H58 design, setup review, reschedule | Five choices with D+1 default; two validated frame orientations/freeze; preserve Owner-only reschedule and existing setup permission limits. | CF-08, T-01/13/15–17 |
-| Host settings, Live dashboard, Guest preview, sharing/QR | Show camera and Gallery independently; explain visibility, moderation and Like/Download/Share flags; one link with optional PIN for two intents. Preview remains simulated/Host-authorized. | CF-08/10, T-30/35 |
+| Host settings H57, Live dashboard, Guest preview, sharing/QR | Show camera and Gallery independently; explain visibility, moderation and Like/Download/Share flags; one link with optional PIN for two intents. H57 shows the persisted moderation mode read-only after the P-03 freeze while other permitted settings stay editable. Preview remains simulated/Host-authorized. | CF-08/10/15, T-30/35/37–40 |
 | Viewer H64/H65 → H73/H74 → H69 | No name/camera for **Lihat Album**; scoped Gallery access and allowed actions; **Ambil Foto** requires link/PIN proof, name/current consent and readiness. | CF-01/03/06/09/14, T-05/29/32 |
 | Capture Guest H64–H74 | Reuse lawful session; camera/preview/server-processing/saved state; **Foto Lagi** independent of reveal; Gallery/waiting return and P-01 final-only download. | CF-02/04/05/11, T-04/18–20/24/30/31 |
-| Host/Collaborator H42/H50/H51 and Admin H77–H92 | Preserve existing moderation/export/hold/MFA permissions and privacy-safe metrics; Viewer is not a participant. Guest ZIP and H91 backend revoke remain blocked. | CF-12/13, T-07/27/35/36 |
+| Host/Collaborator H42/H50/H51 and Admin H77–H92 | Preserve existing photo moderation/export/hold/MFA permissions and privacy-safe metrics after the P-03 mode freeze; Viewer is not a participant. Guest ZIP and H91 backend revoke remain blocked. | CF-12/13/15, T-07/27/35/36/40 |
 
 **Permission projection (target; server enforcement required):**
 
@@ -243,13 +255,13 @@ The checked route catalog is authoritative for H-codes: **H02** `/cara-kerja`, *
 |---|---|---|---|
 | Viewer | Read eligible Gallery; Like/Download/Share only with current Host flags and per-photo/Gateway eligibility, using album-scoped Gallery identity for Like. | No capture from Viewer credential; no GuestSession/quota/count. | No Host/Admin authority. |
 | Capture Guest | Same Gallery action checks and same Gallery identity in the recognized browser/session. | Capture only via valid GuestSession, consent, server readiness and quota; eligible session counts once. | No Host/Admin authority. |
-| Owner | Existing Host Gallery/setup/export/recovery rights subject to lifecycle and Hold. | Does not become a Guest by merely viewing. | Reschedule and payment remain Owner-only where baseline specifies. |
-| Collaborator | Existing relationship plus explicit `can_setup`, `can_moderate`, `can_export_zip` each control only their respective actions. | No Guest capture privilege from collaborator rights. | No implicit Owner, individual download, reschedule or payment grant. |
+| Owner | Existing Host Gallery/setup/export/recovery rights subject to lifecycle and Hold. | Does not become a Guest by merely viewing. | Moderation **mode** change only before server `capture_start`; photo actions retain their own rules. Reschedule and payment remain Owner-only where baseline specifies. |
+| Collaborator | Existing relationship plus explicit `can_setup`, `can_moderate`, `can_export_zip` each control only their respective actions. | No Guest capture privilege from collaborator rights. | `can_setup` permits settings only as the baseline allows and never overrides the P-03 freeze; `can_moderate` permits eligible photo actions, not a mode change. No implicit Owner, individual download, reschedule or payment grant. |
 | Admin | Existing diagnostic, Hold and step-up/MFA-gated operations only. | No Guest participation count from Admin view. | Hold does not grant raw media access; H91 server revoke dependency remains. |
 
 Host `GUEST`/`HOST_ONLY`, INSTANT/APPROVAL, Likes, Downloads, Share, photo status, link/PIN/version, Hold and D+30 must be rechecked server-side for both Guest principals. A remembered `gallery_identity_id` changes only Like deduplication, never these permissions. The Owner-approved new-album `downloads_enabled=true` target still lacks a server default in the current `AlbumCreateRequest`/settings contract (see FE-UAT-T2-V2-02); never emulate it with a frontend-only default or change existing albums silently.
 
-### Scenario acceptance and traceability (S-01–S-38)
+### Scenario acceptance and traceability (S-01–S-42)
 
 These are **future acceptance contracts**, not passed tests or implemented flows. Use the linked T-cases in Section 6 for backend contract, security, frontend ID/EN, responsive and physical-device evidence as applicable.
 
@@ -293,16 +305,21 @@ These are **future acceptance contracts**, not passed tests or implemented flows
 | S-36 Consent changed on return | Reconfirm for capture; retain valid name/session where lawful. | H64–67; T-04/33 |
 | S-37 Camera permission denied | Viewer retains Gallery if separately authorized; no forced camera for View Album. | H64/69/73; T-24/29 |
 | S-38 Gallery detail → camera | Close detail overlay, navigate to camera route and restore keyboard focus. | H69/74; T-34 |
+| S-39 Permitted pre-start mode choice | Owner or currently authorized `can_setup` actor may change INSTANT/APPROVAL strictly before server `capture_start`, for either reveal policy; revision and CSRF still apply. | H57; P-03, CF-15, T-37/38 |
+| S-40 Exact-start and later settings | At server `capture_start` and later, H57 explains the read-only persisted mode; unrelated settings remain editable when otherwise permitted. A stale mode PATCH has no partial write. | H57; P-03, CF-15, T-37/38/40 |
+| S-41 Reschedule after freeze | Moving `capture_start` later never re-enables mode editing once the original boundary was reached; earlier lawful photo state remains governed by its existing status. | H29/57; P-03, T-39 |
+| S-42 Photo actions after mode freeze | Authorized approver/hider/restorer can still perform each eligible photo action under existing permissions and lifecycle rules in LIVE and DELAYED; mode-only freeze grants no new action. | H42/50/51/57; P-03, T-40 |
 
 ## 3. API contract proposal
 
-**No path, field or example in this document is active unless explicitly labeled EXISTING.** Source OpenAPI and generated clients remain unchanged. PD-01–13, Gates A–G and P-01/P-02 are **OWNER APPROVED target behavior**; the wire shapes below are **TECHNICAL PROPOSALS** requiring architecture/API/security review before a separate implementation. API Contract v0.1 conventions remain: `/api/v1`, snake_case JSON, `{ "data": ... }` envelope, stable error codes, `Accept-Language` ID/EN, UTC timestamps with album timezone for calendar rules, server time authoritative, strict credentialed CORS, CSRF/Origin for cookie mutations, `X-Request-ID`, and UUIDv7 idempotency keys on relevant creates.
+**No path, field or example in this document is active unless explicitly labeled EXISTING.** Source OpenAPI and generated clients remain unchanged. PD-01–13, Gates A–G and P-01/P-02/P-03 are **OWNER APPROVED target behavior**; the wire shapes below are **TECHNICAL PROPOSALS** requiring architecture/API/security review before a separate implementation. API Contract v0.1 conventions remain: `/api/v1`, snake_case JSON, `{ "data": ... }` envelope, stable error codes, `Accept-Language` ID/EN, UTC timestamps with album timezone for calendar rules, server time authoritative, strict credentialed CORS, CSRF/Origin for cookie mutations, `X-Request-ID`, and UUIDv7 idempotency keys on relevant creates.
 
 ### Existing operations and proposed changes
 
 | Surface | EXISTING OpenAPI v1 baseline | TECHNICAL PROPOSAL / gate |
 |---|---|---|
 | `GET/PUT /api/v1/albums/{album_id}/schedule` | `reveal_delay_days` required enum `1,3,5,7`; `reveal_at` server-derived; PUT has `expected_revision`, CSRF. | Represent Live vs Delayed explicitly in read/write, and keep `reveal_at` derived. Resolve compatibility and reschedule semantics at A/G. |
+| `GET/PATCH /api/v1/albums/{album_id}/settings` | GET returns revision and mode but no freeze capability. PATCH accepts optional `moderation_mode` among independently optional settings, with `expected_revision`, CSRF, Owner/`can_setup` as allowed; current H57 sends all displayed fields. | P-03: expose server-authoritative mode editability/read-only reason for H57; atomically reject a changed mode at/after permanently reached `capture_start`, including after reschedule, without blocking otherwise permitted partial settings PATCH or separate photo moderation. Exact projection/error representation needs API review. |
 | `POST /api/v1/guest/access/resolve` | Link ID + secret, safe preview and `consent_version`, no guest cookie creation. | May add safe gallery gate/intent projection; must not leak PIN or private state. Link secret remains request body, never URL query/log. B. |
 | `POST /api/v1/guest/sessions`, `GET /api/v1/guest/me` | Name + consent + optional PIN creates named GuestSession/GuestCredential; `/me` restores capture context. | Keep capture semantics. Reuse valid context; determine consent refresh and principal separation. B. |
 | Guest Gallery list/detail | `GET /api/v1/guest/gallery/photos[/{photo_id}]`, `GuestCookie`, revealed visible photos; actions include Like, Download, Share. | Accept distinct Viewer principal as well as Capture Guest, with current per-photo/Gateway authorization and capability projection. Both may act when Host/photo policy permits; no Viewer capture rights. B/E/P-02. |
@@ -425,7 +442,7 @@ No SQL, migration, generated-client update, backup operation or data deletion is
 
 ## 5. Security risks and decision gates
 
-The Owner has approved PD-01–13, P-01/P-02 and the **design outcomes** of Gates A–G on 23 October 2026. Every row below is **DESIGN APPROVED; NOT IMPLEMENTED**. The listed engineering details remain for architecture/API/security review, not re-approval of product behavior. **BLOCKED/UNVERIFIED** means no backend contract, frontend integration or production readiness may claim the behavior yet. P0 is privacy/data correctness or contract-blocking; P1 is important interoperability, reliability or UX.
+The Owner has approved PD-01–13, P-01/P-02 and the **design outcomes** of Gates A–G on 23 October 2026; P-03 is a subsequent Owner-approved moderation-mode decision. Every row below is **DESIGN APPROVED; NOT IMPLEMENTED**. The listed engineering details remain for architecture/API/security review, not re-approval of product behavior. **BLOCKED/UNVERIFIED** means no backend contract, frontend integration or production readiness may claim the behavior yet. P0 is privacy/data correctness or contract-blocking; P1 is important interoperability, reliability or UX.
 
 | Gate / priority | Question and recommendation (**TECHNICAL PROPOSAL**) | Decision owner and evidence required | Status |
 |---|---|---|---|
@@ -442,6 +459,7 @@ The Owner has approved PD-01–13, P-01/P-02 and the **design outcomes** of Gate
 | Risk | Severity | Control / unresolved evidence |
 |---|---|---|
 | Live exposes PENDING/HIDDEN/deleted photo or stale ticket after hold/revoke | **Critical** | Shared server eligibility predicate at list/detail/Gateway, current moderation/access version per fetch; tests T-08–T-11. Gate E. |
+| Stale H57 tab or reschedule changes a frozen moderation mode | **High** | P-03 server-authoritative irreversible freeze and atomic PATCH/revision check; keep unrelated settings and eligible per-photo actions independent. T-37–40. |
 | Viewer credential gains capture rights or increments `guest_count_final` | **Critical** | Separate principal namespace, deny capture APIs by server scope, no GuestSession row; tests T-04–T-07. Gate B. |
 | Browser sends a correctly labeled but unframed/unfiltered JPEG | **High** | Gate D requires server composition; reject client-declared pixels as final proof. Verify actual final output, transient ingest and processing failure behavior. |
 | Frame changes after `capture_start` through authorize/commit/race | **High** | Server-clock transactional freeze on every mutating entry point, immutable version/snapshot; T-16–T-18. Gate C/G. |
@@ -459,11 +477,11 @@ The Owner has approved PD-01–13, P-01/P-02 and the **design outcomes** of Gate
 
 ### Review exit criteria
 
-Record the Owner's signed A–G/P-01/P-02 decisions and any genuine new product ambiguity; review the unresolved implementation details, privacy threat model and pre-launch inventory. A later authorized implementation must align PRD/BPMN/DFD/ERD/Physical DB/Permission/API Contract, review a **source** OpenAPI diff before generated clients, then run backend/frontend/integration/device/load tests. Backend remains **ON HOLD** until separately released. This Draft PR stops before merge for independent architecture review.
+Record the Owner's signed A–G/P-01/P-02 decisions and subsequent P-03 decision, then review unresolved implementation details, privacy threat model and pre-launch inventory without reopening approved business rules. A later authorized implementation must align PRD/BPMN/DFD/ERD/Physical DB/Permission/API Contract, review a **source** OpenAPI diff before generated clients, then run backend/frontend/integration/device/load tests. Backend remains **ON HOLD** until separately released. This Draft PR stops before merge for independent architecture review.
 
 ## 6. Test contract matrix
 
-These are **future implementation tests**, not tests executed by this documentation PR. **OWNER APPROVED** outcomes trace to PD-01–13, Gates A–G and P-01/P-02; schema, cookie, endpoint and rollout assertions remain **TECHNICAL PROPOSAL** until reviewed and implemented. Use source OpenAPI contract tests, unit/state tests, backend integration, browser E2E without retries, Gateway/security tests, physical devices and measured load evidence. Synthetic UAT fixtures cannot establish real backend or camera compliance.
+These are **future implementation tests**, not tests executed by this documentation PR. **OWNER APPROVED** outcomes trace to PD-01–13, Gates A–G and P-01/P-02/P-03; schema, cookie, endpoint and rollout assertions remain **TECHNICAL PROPOSAL** until reviewed and implemented. Use source OpenAPI contract tests, unit/state tests, backend integration, browser E2E without retries, Gateway/security tests, physical devices and measured load evidence. Synthetic UAT fixtures cannot establish real backend or camera compliance.
 
 | ID | Level / trace | Scenario and acceptance condition | Gate |
 |---|---|---|---|
@@ -503,10 +521,14 @@ These are **future implementation tests**, not tests executed by this documentat
 | T-34 | Navigation/permission, S-31/32/38 | Camera→Gallery Back stops tracks and safely releases/cancels pending attempt; two tabs/albums keep credentials, attempts, Like identity and media scoped; detail→camera closes overlay and restores focus. | B/D |
 | T-35 | Copy/UX, CF-07/08/10/12 | H01/H02/H03/H04/H08, H06/H07 drafts, Host/Collaborator/Guest/Admin help, Host setup/preview/dashboard and ID/EN states agree on Live/Delayed, Viewer vs Capture, moderation and final-only download; no raw machine errors or invented Viewer count. | A–G |
 | T-36 | Gallery refresh/ZIP, S-33/35 | Live eligible updates use reviewed scalable refresh semantics without private metadata; Guest selected ZIP stays disabled/feasibility-blocked at max 20 until Gateway/CORS/device/memory verification. | E/G |
+| T-37 | H57 UI/ID/EN, P-03, CF-15, S-39/40 | For LIVE and DELAYED, authorized actor sees editable INSTANT/APPROVAL strictly before server `capture_start`; at/after that instant the persisted mode is read-only with accessible localized explanation. Other authorized controls remain usable; stale UI refreshes after rejection and never claims a successful mode change. | A/E |
+| T-38 | API boundary/permission, P-03, S-39/40 | With server time just before, exactly at and after `capture_start`, PATCH accepts a changed mode only before start with current Owner/allowed `can_setup`, revision and CSRF. Reject forged/unauthorized, stale-revision and boundary-race changes atomically with no partial settings write; `can_moderate` alone grants no mode edit. Test both mode directions and reveal policies. | A/E/G |
+| T-39 | Schedule race, P-03, S-41 | After the freeze boundary is reached, Owner rescheduling to a later start, stale schedule writes and concurrent settings PATCH never unlock or change the persisted moderation mode; before the boundary, only baseline-authorized schedule and settings operations apply. | A/G |
+| T-40 | Partial settings/photo actions, P-03, S-40/42 | After freeze, H57 saves authorized visibility/Like/Download/Share changes via a revision-and-CSRF-protected partial PATCH without `moderation_mode`; server accepts these only under existing permissions. Owner/`can_moderate` may still perform eligible photo approve/hide/unhide actions, and deleted-photo restore remains Owner-only, under current lifecycle and Hold rules. Neither action changes the frozen mode. | E/G |
 
 ### Validation for this documentation PR
 
-Check this single addendum contains the product matrix, flows, CF-01–14, S-01–38, page/permission maps, API, data, risk and T-01–36 matrix; every PD-01–13 and P-01/P-02 is represented and traceable; Gates A–G carry **DESIGN APPROVED** status with pending implementation details; the five original Owner comments 103–107 remain verbatim; markdown links resolve; `git diff --check` and `pnpm api:check` pass. There is no value in camera, database or backend tests for unchanged runtime. A docs-only PR cannot satisfy T-01–T-36; these become acceptance criteria for later approved implementation.
+Check this single addendum contains the product matrix, flows, CF-01–15, S-01–42, page/permission maps, API, data, risk and T-01–40 matrix; every PD-01–13 and P-01/P-02/P-03 is represented and traceable; Gates A–G carry **DESIGN APPROVED** status with pending implementation details; the five original Owner comments 103–107 remain verbatim; markdown links resolve; `git diff --check` and `pnpm api:check` pass. There is no value in camera, database or backend tests for unchanged runtime. A docs-only PR cannot satisfy T-01–T-40; these become acceptance criteria for later approved implementation.
 
 ## 7. Review handoff
 
@@ -517,7 +539,7 @@ Check this single addendum contains the product matrix, flows, CF-01–14, S-01�
 | Locked PRD/BPMN/DFD/ERD/Permission/API/OpenAPI still describe delayed-only, named Guest Gallery and browser-final direct PUT. | The approved v0.6 decisions here are the **target override only where explicit**; baseline documents and runtime remain unchanged. A separately authorized source-contract and baseline update must reconcile them before integration. |
 | Current OpenAPI has required numeric `reveal_delay_days`, `GuestCookie` Gallery actions, `COVER`-only design and no Viewer proof, Gallery identity or server-composition operation. | Engineering must review wire shapes, authorization, error codes, quota/idempotency and generated clients. Do not invent runtime endpoints or hand-written duplicate DTOs in Phase 1. |
 | Gate G says dummy-only, but the target environment has not yet been inventoried. | No data reset, migration or destruction now. Verify actual users/integrations/storage/backups; real data discovery stops the dummy-only plan for a new Owner decision. |
-| Host changes moderation mode during Live event. | Clarify whether the change affects only future photos or retroactively changes existing `PUBLISHED` photos. Do not infer exposure/hiding behavior from UI or cached state. |
+| Current H57 and settings OpenAPI do not expose or enforce the P-03 freeze. | The Owner has resolved the business question: no mode change at/after server `capture_start` in LIVE or DELAYED, even after reschedule. Engineering must review the server projection, atomic monotonic enforcement and error representation; preserve independent photo actions and other settings. No in-event mode transition or retroactive reclassification is permitted. |
 | Viewer proof and Gallery Like continuity are approved behavior, but issuance/cookie topology/transactional DDL are unspecified. | Security/API review must bind proof and Gallery identity to album/access version without making either an auth shortcut; define privacy retention and rate limits. |
 | Live update transport and server compositor feasibility are unmeasured. | Select polling/manual refresh/SSE and queue/ingest only after 2,000-viewer and 500-starts/sec measurements; no guaranteed instant push or production performance claim. |
 | New-album `downloads_enabled=true` is Owner approved elsewhere, but current creation contract has no explicit default. | Confirm server default in later authorized contract work; preserve existing albums and do not fabricate a frontend default. |
@@ -527,9 +549,9 @@ Check this single addendum contains the product matrix, flows, CF-01–14, S-01�
 
 1. **FE-BP-01 entry and principal-safe navigation:** H64–H67/H73/H74, two QR intents, Viewer Gallery, same-album proof, Capture Guest reuse and Gallery identity projection. Block real capture transition on missing reviewed backend contract rather than simulating privilege elevation.
 2. **FE-BP-02 camera and saved state:** H69–H72, independent readiness, always-visible switch/track cleanup, transient preview vs server status, P-01 removal of official local-source save, role- and policy-correct **Foto Lagi / Lihat Album / jadwal publikasi**. Physical-device and server-composition claims remain pending.
-3. **FE-BP-03 Host setup and event status:** H29/H32/H58, schedule/review/reschedule/settings, two frame variants, Live/Delayed and independent Gallery/camera indicators, preserving permissions and first-confirmed rules.
+3. **FE-BP-03 Host setup and event status:** H29/H32/H57/H58, schedule/review/reschedule/settings, two frame variants, Live/Delayed and independent Gallery/camera indicators; P-03 read-only mode state and partial unrelated settings updates, preserving permissions and first-confirmed rules. Block mode editing on a missing reviewed server freeze projection.
 4. **FE-BP-04 public/help/admin copy:** H01–H04/H08, Host/Collaborator/Guest/Admin guides, footer and legal drafts with ID/EN consistency; no automatic legal effectiveness or unrelated desktop polish.
-5. **FE-BP-05 regression and Owner UAT:** map S-01–S-38 and T-01–T-36 to focused no-retry E2E, security/API, desktop/mobile and real-device evidence as the corresponding backend pieces become available. Do not mark synthetic fixtures as backend integration.
+5. **FE-BP-05 regression and Owner UAT:** map S-01–S-42 and T-01–T-40 to focused no-retry E2E, security/API, desktop/mobile and real-device evidence as the corresponding backend pieces become available. Do not mark synthetic fixtures as backend integration.
 
 For a future, separately authorized implementation, reconcile PRD BR-06/08/25 and FR-02A/03/06/08/12/13; BPMN guest entry, capture, reveal and moderation; DFD/ERD and Physical Database; Permission Model; API Contract v0.1 and source OpenAPI before generated clients. **This PR leaves every locked baseline document unchanged.** Existing Media Gateway, quota, payment, retention and Admin restrictions remain in force unless expressly superseded above.
 
