@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, MessageCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, Grid2X2, List, MessageCircle, RefreshCw, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -27,6 +27,7 @@ import {
 import type { GetApiV1AlbumsAlbumIdPhotosSort, ManagementPhoto, ModerationStatus, TrashPhoto } from '@/lib/api/generated/index.schemas';
 import { hostRoutes } from '@/features/host/routes';
 import { DeliveryImage } from '@/features/gallery/components/delivery-image';
+import { GalleryExportSelection } from './gallery-export-selection';
 import { formatEventDateTime } from '@/lib/time/event-time';
 
 type LoadState = 'loading' | 'ready' | 'forbidden' | 'error';
@@ -51,6 +52,11 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
   const [message, setMessage] = useState('');
   const [pendingDelete, setPendingDelete] = useState<ManagementPhoto | null>(null);
   const [ownerAccess, setOwnerAccess] = useState<boolean | null>(null);
+  const [exportAccess, setExportAccess] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectionReset, setSelectionReset] = useState(0);
+  const [selectionNotice, setSelectionNotice] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [timeZone, setTimeZone] = useState<string | null>(null);
 
   const load = useCallback(async (nextCursor?: string, reset = false) => {
@@ -70,6 +76,7 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
       if (album.status !== 200) { setState('error'); return; }
       const isOwner = album.data.data.actor_access.relationship === 'OWNER';
       setOwnerAccess(isOwner);
+      setExportAccess(isOwner || Boolean(album.data.data.actor_access.collaborator_permissions?.can_export_zip));
       setTimeZone(album.data.data.timezone);
       if (!isOwner && (trash || !album.data.data.actor_access.collaborator_permissions?.can_moderate)) { setState('forbidden'); return; }
       if (trash) {
@@ -195,6 +202,7 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
   }
 
   const time = (value: string) => formatEventDateTime(value, locale, timeZone);
+  const moderationLabel = (status: ModerationStatus) => status === 'PENDING' ? t('pending') : status === 'PUBLISHED' ? t('published') : t('hidden');
   if (state === 'loading') return <p role="status">{t('loading')}</p>;
   if (state === 'forbidden') return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><p role="alert">{t('forbidden')}</p></section>;
   if (state === 'error') return <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><p role="alert">{!isOnline ? t('offline') : t('error')}</p><Button className="mt-4" disabled={!isOnline} onClick={() => void load(undefined, true)} loading={busy}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button></section>;
@@ -205,7 +213,7 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
     {detail?.photo_id === photoId ? <article className="mx-auto w-full max-w-3xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
       <DeliveryImage src={detail.media.url} alt={locale === 'id' ? 'Foto acara' : 'Event photo'} unavailableLabel={t('unavailable')} loading="eager" className="mx-auto max-h-[50vh] w-auto max-w-full rounded" />
       <p className="mt-4 font-medium">{detail.photographer_display_name}</p>
-      <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{time(detail.created_at)} · {detail.moderation_status}</p>
+      <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">{time(detail.created_at)} · {moderationLabel(detail.moderation_status)}</p>
       {!isOnline && <p role="status" className="mt-3 text-sm">{t('offline')}</p>}
       <PhotoActions photo={detail} busy={busy} offline={!isOnline} run={(action) => action === 'delete' ? setPendingDelete(detail) : void runMutation(detail, action)} labels={t} onShare={(intent) => void share(detail, intent)} onDownload={() => void download(detail)} shareLabels={tShare} downloadLabel={locale === 'id' ? 'Unduh foto' : 'Download photo'} hideIndividualDownload={!ownerAccess} />
       {message && <p role="status" className="mt-3 text-sm">{message}</p>}
@@ -214,12 +222,36 @@ export function AlbumGalleryManagement({ albumId, photoId, trash = false }: { al
   </section>;
 
   const items = trash ? deleted : photos;
+  const resetSelection = () => {
+    if (!selectionMode) return;
+    setSelectionMode(false);
+    setSelectionReset((value) => value + 1);
+    setSelectionNotice(t('selectionReset'));
+  };
   return <div className="space-y-5">
-    {!trash && <div className="flex flex-wrap items-end gap-3"><div className="min-w-32 text-sm"><span className="mb-1 block">{t('sort')}</span><Select label={t('sort')} value={sort} onValueChange={(value) => setSort(value as GetApiV1AlbumsAlbumIdPhotosSort)} className="rounded-full px-3" options={[{ value: 'NEWEST', label: t('newest') }, { value: 'OLDEST', label: t('oldest') }]} /></div><div className="min-w-32 text-sm"><span className="mb-1 block">{t('status')}</span><Select label={t('status')} value={filter} onValueChange={(value) => setFilter(value as ModerationStatus | '')} className="rounded-full px-3" options={[{ value: '', label: t('all') }, { value: 'PENDING', label: t('pending') }, { value: 'PUBLISHED', label: t('published') }, { value: 'HIDDEN', label: t('hidden') }]} /></div><Button variant="ghost" disabled={!isOnline} loading={busy} onClick={() => void load(undefined, true)}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button>{ownerAccess && <Link aria-label={t('trash')} title={t('trash')} className="ml-auto inline-flex size-11 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]" href={hostRoutes.trash(albumId)}><Trash2 size={18} aria-hidden="true" /><span className="sr-only">{t('trash')}</span></Link>}</div>}
+    {!trash && <>
+      <div className="flex flex-wrap items-end gap-3 border-b border-[var(--color-border)] pb-4">
+        <div className="min-w-32 text-sm"><span className="mb-1 block">{t('sort')}</span><Select label={t('sort')} value={sort} onValueChange={(value) => { resetSelection(); setSort(value as GetApiV1AlbumsAlbumIdPhotosSort); }} options={[{ value: 'NEWEST', label: t('newest') }, { value: 'OLDEST', label: t('oldest') }]} /></div>
+        <div className="min-w-32 text-sm"><span className="mb-1 block">{t('status')}</span><Select label={t('status')} value={filter} onValueChange={(value) => { resetSelection(); setFilter(value as ModerationStatus | ''); }} options={[{ value: '', label: t('all') }, { value: 'PENDING', label: t('pending') }, { value: 'PUBLISHED', label: t('published') }, { value: 'HIDDEN', label: t('hidden') }]} /></div>
+        <div role="group" aria-label={t('viewMode')} className="flex rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5">
+          <button type="button" aria-label={t('gridView')} aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')} className={'grid size-10 place-items-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] ' + (viewMode === 'grid' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : '')}><Grid2X2 size={18} aria-hidden="true" /></button>
+          <button type="button" aria-label={t('listView')} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')} className={'grid size-10 place-items-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] ' + (viewMode === 'list' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : '')}><List size={18} aria-hidden="true" /></button>
+        </div>
+        <Button variant="ghost" disabled={!isOnline} loading={busy} onClick={() => { resetSelection(); void load(undefined, true); }}><RefreshCw size={16} aria-hidden="true" />{t('refresh')}</Button>
+        {ownerAccess && <Link aria-label={t('trash')} title={t('trash')} className="ml-auto inline-flex size-11 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]" href={hostRoutes.trash(albumId)}><Trash2 size={18} aria-hidden="true" /><span className="sr-only">{t('trash')}</span></Link>}
+      </div>
+      <GalleryExportSelection key={albumId + '-' + selectionReset} albumId={albumId} allowed={exportAccess} onModeChange={(active) => { setSelectionMode(active); if (active) setSelectionNotice(''); }} />
+    </>}
     {trash && <p className="rounded-[var(--radius-md)] bg-[var(--color-muted)] p-3 text-sm">{t('quotaNote')}</p>}
     {!isOnline && <p role="status" className="text-sm">{t('offline')}</p>}
+    {selectionNotice && <p role="status" className="text-sm">{selectionNotice}</p>}
     {message && <p role="status" className="text-sm">{message}</p>}
-    {items.length === 0 ? <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-7 text-center"><p className="font-semibold">{t('empty')}</p></section> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{trash ? deleted.map((photo) => <article key={photo.photo_id} className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]">{photo.media ? <DeliveryImage src={photo.media.url} alt={locale === 'id' ? 'Foto acara' : 'Event photo'} unavailableLabel={t('unavailable')} loading="lazy" className="aspect-[4/3] w-full object-cover" /> : <div role="img" aria-label={t('unavailable')} className="grid aspect-[4/3] place-items-center bg-[var(--color-muted)] p-4 text-center text-sm">{t('unavailable')}</div>}<div className="space-y-2 p-4"><p className="font-medium">{photo.photographer_display_name}</p><p className="text-xs text-[var(--color-muted-foreground)]">{time(photo.created_at)}</p><Button variant="secondary" disabled={!photo.can_restore || !isOnline || !ownerAccess} loading={busy} onClick={() => void restore(photo)}>{t('restore')}</Button></div></article>) : photos.map((photo) => <article key={photo.photo_id} className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]"><Link href={hostRoutes.photo(albumId, photo.photo_id)} className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">{photo.media ? <DeliveryImage src={photo.media.url} alt={locale === 'id' ? 'Foto acara' : 'Event photo'} unavailableLabel={t('unavailable')} loading="lazy" className="aspect-[4/3] w-full object-cover" /> : <div role="img" aria-label={t('unavailable')} className="grid aspect-[4/3] place-items-center bg-[var(--color-muted)] p-4 text-center text-sm">{t('unavailable')}</div>}<div className="p-4"><p className="font-medium">{photo.photographer_display_name}</p><p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{time(photo.created_at)} · {photo.moderation_status}</p></div></Link><div className="px-4 pb-4"><PhotoActions photo={photo} busy={busy} offline={!isOnline} run={(action) => action === 'delete' ? setPendingDelete(photo) : void runMutation(photo, action)} labels={t} onShare={(intent) => void share(photo, intent)} onDownload={() => void download(photo)} shareLabels={tShare} downloadLabel={locale === 'id' ? 'Unduh foto' : 'Download photo'} hideIndividualDownload={!ownerAccess} /></div></article>)}</div>}
+    {items.length === 0 ? <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-7 text-center"><p className="font-semibold">{t('empty')}</p></section> : trash
+      ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{deleted.map((photo) => <article key={photo.photo_id} className="min-w-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]">{photo.media ? <DeliveryImage src={photo.media.url} alt={locale === 'id' ? 'Foto acara' : 'Event photo'} unavailableLabel={t('unavailable')} loading="lazy" className="aspect-[4/3] w-full object-cover" /> : <div role="img" aria-label={t('unavailable')} className="grid aspect-[4/3] place-items-center bg-[var(--color-muted)] p-4 text-center text-sm">{t('unavailable')}</div>}<div className="space-y-2 p-4"><p className="font-medium">{photo.photographer_display_name}</p><p className="text-xs text-[var(--color-muted-foreground)]">{time(photo.created_at)}</p><Button variant="secondary" disabled={!photo.can_restore || !isOnline || !ownerAccess} loading={busy} onClick={() => void restore(photo)}>{t('restore')}</Button></div></article>)}</div>
+      : <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4' : 'space-y-3'}>{photos.map((photo) => <article key={photo.photo_id} className={'min-w-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] ' + (viewMode === 'list' ? 'flex items-center gap-3 p-2 sm:gap-4' : '')}>
+          <Link href={hostRoutes.photo(albumId, photo.photo_id)} aria-label={t('openPhotoNamed', { name: photo.photographer_display_name })} className={'block min-w-0 overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] ' + (viewMode === 'list' ? 'w-24 shrink-0 rounded-lg sm:w-36' : '')}>{photo.media ? <DeliveryImage src={photo.media.url} alt={t('photoAltNamed', { name: photo.photographer_display_name })} unavailableLabel={t('unavailable')} loading="lazy" className={'w-full object-cover ' + (viewMode === 'list' ? 'aspect-square sm:aspect-[4/3]' : 'aspect-[4/3]')} /> : <div role="img" aria-label={t('unavailable')} className="grid aspect-[4/3] place-items-center bg-[var(--color-muted)] p-4 text-center text-sm">{t('unavailable')}</div>}</Link>
+          <div className="min-w-0 flex-1 p-2"><p className="truncate font-medium">{photo.photographer_display_name}</p><p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{time(photo.created_at)} · {moderationLabel(photo.moderation_status)}</p>{!selectionMode && <PhotoActions photo={photo} busy={busy} offline={!isOnline} run={(action) => action === 'delete' ? setPendingDelete(photo) : void runMutation(photo, action)} labels={t} onShare={(intent) => void share(photo, intent)} onDownload={() => void download(photo)} shareLabels={tShare} downloadLabel={locale === 'id' ? 'Unduh foto' : 'Download photo'} hideIndividualDownload={!ownerAccess} />}</div>
+        </article>)}</div>}
     {hasMore && <div className="text-center"><Button variant="secondary" disabled={!isOnline} loading={busy} onClick={() => void load(cursor ?? undefined)}>{t('loadMore')}</Button></div>}
     <ConfirmDialog open={Boolean(pendingDelete)} title={t('deleteTitle')} description={t('confirmDelete')} confirmLabel={t('delete')} cancelLabel={t('cancel')} destructive disabled={busy || !isOnline} onCancel={() => setPendingDelete(null)} onConfirm={() => { if (pendingDelete) { const target = pendingDelete; setPendingDelete(null); void runMutation(target, 'delete'); } }} />
   </div>;

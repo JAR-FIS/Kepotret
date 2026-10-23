@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ManagementPhoto, TrashPhoto } from '@/lib/api/generated/index.schemas';
 
 const api = vi.hoisted(() => ({
-  album: vi.fn(), list: vi.fn(), detail: vi.fn(), trash: vi.fn(), csrf: vi.fn(), approve: vi.fn(), hide: vi.fn(), unhide: vi.fn(), remove: vi.fn(), restore: vi.fn(), shareLink: vi.fn(), download: vi.fn(),
+  album: vi.fn(), list: vi.fn(), detail: vi.fn(), trash: vi.fn(), csrf: vi.fn(), approve: vi.fn(), hide: vi.fn(), unhide: vi.fn(), remove: vi.fn(), restore: vi.fn(), shareLink: vi.fn(), download: vi.fn(), capabilities: vi.fn(), candidates: vi.fn(),
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }) }));
 vi.mock('@/lib/api/browser', () => ({
@@ -20,6 +20,8 @@ vi.mock('@/lib/api/browser', () => ({
   postApiV1AlbumsAlbumIdPhotosPhotoIdRestore: api.restore,
   postApiV1AlbumsAlbumIdPhotosPhotoIdShareLink: api.shareLink,
   getApiV1AlbumsAlbumIdPhotosPhotoIdDownload: api.download,
+  getApiV1AlbumsAlbumIdExportCapabilities: api.capabilities,
+  getApiV1AlbumsAlbumIdExportSelectionPhotos: api.candidates,
 }));
 
 import { AlbumGalleryManagement } from '@/features/host/components/gallery-management';
@@ -49,6 +51,8 @@ describe('host gallery management', () => {
     api.csrf.mockResolvedValue({ status: 200, data: { data: { csrf_token: 'host-csrf' } } });
     api.approve.mockResolvedValue({ status: 200, data: { data: pendingPhoto } });
     api.remove.mockResolvedValue({ status: 200, data: { data: pendingPhoto } });
+    api.capabilities.mockResolvedValue({ status: 200, data: { data: { max_photos_per_job: 3, eligible_photo_count: 1, allow_all: true, allow_selected: true } } });
+    api.candidates.mockResolvedValue({ status: 200, data: { data: [{ photo_id: pendingPhoto.photo_id, photographer_display_name: pendingPhoto.photographer_display_name, created_at: pendingPhoto.created_at }], meta: { next_cursor: null, has_more: false } } });
   });
 
   it('shows only valid pending actions and protects moderation with CSRF', async () => {
@@ -78,6 +82,23 @@ describe('host gallery management', () => {
     expect(within(statusOptions).getByRole('option', { name: 'All statuses' })).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(within(statusOptions).getByRole('option', { name: 'Hidden' }));
     await waitFor(() => expect(api.list).toHaveBeenLastCalledWith('album-1', expect.objectContaining({ sort: 'OLDEST', moderation_status: 'HIDDEN' })));
+  });
+
+  it('changes grid/list accessibly and clears export selection when sorting changes', async () => {
+    renderManager({ albumId: 'album-1' });
+    await screen.findByText('Ari');
+    expect(screen.getByRole('button', { name: 'Grid view' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'List view' }));
+    expect(screen.getByRole('button', { name: 'List view' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Select photos' }));
+    await screen.findByRole('checkbox', { name: 'Select photo by Ari' });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select photo by Ari' }));
+    expect(screen.getByText('1 selected / maximum 3')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('combobox', { name: 'Sort' }));
+    fireEvent.click(within(screen.getByRole('listbox', { name: 'Sort' })).getByRole('option', { name: 'Oldest' }));
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith('album-1', expect.objectContaining({ sort: 'OLDEST' })));
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.getByText('Photo selection was cleared because the gallery view changed.')).toBeInTheDocument();
   });
 
   it('explains that soft delete does not release quota', async () => {
