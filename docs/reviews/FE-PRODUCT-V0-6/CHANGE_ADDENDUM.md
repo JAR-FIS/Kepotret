@@ -8,7 +8,7 @@ Baseline: `main` at `1600e0d1a8d7101f6fad522208406f99a4ff7919` (23 October 2026,
 
 Approved baseline documents inspected under `Downloads/SELF EMPLOYEE/DOKUMEN KEPOTRET/`: PRD v0.5 Final; BPMN & Use Case v0.5 Final; DFD & ERD v0.5 Final; Permission and Authorization Model v0.2 Final; System Architecture v0.3 Final; Physical Database Design v0.3 Final; API Contract v0.1 Final; and Technology and Provider Selection v0.2 Final. Repository evidence: [`contracts/openapi/Kepotret_OpenAPI_v1_Baseline.yaml`](../../../contracts/openapi/Kepotret_OpenAPI_v1_Baseline.yaml), [`contracts/openapi/README.md`](../../../contracts/openapi/README.md), generated client/types (read only), `src/features/guest/{components,capture}`, `src/features/host/{components,schedule-validation.ts}`, route catalog, and prior FE-UAT handoffs. The addendum supersedes older rules **only where it expressly says so**.
 
-The `1. Kepotret_Final_Frontend_Recheck_Seluruh_Halaman_2026-10-22.xlsx` workbook was inspected read only. Its `01 Final Recheck` sheet contains `UAT-FINAL-001` through `UAT-FINAL-102` (102 IDs). The engineering brief refers to a “107-item final audit,” but the supplied workbook has no `UAT-FINAL-103` through `107`; mapping those five would be invented. The separate `2. Kepotret_Final_Owner_Recheck_V2_08_2026-10-23.xlsx` has `01 Recheck 31` and `02 Approved 71` sheets. Neither workbook converts this audit into final Owner visual approval.
+The original `1. Kepotret_Final_Frontend_Recheck_Seluruh_Halaman_2026-10-22.xlsx` workbook was inspected read only. Its `01 Final Recheck` sheet contains `UAT-FINAL-001` through `UAT-FINAL-102` (102 IDs). The updated Owner workbook, available locally as `2. Kepotret_Final_Owner_Recheck_V2_08_2026-10-23.xlsx`, adds `UAT-FINAL-103` through `UAT-FINAL-107` in its `01 Recheck 31` sheet: together these sources cover the 107 Owner audit IDs. The remediation request names a `(1).xlsx` copy, which was not present in the accessible Downloads tree; the available workbook contains all five specified rows and their Owner comments. Its `hasil_owner` and `status_engineering` cells are blank for those rows. The sheet title and historical `02 Approved 71` sheet do not establish approval for the five additions or final v0.6 frontend acceptance.
 
 ## Audit findings
 
@@ -21,7 +21,7 @@ The `1. Kepotret_Final_Frontend_Recheck_Seluruh_Halaman_2026-10-22.xlsx` workboo
 | **High** | Frame mutations must fail at the server clock boundary, including asset upload/commit and concurrent schedule edits; disabling a UI button is insufficient. | PD-11, current cover-only design API. Versioned design/freeze proposal and race tests, Gate C/G. |
 | **Medium** | The cover contract permits MIME and a 5 MB maximum while the frontend checks type/size; required intrinsic 1920×1080 and true-alpha frame validation still need a server contract and byte-level policy. | `DesignAssetAuthorizeRequest` is `COVER` only; `design-setup.tsx` checks type/size. Gate F. |
 | **Medium** | H69 hides camera switch when `enumerateDevices()` does not expose a second ID. | `guest-entry-surfaces.tsx:96`, `guest-entry-flow.tsx:658`; PD-13 overrides this. No backend endpoint required. |
-| **Low** | Brief calls the final audit 107 items; available final workbook contains 102 IDs. | Source discrepancy recorded above; traceability uses verifiable IDs only. |
+| **Low** | The original final workbook ends at 102; five later Owner comments appear in the updated recheck with blank result/status cells. | Keep source versions distinct and do not infer approval from the new rows. |
 
 ## 1. Owner-approved product change matrix
 
@@ -49,7 +49,45 @@ Guest names are non-unique and not credentials; capture uses browser camera only
 
 ### Final recheck crosswalk and evidence limit
 
-The read-only final workbook `1. Kepotret_Final_Frontend_Recheck_Seluruh_Halaman_2026-10-22.xlsx`, sheet `01 Final Recheck`, maps `UAT-FINAL-007`→H07 (copy), `029`→H29 (chips instead of dropdown), `058`→H58 (navigation and cover dimensions), `064`→H64, `065`→H65, `069`→H69 and `073`→H73. The `catatan_owner` cells for 064/065/069/073 are empty in this workbook; their v0.6 requirements come from PD-05–13, not inferred workbook comments. The source sheet has 102 IDs, despite the engineering brief's “107-item” phrase. The separate V2-08 workbook tracks 31 recheck and 71 historically approved pages; it is not evidence of approval for a new v0.6 contract.
+The original 102-item workbook, sheet `01 Final Recheck`, maps `UAT-FINAL-007`→H07 (copy), `029`→H29 (chips instead of dropdown), `058`→H58 (navigation and cover dimensions), `064`→H64, `065`→H65, `069`→H69 and `073`→H73. Its `catatan_owner` cells for 064/065/069/073 are empty; the v0.6 requirements come from PD-05–13 and the later Owner comments below, not from invented original comments. The updated recheck adds these five IDs. Their text is transcribed verbatim from `catatan_owner_recheck` (column I); `hasil_owner` (H) and `status_engineering` (K) are empty for each, so no approval or implementation status is assigned here.
+
+| Updated ticket | Page / traceability | Scope |
+|---|---|---|
+| `UAT-FINAL-103` | H69 → PD-13 | Camera switching |
+| `UAT-FINAL-104` | H69 → PD-10/PD-12 | System LUT choice and processing |
+| `UAT-FINAL-105` | H58 → PD-09/PD-11/PD-12 | Transparent Host frame, freeze and final output |
+| `UAT-FINAL-106` | H64/H65 → PD-05/PD-06/PD-07 | Gallery viewing without repeating capture entry |
+| `UAT-FINAL-107` | H27 album overview (the workbook's page-code cell contains its route URL) | Separate frontend accordion follow-up; outside the v0.6 backend contract scope |
+
+**UAT-FINAL-103 — original Owner comment:**
+
+```text
+Saya belum melihat button untuk switch kamera depan
+```
+
+**UAT-FINAL-104 — original Owner comment:**
+
+```text
+saya belum melihat button uintuk filter pada kamera. Saya sudah sampaikan di awal, bahwa perlu ada fitur filter LUT pada kamera. Pastinya ini berkaitan dengan backend, kamu catat dan siapkan buttonnya saja, agar bisa dilihat sementara di frontend
+```
+
+**UAT-FINAL-105 — original Owner comment:**
+
+```text
+Seingat saya, saya sudah sampaikan ini diawal. Saya ingin ada fitur setup frame juga pada foto, sampul album tetap diperlukan. Setup frame atau bingkai adalah host bisa mengatur atau menyiapkan frame/bingkai dalam format png (dengan transparant pada kotak tengah), yang mana nantinya setelah frame/bingkai ini diatur, para tamu/peserta setelah mereka melakukan foto pada kamera, hasil output/fotonya otomatis akan ada frame/bingkainya. Pastinya ini berkaitan dengan backend, kamu catat dan siapkan menu/card untuk setupnya saja, agar bisa dilihat sementara di frontend. Saya lampirkan refrensi gambarnya. berikan juga informasi size pixel untuk frame/bingkai, berapa kali berapa (px) untuk ukuran frame yang direkomendasikan oleh system.
+```
+
+**UAT-FINAL-106 — original Owner comment:**
+
+```text
+bagaimana user tamu/peserta dapat melihat album setelah akses url/scan qr? pastikan user tamu/album bisa dapat melihat album tanpa harus melewati proses photo atau open kamera atau mengisi form nama "lagi" terlebih dahulu.
+```
+
+**UAT-FINAL-107 — original Owner comment:**
+
+```text
+Pada halaman ringkasan album, untuk card Dokumentasi, Acara, Pengaturan, Pembayaran & Paket -> bagaimana jika dibuatkan card Collapse/Accordion (button-button dibawahnya baru bisa diklik setelah collapse/accordion dibuka), tujuannya agar pada halaman ini tidak terlalu padat dan card "draft album" tidak terlalu kebawah.
+```
 
 H07 is the Terms of Service page in the route catalog. PD-01/03 require accurate public explanation of reveal behavior there, but **do not** make its legal draft effective or waive separate legal approval. H27, H42, H58 cover guidance, footer WhatsApp, Guest ZIP, H80 server sort and H91 revoke MFA remain separate follow-ups or dependencies. The matrix does not reclassify those as v0.6 backend scope.
 
